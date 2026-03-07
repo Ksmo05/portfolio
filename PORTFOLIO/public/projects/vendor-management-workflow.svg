@@ -1,0 +1,55 @@
+<svg width="1600" height="1000" viewBox="0 0 1600 1000" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Vendor Management Workflow</title>
+  <desc id="desc">Workflow system board with supplier onboarding, PO approvals, communications, and exception management lanes.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ECFEFF"/>
+      <stop offset="100%" stop-color="#E0E7FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <rect x="80" y="56" width="1440" height="888" rx="24" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <rect x="80" y="56" width="1440" height="80" rx="24" fill="#0F172A"/>
+  <text x="122" y="106" font-family="Segoe UI, Arial" font-size="23" fill="#E2E8F0" font-weight="600">Vendor Lifecycle Workflow Manager</text>
+  <rect x="110" y="162" width="1380" height="96" rx="14" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <rect x="136" y="206" width="240" height="34" rx="8" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <rect x="392" y="206" width="240" height="34" rx="8" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <rect x="648" y="206" width="240" height="34" rx="8" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <rect x="904" y="206" width="240" height="34" rx="8" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <rect x="1160" y="206" width="304" height="34" rx="8" fill="#0F172A"/>
+  <rect x="110" y="282" width="320" height="614" rx="14" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <rect x="452" y="282" width="320" height="614" rx="14" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <rect x="794" y="282" width="320" height="614" rx="14" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <rect x="1136" y="282" width="354" height="614" rx="14" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <rect x="126" y="300" width="288" height="40" rx="10" fill="#E2E8F0"/>
+  <rect x="468" y="300" width="288" height="40" rx="10" fill="#DBEAFE"/>
+  <rect x="810" y="300" width="288" height="40" rx="10" fill="#DCFCE7"/>
+  <rect x="1152" y="300" width="322" height="40" rx="10" fill="#FEE2E2"/>
+  <g fill="#FFFFFF" stroke="#D1D5DB">
+    <rect x="126" y="356" width="288" height="98" rx="10"/>
+    <rect x="126" y="466" width="288" height="98" rx="10"/>
+    <rect x="126" y="576" width="288" height="98" rx="10"/>
+    <rect x="126" y="686" width="288" height="98" rx="10"/>
+    <rect x="468" y="356" width="288" height="98" rx="10"/>
+    <rect x="468" y="466" width="288" height="98" rx="10"/>
+    <rect x="468" y="576" width="288" height="98" rx="10"/>
+    <rect x="468" y="686" width="288" height="98" rx="10"/>
+    <rect x="810" y="356" width="288" height="98" rx="10"/>
+    <rect x="810" y="466" width="288" height="98" rx="10"/>
+    <rect x="810" y="576" width="288" height="98" rx="10"/>
+    <rect x="810" y="686" width="288" height="98" rx="10"/>
+  </g>
+  <rect x="1152" y="356" width="322" height="260" rx="10" fill="#FFFFFF" stroke="#D1D5DB"/>
+  <rect x="1152" y="628" width="322" height="156" rx="10" fill="#FFFFFF" stroke="#D1D5DB"/>
+  <path d="M430 405H452" stroke="#94A3B8" stroke-width="3"/>
+  <path d="M772 405H794" stroke="#94A3B8" stroke-width="3"/>
+  <path d="M1114 405H1136" stroke="#94A3B8" stroke-width="3"/>
+  <circle cx="441" cy="405" r="7" fill="#0EA5E9"/>
+  <circle cx="783" cy="405" r="7" fill="#22C55E"/>
+  <circle cx="1125" cy="405" r="7" fill="#F59E0B"/>
+  <rect x="1174" y="402" width="278" height="34" rx="8" fill="#FEF2F2"/>
+  <rect x="1174" y="444" width="278" height="34" rx="8" fill="#FEFCE8"/>
+  <rect x="1174" y="486" width="278" height="34" rx="8" fill="#EFF6FF"/>
+  <rect x="1174" y="676" width="278" height="14" rx="7" fill="#334155"/>
+  <rect x="1174" y="676" width="224" height="14" rx="7" fill="#10B981"/>
+</svg>
