@@ -1,4 +1,5 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { Manrope, Space_Grotesk } from "next/font/google";
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
@@ -53,8 +54,8 @@ export default function RootLayout({
             <Footer />
           </div>
         </div>
+        <GoogleAnalytics gaId="G-P4ST3Q00YH" />
       </body>
     </html>
   );
 }
-
