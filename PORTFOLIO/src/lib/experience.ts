@@ -127,7 +127,7 @@ const entries: ExperienceEntryLocalized[] = [
     company: { en: "Openbank", es: "Openbank" },
     role: { en: "Banking Customer Support", es: "Soporte al Cliente Bancario" },
     period: "2021 - 2022",
-    logo: "/company-logos/openbank.svg",
+    logo: "/company-logos/openbank-icon.svg",
     logoAlt: { en: "Openbank logo", es: "Logotipo Openbank" },
     summary: {
       en: "Operational banking support for customer service and regulated process execution.",
@@ -201,7 +201,7 @@ const snapshotEntries: SnapshotEntryLocalized[] = [
   },
   {
     company: { en: "Openbank", es: "Openbank" },
-    logo: "/company-logos/openbank.svg",
+    logo: "/company-logos/openbank-icon.svg",
     logoAlt: { en: "Openbank logo", es: "Logotipo Openbank" },
     description: {
       en: "Banking customer support operations.",

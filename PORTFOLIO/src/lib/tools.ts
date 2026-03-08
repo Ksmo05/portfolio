@@ -73,17 +73,4 @@ export const tools: Tool[] = [
       "Workflow visibility",
     ],
   },
-  {
-    slug: "jira",
-    name: "Jira",
-    logo: "/tools/jira.svg",
-    description:
-      "Used for operational task tracking, workflow coordination, and process follow-up.",
-    status: "Daily Tool",
-    features: [
-      "Task and workflow tracking",
-      "Cross-team coordination",
-      "Operational backlog visibility",
-    ],
-  },
 ];

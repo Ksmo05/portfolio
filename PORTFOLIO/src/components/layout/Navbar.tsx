@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import ThemeToggle from "@/components/ThemeToggle";
 import { getLocaleFromPathname, withLocale, type Locale } from "@/lib/i18n";
 import { getNavLinks, getSiteConfig } from "@/lib/site";
 
@@ -38,7 +37,7 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center">
           <div className="inline-flex items-center rounded-full border border-slate-300 bg-white p-0.5 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900">
             <span className="sr-only">{labels[locale].language}</span>
             <Link
@@ -54,7 +53,6 @@ export default function Navbar() {
               ES
             </Link>
           </div>
-          <ThemeToggle />
         </div>
       </div>
 
