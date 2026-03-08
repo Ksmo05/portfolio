@@ -127,7 +127,7 @@ const entries: ExperienceEntryLocalized[] = [
     company: { en: "Openbank", es: "Openbank" },
     role: { en: "Banking Customer Support", es: "Soporte al Cliente Bancario" },
     period: "2021 - 2022",
-    logo: "/company-logos/openbank-icon.svg",
+    logo: "/company-logos/openbank-icon.png",
     logoAlt: { en: "Openbank logo", es: "Logotipo Openbank" },
     summary: {
       en: "Operational banking support for customer service and regulated process execution.",
@@ -150,7 +150,7 @@ const entries: ExperienceEntryLocalized[] = [
     company: { en: "Movistar Prosegur Alarmas", es: "Movistar Prosegur Alarmas" },
     role: { en: "Technical Support Operations", es: "Operaciones de Soporte Tecnico" },
     period: "2019 - 2020",
-    logo: "/company-logos/movistar-prosegur-alarmas.svg",
+    logo: "/company-logos/movistar-prosegur-alarmas-official.png",
     logoAlt: { en: "Movistar Prosegur Alarmas logo", es: "Logotipo Movistar Prosegur Alarmas" },
     summary: {
       en: "Technical support operations with service coordination and field appointment management.",
@@ -201,7 +201,7 @@ const snapshotEntries: SnapshotEntryLocalized[] = [
   },
   {
     company: { en: "Openbank", es: "Openbank" },
-    logo: "/company-logos/openbank-icon.svg",
+    logo: "/company-logos/openbank-icon.png",
     logoAlt: { en: "Openbank logo", es: "Logotipo Openbank" },
     description: {
       en: "Banking customer support operations.",

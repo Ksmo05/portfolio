@@ -16,13 +16,19 @@ export default function ExperienceTimeline({ entries }: ExperienceTimelineProps)
 
           <div className="flex flex-col gap-4 md:flex-row md:items-start">
             <div className="flex items-center gap-3 md:w-72 md:flex-shrink-0">
-              <div className={entry.company.toLowerCase().includes("openbank") ? "flex items-center justify-center w-14 h-14" : "flex items-center justify-center w-16 h-12"}>
+              <div className="flex items-center justify-center w-14 h-14 rounded-lg bg-white/5 border border-white/10">
                 <Image
                   src={entry.logo}
                   alt={entry.logoAlt}
                   width={120}
                   height={56}
-                  className={entry.company.toLowerCase().includes("openbank") ? "object-contain" : "object-contain max-h-10 md:max-h-12"}
+                  className={
+                    entry.company.toLowerCase().includes("openbank")
+                      ? "object-contain w-10 h-10"
+                      : entry.company.toLowerCase().includes("movistar prosegur alarmas")
+                        ? "object-contain max-h-10 md:max-h-12"
+                        : "object-contain max-h-10 md:max-h-12"
+                  }
                 />
               </div>
               <div>
