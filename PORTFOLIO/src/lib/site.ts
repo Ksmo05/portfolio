@@ -93,7 +93,7 @@ const coreSkillsByLocale: Record<Locale, string[]> = {
   ],
 };
 
-export const toolStack = ["SAP", "Qlik Sense", "Coupa", "Excel", "Outlook", "Salesforce", "Jira"];
+export const toolStack = ["SAP", "Qlik Sense", "Microsoft Excel", "Microsoft Outlook", "Salesforce", "Jira"];
 
 const profileHighlightsByLocale: Record<Locale, string[]> = {
   en: [

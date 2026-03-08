@@ -1,6 +1,7 @@
-﻿export type Tool = {
+export type Tool = {
   slug: string;
-  title: string;
+  name: string;
+  logo: string;
   description: string;
   status: "Core Platform" | "Daily Tool";
   features: string[];
@@ -9,7 +10,8 @@
 export const tools: Tool[] = [
   {
     slug: "sap",
-    title: "SAP",
+    name: "SAP",
+    logo: "/tools/sap.svg",
     description:
       "Used for purchasing operations, purchase order tracking, and procurement process execution.",
     status: "Core Platform",
@@ -21,7 +23,8 @@ export const tools: Tool[] = [
   },
   {
     slug: "qlik-sense",
-    title: "Qlik Sense",
+    name: "Qlik Sense",
+    logo: "/tools/qlik-sense.svg",
     description:
       "Used to build KPI dashboards and reporting views for operational decision support.",
     status: "Core Platform",
@@ -32,20 +35,9 @@ export const tools: Tool[] = [
     ],
   },
   {
-    slug: "coupa",
-    title: "Coupa",
-    description:
-      "Supports purchasing workflow management, approvals, and supplier-related coordination.",
-    status: "Daily Tool",
-    features: [
-      "Procurement workflow support",
-      "Approval flow visibility",
-      "Vendor process coordination",
-    ],
-  },
-  {
     slug: "excel",
-    title: "Excel",
+    name: "Microsoft Excel",
+    logo: "/tools/excel.svg",
     description:
       "Used for structured data analysis, KPI preparation, and operational tracking tables.",
     status: "Daily Tool",
@@ -57,7 +49,8 @@ export const tools: Tool[] = [
   },
   {
     slug: "outlook",
-    title: "Outlook",
+    name: "Microsoft Outlook",
+    logo: "/tools/outlook.svg",
     description:
       "Used for supplier communication, follow-up management, and stakeholder coordination.",
     status: "Daily Tool",
@@ -69,7 +62,8 @@ export const tools: Tool[] = [
   },
   {
     slug: "salesforce",
-    title: "Salesforce",
+    name: "Salesforce",
+    logo: "/tools/salesforce.svg",
     description:
       "Used in operations environments that require case tracking and documentation follow-up.",
     status: "Daily Tool",
@@ -81,7 +75,8 @@ export const tools: Tool[] = [
   },
   {
     slug: "jira",
-    title: "Jira",
+    name: "Jira",
+    logo: "/tools/jira.svg",
     description:
       "Used for operational task tracking, workflow coordination, and process follow-up.",
     status: "Daily Tool",

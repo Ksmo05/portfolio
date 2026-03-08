@@ -5,14 +5,14 @@ import BlogCard from "@/components/cards/BlogCard";
 import ExperienceSnapshotCard from "@/components/cards/ExperienceSnapshotCard";
 import ProjectCard from "@/components/cards/ProjectCard";
 import SectionHeader from "@/components/sections/SectionHeader";
-import SkillBadge from "@/components/sections/SkillBadge";
 import { getAllPosts } from "@/lib/blog";
 import { getEducationEntries } from "@/lib/education";
 import { getExperienceSnapshot } from "@/lib/experience";
 import { isLocale, locales, type Locale } from "@/lib/i18n";
 import { buildMetadata } from "@/lib/metadata";
 import { getProjects } from "@/lib/projects";
-import { getShortBio, getSiteConfig, toolStack } from "@/lib/site";
+import { getShortBio, getSiteConfig } from "@/lib/site";
+import { tools } from "@/lib/tools";
 
 type PageProps = {
   params: Promise<{ locale: string }>;
@@ -179,9 +179,14 @@ export default async function LocalizedHomePage({ params }: PageProps) {
           <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-700 dark:bg-slate-900">
             <p className="text-sm font-semibold text-slate-900 dark:text-white">{text.toolsTitle}</p>
             <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">{text.toolsDesc}</p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              {toolStack.map((tool) => (
-                <SkillBadge key={tool} label={tool} />
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {tools.map((tool) => (
+                <div key={tool.slug} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 p-2">
+                  <div className="flex items-center justify-center w-16 h-16 rounded-lg bg-white/5 border border-white/10">
+                    <Image src={tool.logo} alt={`${tool.name} logo`} width={48} height={48} className="w-12 h-12 object-contain" />
+                  </div>
+                  <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{tool.name}</span>
+                </div>
               ))}
             </div>
           </div>

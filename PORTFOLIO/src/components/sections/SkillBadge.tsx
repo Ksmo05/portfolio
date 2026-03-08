@@ -17,9 +17,8 @@ const toolIcons: Record<string, BrandIcon | undefined> = {
 };
 
 const fallbackInitials: Record<string, string> = {
-  Coupa: "CP",
-  Excel: "XL",
-  Outlook: "OL",
+  "Microsoft Excel": "XL",
+  "Microsoft Outlook": "OL",
   Salesforce: "SF",
 };
 

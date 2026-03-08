@@ -4,13 +4,13 @@ import BlogCard from "@/components/cards/BlogCard";
 import ExperienceSnapshotCard from "@/components/cards/ExperienceSnapshotCard";
 import ProjectCard from "@/components/cards/ProjectCard";
 import SectionHeader from "@/components/sections/SectionHeader";
-import SkillBadge from "@/components/sections/SkillBadge";
 import { getAllPosts } from "@/lib/blog";
 import { educationEntries } from "@/lib/education";
 import { experienceSnapshot } from "@/lib/experience";
 import { buildMetadata } from "@/lib/metadata";
 import { projects } from "@/lib/projects";
-import { shortBio, siteConfig, toolStack } from "@/lib/site";
+import { shortBio, siteConfig } from "@/lib/site";
+import { tools } from "@/lib/tools";
 
 export const metadata = buildMetadata({
   title: "Carlos San Miguel Ortega | Operations & Business Support Specialist",
@@ -71,9 +71,14 @@ export default async function HomePage() {
             <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
               Daily work combines procurement coordination, reporting discipline, and process follow-up across multi-team environments.
             </p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              {toolStack.map((tool) => (
-                <SkillBadge key={tool} label={tool} />
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {tools.map((tool) => (
+                <div key={tool.slug} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 p-2">
+                  <div className="flex items-center justify-center w-16 h-16 rounded-lg bg-white/5 border border-white/10">
+                    <Image src={tool.logo} alt={`${tool.name} logo`} width={48} height={48} className="w-12 h-12 object-contain" />
+                  </div>
+                  <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{tool.name}</span>
+                </div>
               ))}
             </div>
           </div>
