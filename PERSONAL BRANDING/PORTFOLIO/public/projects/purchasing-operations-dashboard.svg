@@ -1,0 +1,122 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-label="Purchasing operations support dashboard">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eef2ff"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+    <linearGradient id="top" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <rect x="56" y="48" width="1488" height="904" rx="28" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+
+  <rect x="56" y="48" width="1488" height="96" rx="28" fill="url(#top)"/>
+  <text x="96" y="106" fill="#e2e8f0" font-size="28" font-family="Arial, Helvetica, sans-serif" font-weight="700">Purchasing Operations Console</text>
+  <rect x="1040" y="76" width="220" height="40" rx="10" fill="#334155"/>
+  <text x="1070" y="102" fill="#cbd5e1" font-size="16" font-family="Arial, Helvetica, sans-serif">Region: EU</text>
+  <rect x="1278" y="76" width="220" height="40" rx="10" fill="#334155"/>
+  <text x="1310" y="102" fill="#cbd5e1" font-size="16" font-family="Arial, Helvetica, sans-serif">Quarter: Q2</text>
+
+  <rect x="92" y="176" width="240" height="736" rx="18" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="122" y="220" fill="#0f172a" font-size="22" font-family="Arial, Helvetica, sans-serif" font-weight="700">Vendor Status</text>
+  <rect x="114" y="242" width="196" height="92" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+  <circle cx="136" cy="280" r="8" fill="#22c55e"/>
+  <text x="154" y="286" fill="#0f172a" font-size="15" font-family="Arial, Helvetica, sans-serif">Approved Vendors: 148</text>
+  <circle cx="136" cy="312" r="8" fill="#f59e0b"/>
+  <text x="154" y="318" fill="#0f172a" font-size="15" font-family="Arial, Helvetica, sans-serif">Pending Review: 22</text>
+
+  <rect x="114" y="352" width="196" height="120" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="132" y="386" fill="#0f172a" font-size="15" font-family="Arial, Helvetica, sans-serif" font-weight="700">Compliance</text>
+  <rect x="132" y="402" width="160" height="12" rx="6" fill="#e2e8f0"/>
+  <rect x="132" y="402" width="142" height="12" rx="6" fill="#0ea5e9"/>
+  <text x="132" y="436" fill="#334155" font-size="14" font-family="Arial, Helvetica, sans-serif">Audit alignment: 89%</text>
+  <text x="132" y="458" fill="#334155" font-size="14" font-family="Arial, Helvetica, sans-serif">Policy breaches: 3</text>
+
+  <rect x="114" y="490" width="196" height="178" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="132" y="524" fill="#0f172a" font-size="15" font-family="Arial, Helvetica, sans-serif" font-weight="700">Process Audit</text>
+  <rect x="132" y="542" width="160" height="10" rx="5" fill="#cbd5e1"/>
+  <rect x="132" y="560" width="148" height="10" rx="5" fill="#cbd5e1"/>
+  <rect x="132" y="578" width="136" height="10" rx="5" fill="#cbd5e1"/>
+  <rect x="132" y="596" width="152" height="10" rx="5" fill="#cbd5e1"/>
+  <rect x="132" y="614" width="118" height="10" rx="5" fill="#cbd5e1"/>
+  <text x="132" y="646" fill="#334155" font-size="13" font-family="Arial, Helvetica, sans-serif">Last review: 08 Apr</text>
+
+  <rect x="114" y="686" width="196" height="206" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="132" y="720" fill="#0f172a" font-size="15" font-family="Arial, Helvetica, sans-serif" font-weight="700">Operational Queue</text>
+  <rect x="132" y="738" width="160" height="22" rx="6" fill="#fee2e2"/>
+  <text x="140" y="753" fill="#b91c1c" font-size="12" font-family="Arial, Helvetica, sans-serif">PO approvals overdue: 12</text>
+  <rect x="132" y="770" width="160" height="22" rx="6" fill="#fef3c7"/>
+  <text x="140" y="785" fill="#92400e" font-size="12" font-family="Arial, Helvetica, sans-serif">Vendor setup pending: 19</text>
+  <rect x="132" y="802" width="160" height="22" rx="6" fill="#dcfce7"/>
+  <text x="140" y="817" fill="#166534" font-size="12" font-family="Arial, Helvetica, sans-serif">Resolved this week: 41</text>
+
+  <rect x="364" y="176" width="1144" height="170" rx="18" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="398" y="220" fill="#0f172a" font-size="22" font-family="Arial, Helvetica, sans-serif" font-weight="700">Operational Reporting Widgets</text>
+  <rect x="398" y="242" width="250" height="84" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="420" y="274" fill="#334155" font-size="14" font-family="Arial, Helvetica, sans-serif">Open Purchase Orders</text>
+  <text x="420" y="306" fill="#0f172a" font-size="34" font-family="Arial, Helvetica, sans-serif" font-weight="700">1,284</text>
+
+  <rect x="672" y="242" width="250" height="84" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="694" y="274" fill="#334155" font-size="14" font-family="Arial, Helvetica, sans-serif">Avg Approval Time</text>
+  <text x="694" y="306" fill="#0f172a" font-size="34" font-family="Arial, Helvetica, sans-serif" font-weight="700">2.6 d</text>
+
+  <rect x="946" y="242" width="250" height="84" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="968" y="274" fill="#334155" font-size="14" font-family="Arial, Helvetica, sans-serif">Incident Resolution</text>
+  <text x="968" y="306" fill="#0f172a" font-size="34" font-family="Arial, Helvetica, sans-serif" font-weight="700">91%</text>
+
+  <rect x="1220" y="242" width="250" height="84" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="1242" y="274" fill="#334155" font-size="14" font-family="Arial, Helvetica, sans-serif">Compliance Score</text>
+  <text x="1242" y="306" fill="#0f172a" font-size="34" font-family="Arial, Helvetica, sans-serif" font-weight="700">89.4</text>
+
+  <rect x="364" y="368" width="740" height="272" rx="18" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="398" y="412" fill="#0f172a" font-size="20" font-family="Arial, Helvetica, sans-serif" font-weight="700">Purchase Order Flow</text>
+  <polyline points="410,570 520,520 620,540 720,470 820,500 920,450 1030,430" fill="none" stroke="#0284c7" stroke-width="5"/>
+  <polyline points="410,590 520,560 620,575 720,530 820,548 920,520 1030,498" fill="none" stroke="#0f172a" stroke-opacity="0.25" stroke-width="4"/>
+  <line x1="410" y1="448" x2="1030" y2="448" stroke="#e2e8f0"/>
+  <line x1="410" y1="488" x2="1030" y2="488" stroke="#e2e8f0"/>
+  <line x1="410" y1="528" x2="1030" y2="528" stroke="#e2e8f0"/>
+  <line x1="410" y1="568" x2="1030" y2="568" stroke="#e2e8f0"/>
+
+  <rect x="1128" y="368" width="380" height="272" rx="18" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="1162" y="412" fill="#0f172a" font-size="20" font-family="Arial, Helvetica, sans-serif" font-weight="700">Compliance by Category</text>
+  <rect x="1164" y="438" width="220" height="14" rx="7" fill="#e2e8f0"/>
+  <rect x="1164" y="438" width="196" height="14" rx="7" fill="#22c55e"/>
+  <text x="1392" y="450" fill="#334155" font-size="13" font-family="Arial, Helvetica, sans-serif">Supplier Docs</text>
+  <rect x="1164" y="470" width="220" height="14" rx="7" fill="#e2e8f0"/>
+  <rect x="1164" y="470" width="184" height="14" rx="7" fill="#38bdf8"/>
+  <text x="1392" y="482" fill="#334155" font-size="13" font-family="Arial, Helvetica, sans-serif">PO Validation</text>
+  <rect x="1164" y="502" width="220" height="14" rx="7" fill="#e2e8f0"/>
+  <rect x="1164" y="502" width="158" height="14" rx="7" fill="#f59e0b"/>
+  <text x="1392" y="514" fill="#334155" font-size="13" font-family="Arial, Helvetica, sans-serif">Approval SLA</text>
+  <rect x="1164" y="534" width="220" height="14" rx="7" fill="#e2e8f0"/>
+  <rect x="1164" y="534" width="206" height="14" rx="7" fill="#22c55e"/>
+  <text x="1392" y="546" fill="#334155" font-size="13" font-family="Arial, Helvetica, sans-serif">Audit Logs</text>
+
+  <rect x="364" y="662" width="1144" height="250" rx="18" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="398" y="706" fill="#0f172a" font-size="22" font-family="Arial, Helvetica, sans-serif" font-weight="700">Purchase Order List</text>
+  <rect x="398" y="726" width="1076" height="38" rx="8" fill="#f1f5f9"/>
+  <text x="422" y="751" fill="#334155" font-size="13" font-family="Arial, Helvetica, sans-serif" font-weight="700">PO Number</text>
+  <text x="600" y="751" fill="#334155" font-size="13" font-family="Arial, Helvetica, sans-serif" font-weight="700">Vendor</text>
+  <text x="822" y="751" fill="#334155" font-size="13" font-family="Arial, Helvetica, sans-serif" font-weight="700">Status</text>
+  <text x="964" y="751" fill="#334155" font-size="13" font-family="Arial, Helvetica, sans-serif" font-weight="700">Compliance</text>
+  <text x="1154" y="751" fill="#334155" font-size="13" font-family="Arial, Helvetica, sans-serif" font-weight="700">Updated</text>
+
+  <g fill="#0f172a" font-size="13" font-family="Arial, Helvetica, sans-serif">
+    <rect x="398" y="772" width="1076" height="30" rx="6" fill="#ffffff"/>
+    <text x="422" y="792">PO-453281</text><text x="600" y="792">Autoparts Europa</text>
+    <rect x="818" y="778" width="82" height="18" rx="9" fill="#dcfce7"/><text x="834" y="792" fill="#166534">Approved</text>
+    <text x="964" y="792" fill="#166534">Pass</text><text x="1154" y="792" fill="#334155">Today</text>
+
+    <rect x="398" y="808" width="1076" height="30" rx="6" fill="#ffffff"/>
+    <text x="422" y="828">PO-453337</text><text x="600" y="828">Nordic Components</text>
+    <rect x="818" y="814" width="96" height="18" rx="9" fill="#fef3c7"/><text x="834" y="828" fill="#92400e">Pending</text>
+    <text x="964" y="828" fill="#92400e">Review</text><text x="1154" y="828" fill="#334155">Yesterday</text>
+
+    <rect x="398" y="844" width="1076" height="30" rx="6" fill="#ffffff"/>
+    <text x="422" y="864">PO-453390</text><text x="600" y="864">Iberia Logistics</text>
+    <rect x="818" y="850" width="80" height="18" rx="9" fill="#fee2e2"/><text x="834" y="864" fill="#b91c1c">Alert</text>
+    <text x="964" y="864" fill="#b91c1c">Issue</text><text x="1154" y="864" fill="#334155">2d ago</text>
+  </g>
+</svg>
