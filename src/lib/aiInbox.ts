@@ -67,3 +67,4 @@ export async function sendChatMessage(message: string) {
 }
 
 export { AI_INBOX_API_URL };
+
