@@ -1,6 +1,4 @@
 (function () {
-  const API_BASE = window.location.origin;
-
   function $(id) {
     return document.getElementById(id);
   }
@@ -28,6 +26,91 @@
       }
       return acc;
     }, {});
+  }
+
+  function topKey(dataObject) {
+    return Object.entries(dataObject || {})
+      .sort((a, b) => {
+        if (b[1] !== a[1]) {
+          return b[1] - a[1];
+        }
+        return String(a[0]).localeCompare(String(b[0]));
+      })
+      .map((entry) => entry[0])[0] || "-";
+  }
+
+  function humanizeLabel(value) {
+    if (!value) return "-";
+    return String(value)
+      .replace(/[_-]+/g, " ")
+      .replace(/\b\w/g, function (char) {
+        return char.toUpperCase();
+      });
+  }
+
+  function formatMessageDate(value) {
+    if (!value) return "-";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return String(value).slice(0, 10);
+    }
+    return new Intl.DateTimeFormat("en", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(parsed);
+  }
+
+  function messageSearchBlob(item) {
+    return [
+      item.user_name,
+      item.user_email,
+      item.company,
+      item.summary,
+      item.thread_title,
+      item.theme_label,
+      item.theme_slug,
+      item.source,
+      item.category,
+      item.language,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  }
+
+  function buildFilterOptions(items, key, preferredOrder) {
+    const values = Array.from(
+      new Set(
+        items
+          .map((item) => item && item[key])
+          .filter((value) => typeof value === "string" && value)
+      )
+    );
+
+    if (Array.isArray(preferredOrder) && preferredOrder.length > 0) {
+      const ordered = preferredOrder.filter((value) => values.includes(value));
+      const remaining = values.filter((value) => !ordered.includes(value)).sort();
+      return [...ordered, ...remaining];
+    }
+
+    return values.sort();
+  }
+
+  function setSelectOptions(select, values, formatter) {
+    if (!select) return;
+    const firstOption = select.querySelector("option");
+    select.innerHTML = "";
+    if (firstOption) {
+      select.appendChild(firstOption);
+    }
+    values.forEach((value) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = formatter ? formatter(value) : value;
+      select.appendChild(option);
+    });
   }
 
   function buildTopThemes(items) {
@@ -168,13 +251,74 @@
     return card;
   }
 
+  function tableHeadCell(text) {
+    return createElement("span", "table-cell", text);
+  }
+
+  function renderRecentMessages(container, items) {
+    container.innerHTML = "";
+    if (!items || items.length === 0) {
+      container.appendChild(createElement("div", "empty-state", "No messages match the current filters."));
+      return;
+    }
+
+    const head = createElement("div", "table-row is-head");
+    head.append(
+      tableHeadCell("Contact"),
+      tableHeadCell("Priority"),
+      tableHeadCell("Source"),
+      tableHeadCell("Language"),
+      tableHeadCell("Date"),
+      tableHeadCell("Message")
+    );
+    container.appendChild(head);
+
+    items.forEach((item) => {
+      const row = createElement("article", "table-row");
+
+      const contactCell = createElement("div", "table-cell table-primary");
+      contactCell.append(
+        createElement("strong", "", item.user_name || "Website visitor"),
+        createElement("p", "table-meta-line", item.company || item.user_email || "No company or email"),
+        createElement("p", "table-meta-line", item.thread_title || item.theme_label || "General inquiry")
+      );
+
+      const priorityCell = createElement("div", "table-cell");
+      priorityCell.appendChild(createElement("span", `pill priority-${item.priority || "low"}`, humanizeLabel(item.priority || "low")));
+
+      const sourceCell = createElement("div", "table-cell table-chip-stack");
+      sourceCell.appendChild(createElement("span", "tag is-source", humanizeLabel(item.source || "unknown")));
+      if (item.category) {
+        sourceCell.appendChild(createElement("span", "tag", humanizeLabel(item.category)));
+      }
+
+      const languageCell = createElement("div", "table-cell table-chip-stack");
+      languageCell.appendChild(createElement("span", "tag is-language", String(item.language || "en").toUpperCase()));
+      if (item.theme_label) {
+        languageCell.appendChild(createElement("span", "tag", item.theme_label));
+      }
+
+      const dateCell = createElement("div", "table-cell");
+      dateCell.appendChild(createElement("span", "tag is-date", formatMessageDate(item.created_at)));
+
+      const messageCell = createElement("div", "table-cell table-primary");
+      messageCell.append(
+        createElement("strong", "", item.summary || "No summary available"),
+        createElement("p", "table-meta-line", item.raw_message || "")
+      );
+
+      row.append(contactCell, priorityCell, sourceCell, languageCell, dateCell, messageCell);
+      container.appendChild(row);
+    });
+  }
+
   async function loadDashboard() {
     const [rawMessagesResponse, summaryResponse, messagesResponse, analyticsResponse, combinedResponse] = await Promise.all([
-      fetch(`${API_BASE}/api/messages?limit=100`),
-      fetch(`${API_BASE}/api/dashboard/summary`),
-      fetch(`${API_BASE}/api/dashboard/messages`),
-      fetch(`${API_BASE}/api/dashboard/analytics`),
-      fetch(`${API_BASE}/api/dashboard/combined-insights`),
+      fetch("/api/messages?limit=100"),
+      fetch("/api/dashboard/summary"),
+      fetch("/api/dashboard/messages"),
+      fetch("/api/dashboard/analytics"),
+      fetch("/api/dashboard/combined-insights"),
     ]);
 
     const rawMessagesData = await rawMessagesResponse.json();
@@ -197,7 +341,7 @@
 
     $("executiveSummary").textContent = summaryData.executive_summary || "No summary yet.";
     $("metricTotalMessages").textContent = String(summaryData.total_messages || rawItems.length || 0);
-    $("metricTopPriority").textContent = Object.keys(summaryData.by_priority || {})[0] || "-";
+    $("metricTopPriority").textContent = humanizeLabel(topKey(summaryData.by_priority));
     $("metricTopTheme").textContent = (summaryData.top_themes && summaryData.top_themes[0] && summaryData.top_themes[0].label) || "-";
     $("metricGaStatus").textContent = analytics.status === "configured" ? "Live" : "Optional";
 
@@ -259,6 +403,38 @@
     renderMetricList($("combinedInsightsList"), combined.insights || [], function (item) {
       return createElement("div", "list-row", item);
     });
+
+    const priorityFilter = $("filterPriority");
+    const sourceFilter = $("filterSource");
+    const languageFilter = $("filterLanguage");
+    const searchFilter = $("filterSearch");
+    const recentMessagesTable = $("recentMessagesTable");
+    const recentMessagesCount = $("recentMessagesCount");
+
+    setSelectOptions(priorityFilter, buildFilterOptions(rawItems, "priority", ["high", "medium", "low"]), humanizeLabel);
+    setSelectOptions(sourceFilter, buildFilterOptions(rawItems, "source"), humanizeLabel);
+    setSelectOptions(languageFilter, buildFilterOptions(rawItems, "language", ["en", "es"]), function (value) {
+      return String(value).toUpperCase();
+    });
+
+    function applyFilters() {
+      const filteredItems = rawItems.filter((item) => {
+        const matchesPriority = !priorityFilter.value || item.priority === priorityFilter.value;
+        const matchesSource = !sourceFilter.value || item.source === sourceFilter.value;
+        const matchesLanguage = !languageFilter.value || item.language === languageFilter.value;
+        const matchesSearch = !searchFilter.value || messageSearchBlob(item).includes(searchFilter.value.trim().toLowerCase());
+        return matchesPriority && matchesSource && matchesLanguage && matchesSearch;
+      });
+
+      recentMessagesCount.textContent = `${filteredItems.length} shown`;
+      renderRecentMessages(recentMessagesTable, filteredItems.slice(0, 24));
+    }
+
+    [priorityFilter, sourceFilter, languageFilter].forEach((element) => {
+      element.addEventListener("change", applyFilters);
+    });
+    searchFilter.addEventListener("input", applyFilters);
+    applyFilters();
   }
 
   loadDashboard().catch(function () {

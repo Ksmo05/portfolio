@@ -1,5 +1,4 @@
 const AI_INBOX_API_URL = process.env.NEXT_PUBLIC_INBOX_API_URL?.trim() || null;
-const DEFAULT_INBOX_API_BASE_URL = "https://ai-portfolio-inbox.onrender.com";
 
 export const CHAT_WIDGET_SOURCE = "portfolio-chat-widget";
 export const CONTACT_FORM_SOURCE = "portfolio-vercel";
@@ -35,7 +34,7 @@ function normalizeInboxUrl(value: string) {
 
 export function getInboxApiBaseUrl() {
   if (!AI_INBOX_API_URL) {
-    return DEFAULT_INBOX_API_BASE_URL;
+    throw new Error("missing-inbox-api-url");
   }
 
   const normalized = normalizeInboxUrl(AI_INBOX_API_URL);
@@ -80,33 +79,25 @@ export async function postInboxPayload<TResponse>(payload: unknown) {
 }
 
 export async function sendChatMessage(message: string) {
-  const response = await fetch(getInboxApiEndpoint("/api/inbox"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name: "Website Visitor",
-      company: null,
-      message,
-      source: "chat_widget",
-    }),
+  const { response, data } = await postInboxPayload<ChatReplyResponse>({
+    name: "Website Visitor",
+    company: null,
+    message,
+    source: CHAT_WIDGET_SOURCE,
   });
 
   if (!response.ok) {
     throw new Error("chat-request-failed");
   }
 
-  const data: ChatReplyResponse = await response.json();
-
   const reply =
-  typeof data?.message === "object" &&
-  data?.message !== null &&
-  typeof data.message.reply_text === "string"
-    ? data.message.reply_text
-    : typeof data?.reply === "string"
-    ? data.reply
-    : null;
+    typeof data?.message === "object" &&
+    data?.message !== null &&
+    typeof data.message.reply_text === "string"
+      ? data.message.reply_text
+      : typeof data?.reply === "string"
+        ? data.reply
+        : null;
 
   if (!reply) {
     throw new Error("chat-empty-response");

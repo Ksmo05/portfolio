@@ -1284,7 +1284,7 @@ async def create_message(payload: InboxSubmission) -> JSONResponse:
     if hasattr(payload, "messages") and payload.messages:
         payload.message = payload.messages[-1].get("content", "")    
     logger.info(
-        "Inbox submission received | source=%s | name=%s | email_provided=%s | company_provided=%s | message_length=%s",
+        "Inbox request received | source=%s | name=%s | email_provided=%s | company_provided=%s | message_length=%s",
         payload.source,
         payload.name,
         bool(payload.email),
@@ -1302,10 +1302,19 @@ async def create_message(payload: InboxSubmission) -> JSONResponse:
         },
     )
     analysis, engine = openai_analysis(payload)
+    logger.info(
+        "Inbox analysis completed | source=%s | engine=%s | theme_slug=%s | category=%s | priority=%s",
+        payload.source,
+        engine,
+        analysis.theme_slug,
+        analysis.category,
+        analysis.priority,
+    )
     now = utc_now()
     with closing(get_connection()) as connection:
         try:
             thread_id = get_or_create_thread(connection, analysis)
+            logger.info("Inbox SQLite save starting | thread_id=%s | database_path=%s", thread_id, settings.database_path)
             cursor = connection.execute(
                 """
                 INSERT INTO messages (
@@ -1348,13 +1357,22 @@ async def create_message(payload: InboxSubmission) -> JSONResponse:
                 ),
             )
             message_id = int(cursor.lastrowid)
+            logger.info("Inbox SQLite save completed | message_id=%s | thread_id=%s", message_id, thread_id)
             thread = refresh_thread_rollup(connection, thread_id, analysis)
+            logger.info(
+                "Inbox thread rollup refreshed | thread_id=%s | message_count=%s | priority=%s",
+                thread_id,
+                thread.get("message_count"),
+                thread.get("priority"),
+            )
             related_messages = get_thread_messages(connection, thread_id, limit=4)
             email_status = "skipped"
             try:
+                logger.info("Inbox email trigger starting | message_id=%s | thread_id=%s", message_id, thread_id)
                 email_status = allowed_email_status(
                     send_email_notification(message_id, payload, analysis, thread, related_messages)
                 )
+                logger.info("Inbox email trigger finished | message_id=%s | email_status=%s", message_id, email_status)
             except Exception as e:
                 logger.exception("Email failed but continuing flow")
             connection.execute("UPDATE messages SET email_status = ? WHERE id = ?", (email_status, message_id))

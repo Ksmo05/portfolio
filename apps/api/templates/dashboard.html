@@ -27,7 +27,19 @@
             polished portfolio demo surface.
           </p>
         </div>
-        <div class="hero-actions">
+        <div class="hero-actions hero-actions-stack">
+          <div class="hero-stat-strip">
+            <div class="hero-stat-card">
+              <span class="section-kicker">Inbox health</span>
+              <strong>Live</strong>
+              <p>Messages, routing, dashboard, and SMTP on one flow.</p>
+            </div>
+            <div class="hero-stat-card">
+              <span class="section-kicker">Review mode</span>
+              <strong>Operational</strong>
+              <p>Prioritize urgency, source, and opportunity patterns quickly.</p>
+            </div>
+          </div>
           <a class="ghost-button button-link" href="/">Back to widget</a>
         </div>
       </section>
@@ -150,6 +162,45 @@
           </div>
           <p id="combinedSummary" class="executive-copy">Loading combined insights...</p>
           <div id="combinedInsightsList" class="list-stack compact-top"></div>
+        </article>
+
+        <article class="surface-card span-12">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker">Recent inbox log</span>
+              <h2>Latest messages</h2>
+            </div>
+            <span class="status-chip" id="recentMessagesCount">Loading</span>
+          </div>
+
+          <div class="dashboard-toolbar">
+            <label class="toolbar-field">
+              <span>Priority</span>
+              <select id="filterPriority">
+                <option value="">All priorities</option>
+              </select>
+            </label>
+            <label class="toolbar-field">
+              <span>Source</span>
+              <select id="filterSource">
+                <option value="">All sources</option>
+              </select>
+            </label>
+            <label class="toolbar-field">
+              <span>Language</span>
+              <select id="filterLanguage">
+                <option value="">All languages</option>
+              </select>
+            </label>
+            <label class="toolbar-field toolbar-search">
+              <span>Search</span>
+              <input id="filterSearch" type="search" placeholder="Name, company, summary, theme..." />
+            </label>
+          </div>
+
+          <div class="message-table-wrap">
+            <div class="message-table" id="recentMessagesTable"></div>
+          </div>
         </article>
       </section>
     </main>
