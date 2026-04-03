@@ -14,6 +14,88 @@
     return element;
   }
 
+  function safeItems(data) {
+    return Array.isArray(data && data.items) ? data.items : [];
+  }
+
+  function countBy(items, key) {
+    return items.reduce((acc, item) => {
+      const value = item && item[key];
+      if (typeof value === "string" && value) {
+        acc[value] = (acc[value] || 0) + 1;
+      }
+      return acc;
+    }, {});
+  }
+
+  function buildTopThemes(items) {
+    const counts = items.reduce((acc, item) => {
+      const label = item.theme_label || item.theme_slug;
+      if (typeof label === "string" && label) {
+        acc[label] = (acc[label] || 0) + 1;
+      }
+      return acc;
+    }, {});
+
+    return Object.entries(counts)
+      .map(([label, total]) => ({ label, total }))
+      .sort((a, b) => b.total - a.total);
+  }
+
+  function buildMessageVolume(items) {
+    const counts = items.reduce((acc, item) => {
+      const rawDate = typeof item.created_at === "string" ? item.created_at : "";
+      const day = rawDate.slice(0, 10);
+      if (day) {
+        acc[day] = (acc[day] || 0) + 1;
+      }
+      return acc;
+    }, {});
+
+    return Object.entries(counts)
+      .map(([day, total]) => ({ day, total }))
+      .sort((a, b) => a.day.localeCompare(b.day));
+  }
+
+  function sortByLeadAndDate(items) {
+    return [...items].sort((a, b) => {
+      const leadDiff = (Number(b.lead_score) || 0) - (Number(a.lead_score) || 0);
+      if (leadDiff !== 0) {
+        return leadDiff;
+      }
+      return String(b.created_at || "").localeCompare(String(a.created_at || ""));
+    });
+  }
+
+  function fallbackSummary(items) {
+    const topThemes = buildTopThemes(items);
+    return {
+      total_messages: items.length,
+      by_priority: countBy(items, "priority"),
+      by_sentiment: countBy(items, "sentiment"),
+      by_language: countBy(items, "language"),
+      by_category: countBy(items, "category"),
+      top_themes: topThemes,
+      executive_summary:
+        items.length > 0
+          ? `The inbox has captured ${items.length} recent messages.`
+          : "No summary yet.",
+    };
+  }
+
+  function fallbackDashboardMessages(items) {
+    const topThemes = buildTopThemes(items);
+    return {
+      message_volume: buildMessageVolume(items),
+      top_opportunities: sortByLeadAndDate(items).slice(0, 5),
+      recent_high_priority: items
+        .filter((item) => item.priority === "high")
+        .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")))
+        .slice(0, 6),
+      most_requested_topics: topThemes.slice(0, 4),
+    };
+  }
+
   function renderMetricList(container, items, formatter) {
     container.innerHTML = "";
     if (!items || items.length === 0) {
@@ -85,22 +167,36 @@
   }
 
   async function loadDashboard() {
-    const [summaryResponse, messagesResponse, analyticsResponse, combinedResponse] = await Promise.all([
+    const [rawMessagesResponse, summaryResponse, messagesResponse, analyticsResponse, combinedResponse] = await Promise.all([
+      fetch("/api/messages?limit=100"),
       fetch("/api/dashboard/summary"),
       fetch("/api/dashboard/messages"),
       fetch("/api/dashboard/analytics"),
       fetch("/api/dashboard/combined-insights"),
     ]);
 
+    const rawMessagesData = await rawMessagesResponse.json();
+    console.log("Messages API response:", rawMessagesData);
+    const rawItems = safeItems(rawMessagesData);
     const summary = await summaryResponse.json();
     const messages = await messagesResponse.json();
     const analytics = await analyticsResponse.json();
     const combined = await combinedResponse.json();
+    const summaryData = summary && summary.total_messages ? summary : fallbackSummary(rawItems);
+    const dashboardMessages =
+      messages && (
+        (Array.isArray(messages.message_volume) && messages.message_volume.length > 0) ||
+        (Array.isArray(messages.top_opportunities) && messages.top_opportunities.length > 0) ||
+        (Array.isArray(messages.recent_high_priority) && messages.recent_high_priority.length > 0) ||
+        (Array.isArray(messages.most_requested_topics) && messages.most_requested_topics.length > 0)
+      )
+        ? messages
+        : fallbackDashboardMessages(rawItems);
 
-    $("executiveSummary").textContent = summary.executive_summary || "No summary yet.";
-    $("metricTotalMessages").textContent = String(summary.total_messages || 0);
-    $("metricTopPriority").textContent = Object.keys(summary.by_priority || {})[0] || "-";
-    $("metricTopTheme").textContent = (summary.top_themes && summary.top_themes[0] && summary.top_themes[0].label) || "-";
+    $("executiveSummary").textContent = summaryData.executive_summary || "No summary yet.";
+    $("metricTotalMessages").textContent = String(summaryData.total_messages || rawItems.length || 0);
+    $("metricTopPriority").textContent = Object.keys(summaryData.by_priority || {})[0] || "-";
+    $("metricTopTheme").textContent = (summaryData.top_themes && summaryData.top_themes[0] && summaryData.top_themes[0].label) || "-";
     $("metricGaStatus").textContent = analytics.status === "configured" ? "Live" : "Optional";
 
     $("priorityChart").innerHTML = "";
@@ -108,26 +204,26 @@
     $("languageChart").innerHTML = "";
     $("categoryChart").innerHTML = "";
 
-    renderBarChart($("priorityChart"), "Messages by priority", summary.by_priority);
-    renderBarChart($("sentimentChart"), "Sentiment distribution", summary.by_sentiment);
-    renderBarChart($("languageChart"), "Messages by language", summary.by_language);
-    renderBarChart($("categoryChart"), "Messages by category", summary.by_category);
-    renderSparkline($("messageVolumeChart"), messages.message_volume || []);
+    renderBarChart($("priorityChart"), "Messages by priority", summaryData.by_priority);
+    renderBarChart($("sentimentChart"), "Sentiment distribution", summaryData.by_sentiment);
+    renderBarChart($("languageChart"), "Messages by language", summaryData.by_language);
+    renderBarChart($("categoryChart"), "Messages by category", summaryData.by_category);
+    renderSparkline($("messageVolumeChart"), dashboardMessages.message_volume || []);
 
-    renderMetricList($("topThemesList"), summary.top_themes || [], function (item) {
+    renderMetricList($("topThemesList"), summaryData.top_themes || [], function (item) {
       const row = createElement("div", "list-row");
       row.append(createElement("strong", "", item.label), createElement("span", "tag", `${item.total} messages`));
       return row;
     });
 
-    renderMetricList($("requestedTopicsList"), messages.most_requested_topics || [], function (item) {
+    renderMetricList($("requestedTopicsList"), dashboardMessages.most_requested_topics || [], function (item) {
       const row = createElement("div", "list-row");
       row.append(createElement("strong", "", item.label || item), createElement("span", "tag", `${item.total || ""}`.trim()));
       return row;
     });
 
-    renderMetricList($("topOpportunitiesList"), messages.top_opportunities || [], messageCard);
-    renderMetricList($("recentHighPriorityList"), messages.recent_high_priority || [], messageCard);
+    renderMetricList($("topOpportunitiesList"), dashboardMessages.top_opportunities || [], messageCard);
+    renderMetricList($("recentHighPriorityList"), dashboardMessages.recent_high_priority || [], messageCard);
 
     $("analyticsStatusChip").textContent = analytics.status || "not_configured";
     const analyticsSummary = $("analyticsSummary");
