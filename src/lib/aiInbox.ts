@@ -5,7 +5,12 @@ export const CONTACT_FORM_SOURCE = "portfolio-vercel";
 
 type ChatReplyResponse = {
   reply?: string;
-  message?: unknown;
+  message?:
+    | string
+    | {
+        reply_text?: string;
+        reply?: string;
+      };
 };
 
 export type InboxSuccessResponse = {
@@ -86,11 +91,13 @@ export async function sendChatMessage(message: string) {
   const data: ChatReplyResponse = await response.json();
 
   const reply =
-    typeof data?.reply === "string"
-      ? data.reply
-      : typeof data?.message === "string"
-        ? data.message
-        : null;
+  typeof data?.message === "object" &&
+  data?.message !== null &&
+  typeof data.message.reply_text === "string"
+    ? data.message.reply_text
+    : typeof data?.reply === "string"
+    ? data.reply
+    : null;
 
   if (!reply) {
     throw new Error("chat-empty-response");
