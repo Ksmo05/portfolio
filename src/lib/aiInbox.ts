@@ -32,6 +32,39 @@ function getInboxApiUrl() {
   return AI_INBOX_API_URL;
 }
 
+export async function postInboxPayload<TResponse>(payload: unknown) {
+  const apiUrl = getInboxApiUrl();
+
+  if (!apiUrl) {
+    throw new Error("missing-inbox-api-url");
+  }
+
+  const response = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const rawText = await response.text();
+  let data: TResponse | null = null;
+
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText) as TResponse;
+    } catch {
+      throw new Error("invalid-json-response");
+    }
+  }
+
+  return {
+    response,
+    data,
+    rawText,
+  };
+}
+
 export async function sendChatMessage(message: string) {
   const response = await fetch("https://ai-portfolio-inbox.onrender.com/api/inbox", {
     method: "POST",
@@ -50,14 +83,14 @@ export async function sendChatMessage(message: string) {
     throw new Error("chat-request-failed");
   }
 
-  const data = await response.json();
+  const data: ChatReplyResponse = await response.json();
 
   const reply =
     typeof data?.reply === "string"
       ? data.reply
       : typeof data?.message === "string"
-      ? data.message
-      : null;
+        ? data.message
+        : null;
 
   if (!reply) {
     throw new Error("chat-empty-response");
