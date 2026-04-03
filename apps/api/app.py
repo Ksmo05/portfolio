@@ -3,14 +3,11 @@ import logging
 import os
 import re
 import sqlite3
-import smtplib
-import ssl
 import unicodedata
 from io import BytesIO
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +21,7 @@ from openai import OpenAI
 from openpyxl import Workbook
 from openpyxl.styles import Font
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+import requests
 
 try:
     from google.analytics.data_v1beta import BetaAnalyticsDataClient
@@ -119,6 +117,8 @@ class Settings:
     database_path: Path
     openai_api_key: str
     openai_model: str
+    resend_api_key: str
+    resend_from_email: str
     smtp_host: str
     smtp_port: int
     smtp_username: str
@@ -152,10 +152,13 @@ def load_settings() -> Settings:
     owner_email = os.getenv("OWNER_EMAIL", "c.sanmiguelortega@gmail.com").strip()
     smtp_username = os.getenv("SMTP_USERNAME", "").strip()
     email_from = os.getenv("EMAIL_FROM", "").strip() or smtp_username
+    resend_from_email = os.getenv("RESEND_FROM_EMAIL", "").strip() or email_from
     return Settings(
         database_path=BASE_DIR / os.getenv("DATABASE_PATH", "ai_portfolio_inbox.db"),
         openai_api_key=os.getenv("OPENAI_API_KEY", "").strip(),
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini").strip(),
+        resend_api_key=os.getenv("RESEND_API_KEY", "").strip(),
+        resend_from_email=resend_from_email,
         smtp_host=os.getenv("SMTP_HOST", "").strip(),
         smtp_port=parse_int_env("SMTP_PORT", 587),
         smtp_username=smtp_username,
@@ -179,6 +182,8 @@ settings = load_settings()
 # SMTP_USERNAME=mi_correo_gmail
 # SMTP_PASSWORD=app_password_de_google
 # EMAIL_FROM=mi_correo_gmail
+# RESEND_API_KEY=re_xxx
+# RESEND_FROM_EMAIL=Portfolio Inbox <onboarding@resend.dev>
 # OWNER_EMAIL=mi_correo_personal_destino
 
 cors_debug_all_origins = os.getenv("CORS_DEBUG_ALL_ORIGINS", "").strip().lower() in {"1", "true", "yes", "on"}
@@ -733,36 +738,31 @@ def allowed_email_status(status: str) -> str:
 
 def smtp_diagnostics() -> dict[str, Any]:
     smtp_ready = all([settings.smtp_host, settings.smtp_username, settings.smtp_password, settings.email_from, settings.owner_email])
+    resend_ready = bool(settings.resend_api_key and settings.resend_from_email and settings.owner_email)
     recommendations: list[str] = []
 
-    if not settings.smtp_host:
-        recommendations.append("Falta SMTP_HOST. Para Gmail usa smtp.gmail.com.")
-    if not settings.smtp_port:
-        recommendations.append("Falta SMTP_PORT. Para Gmail con TLS usa 587; para SSL usa 465.")
-    if not settings.smtp_username:
-        recommendations.append("Falta SMTP_USERNAME. Debe ser tu direccion de Gmail completa.")
-    if not settings.smtp_password:
-        recommendations.append("Falta SMTP_PASSWORD. Usa una App Password de Google, no tu password normal.")
-    if not settings.email_from:
-        recommendations.append("Falta EMAIL_FROM. Para Gmail normalmente debe coincidir con SMTP_USERNAME.")
+    if not settings.resend_api_key:
+        recommendations.append("Falta RESEND_API_KEY. Sin esa clave el backend omitira el envio de emails en Render Free.")
+    if not settings.resend_from_email:
+        recommendations.append("Falta RESEND_FROM_EMAIL. Debe ser un remitente valido verificado en Resend.")
     if not settings.owner_email:
         recommendations.append("Falta OWNER_EMAIL. Debe ser el correo que recibira las notificaciones.")
-    if settings.smtp_host and settings.smtp_host.lower() == "smtp.gmail.com" and settings.smtp_port == 587 and not settings.smtp_use_tls:
-        recommendations.append("Con Gmail y puerto 587, SMTP_USE_TLS deberia ser true.")
-    if settings.smtp_host and settings.smtp_host.lower() == "smtp.gmail.com" and settings.smtp_port == 465 and settings.smtp_use_tls:
-        recommendations.append("Con Gmail y puerto 465, usa SMTP_USE_TLS=false para activar SMTP_SSL.")
-    if smtp_ready and not recommendations:
-        recommendations.append("Configuracion SMTP lista para probar el envio real.")
+    if resend_ready and not recommendations:
+        recommendations.append("Configuracion Resend lista para probar el envio real por HTTPS.")
 
     return {
+        "provider": "resend" if resend_ready else "skipped",
+        "resend_api_key_configured": bool(settings.resend_api_key),
+        "resend_from_email": settings.resend_from_email,
+        "resend_ready": resend_ready,
         "smtp_host": settings.smtp_host,
         "smtp_port": settings.smtp_port,
         "smtp_use_tls": settings.smtp_use_tls,
         "smtp_username_configured": bool(settings.smtp_username),
         "smtp_password_configured": bool(settings.smtp_password),
+        "smtp_ready": smtp_ready,
         "email_from": settings.email_from,
         "owner_email": settings.owner_email,
-        "smtp_ready": smtp_ready,
         "recomendaciones": recommendations,
     }
 
@@ -770,18 +770,15 @@ def smtp_diagnostics() -> dict[str, Any]:
 def send_email_notification(message_id: int, submission: InboxSubmission, analysis: MessageAnalysis, thread: dict[str, Any], related_messages: list[dict[str, Any]]) -> str:
     diagnostics = smtp_diagnostics()
     logger.info(
-        "SMTP config check | message_id=%s | smtp_host=%s | smtp_port=%s | smtp_use_tls=%s | smtp_username_present=%s | smtp_password_present=%s | email_from=%s | owner_email=%s",
+        "Email config check | message_id=%s | provider=%s | resend_ready=%s | resend_from_email=%s | owner_email=%s",
         message_id,
-        diagnostics["smtp_host"] or "",
-        diagnostics["smtp_port"],
-        diagnostics["smtp_use_tls"],
-        diagnostics["smtp_username_configured"],
-        diagnostics["smtp_password_configured"],
-        diagnostics["email_from"] or "",
+        diagnostics["provider"],
+        diagnostics["resend_ready"],
+        diagnostics["resend_from_email"] or "",
         diagnostics["owner_email"] or "",
     )
-    if not diagnostics["smtp_ready"]:
-        logger.warning("SMTP not ready. Message %s stored, email skipped. recomendaciones=%s", message_id, diagnostics["recomendaciones"])
+    if not diagnostics["resend_ready"]:
+        logger.warning("Resend not ready. Message %s stored, email skipped. recomendaciones=%s", message_id, diagnostics["recomendaciones"])
         return "skipped"
 
     related_lines = []
@@ -830,46 +827,48 @@ Dashboard
 {dashboard_url}
 """
 
-    email = EmailMessage()
-    email["Subject"] = f"[Portfolio Inbox] {analysis.priority.upper()} | {analysis.category.title()} | {submission.name}"
-    email["From"] = settings.email_from
-    email["To"] = settings.owner_email
+    subject = f"[Portfolio Inbox] {analysis.priority.upper()} | {analysis.category.title()} | {submission.name}"
+    payload = {
+        "from": settings.resend_from_email,
+        "to": [settings.owner_email],
+        "subject": subject,
+        "text": body.strip(),
+    }
     if submission.email:
-        email["Reply-To"] = str(submission.email)
-    email.set_content(body.strip())
+        payload["reply_to"] = str(submission.email)
 
     try:
-        timeout_seconds = 20
-        use_ssl = not settings.smtp_use_tls and settings.smtp_port == 465
         logger.info(
-            "SMTP connect start | message_id=%s | host=%s | port=%s | mode=%s | timeout=%ss",
+            "Resend send start | message_id=%s | to=%s | from=%s | reply_to_present=%s",
             message_id,
-            settings.smtp_host,
-            settings.smtp_port,
-            "smtp_ssl" if use_ssl else "smtp",
-            timeout_seconds,
+            settings.owner_email,
+            settings.resend_from_email,
+            bool(submission.email),
         )
-        smtp_client_factory = smtplib.SMTP_SSL if use_ssl else smtplib.SMTP
-        with smtp_client_factory(settings.smtp_host, settings.smtp_port, timeout=timeout_seconds) as smtp:
-            if settings.smtp_use_tls:
-                logger.info("SMTP EHLO before STARTTLS | message_id=%s", message_id)
-                smtp.ehlo()
-                logger.info("SMTP STARTTLS | message_id=%s", message_id)
-                smtp.starttls(context=ssl.create_default_context())
-                logger.info("SMTP EHLO after STARTTLS | message_id=%s", message_id)
-                smtp.ehlo()
-            elif not use_ssl:
-                logger.info("SMTP EHLO without TLS | message_id=%s", message_id)
-                smtp.ehlo()
-            logger.info("SMTP login start | message_id=%s | username_present=%s", message_id, bool(settings.smtp_username))
-            smtp.login(settings.smtp_username, settings.smtp_password)
-            logger.info("SMTP send start | message_id=%s | to=%s | subject=%s", message_id, settings.owner_email, email["Subject"])
-            smtp.send_message(email)
-            logger.info("SMTP send completed | message_id=%s", message_id)
-        logger.info("SMTP notification finished successfully | message_id=%s", message_id)
-        return "sent"
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {settings.resend_api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=20,
+        )
+        if response.ok:
+            logger.info("Resend send completed | message_id=%s | status_code=%s", message_id, response.status_code)
+            return "sent"
+        logger.error(
+            "Resend send failed | message_id=%s | status_code=%s | body=%s",
+            message_id,
+            response.status_code,
+            response.text[:400],
+        )
+        return "failed"
+    except requests.RequestException as exc:
+        logger.exception("Resend delivery failed for message %s: %s", message_id, exc)
+        return "failed"
     except Exception:
-        logger.exception("SMTP delivery failed for message %s", message_id)
+        logger.exception("Unexpected Resend delivery failure for message %s", message_id)
         return "failed"
 
 
@@ -1657,14 +1656,18 @@ async def healthcheck() -> JSONResponse:
             "timestamp": utc_now(),
             "openai_configured": bool(settings.openai_api_key),
             "smtp_configured": smtp_info["smtp_ready"],
+            "resend_configured": smtp_info["resend_ready"],
+            "email_delivery_provider": smtp_info["provider"],
             "ga4_configured": ga4_configured(),
             "smtp_host": smtp_info["smtp_host"],
             "smtp_port": smtp_info["smtp_port"],
             "smtp_use_tls": smtp_info["smtp_use_tls"],
             "email_from": smtp_info["email_from"],
+            "resend_from_email": smtp_info["resend_from_email"],
             "owner_email": settings.owner_email,
             "smtp_username_configured": smtp_info["smtp_username_configured"],
             "smtp_password_configured": smtp_info["smtp_password_configured"],
+            "resend_api_key_configured": smtp_info["resend_api_key_configured"],
             "database_path": str(settings.database_path),
         }
     )
