@@ -1,4 +1,6 @@
 (function () {
+  const chartRegistry = [];
+
   function $(id) {
     return document.getElementById(id);
   }
@@ -251,6 +253,127 @@
     return card;
   }
 
+  function destroyCharts() {
+    while (chartRegistry.length > 0) {
+      const chart = chartRegistry.pop();
+      if (chart) {
+        chart.destroy();
+      }
+    }
+  }
+
+  function chartPalette(count) {
+    const base = [
+      "#58d4c7",
+      "#ffd166",
+      "#7aa2ff",
+      "#ff8a80",
+      "#9bdb7c",
+      "#d8a8ff",
+      "#7de2d1",
+      "#ffb86b",
+    ];
+    return Array.from({ length: count }, function (_, index) {
+      return base[index % base.length];
+    });
+  }
+
+  function chartLabels(items) {
+    return (items || []).map(function (item) {
+      return humanizeLabel(item.label || "unknown");
+    });
+  }
+
+  function chartValues(items) {
+    return (items || []).map(function (item) {
+      return Number(item.value) || 0;
+    });
+  }
+
+  function createDonutChart(canvasId, items) {
+    const canvas = $(canvasId);
+    if (!canvas || typeof Chart === "undefined") return;
+    const labels = chartLabels(items);
+    const values = chartValues(items);
+    chartRegistry.push(
+      new Chart(canvas, {
+        type: "doughnut",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              data: values,
+              backgroundColor: chartPalette(values.length),
+              borderColor: "rgba(8, 17, 31, 0.9)",
+              borderWidth: 2,
+              hoverOffset: 6,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                color: "#c8d6ea",
+                boxWidth: 12,
+                padding: 18,
+              },
+            },
+          },
+        },
+      })
+    );
+  }
+
+  function createBarChart(canvasId, items, color) {
+    const canvas = $(canvasId);
+    if (!canvas || typeof Chart === "undefined") return;
+    const labels = chartLabels(items);
+    const values = chartValues(items);
+    chartRegistry.push(
+      new Chart(canvas, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              data: values,
+              backgroundColor: color || "#58d4c7",
+              borderRadius: 10,
+              maxBarThickness: 34,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+          },
+          scales: {
+            x: {
+              ticks: { color: "#9fb2cb" },
+              grid: { display: false },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: "#9fb2cb",
+                precision: 0,
+              },
+              grid: {
+                color: "rgba(159, 178, 203, 0.12)",
+              },
+            },
+          },
+        },
+      })
+    );
+  }
+
   function tableHeadCell(text) {
     return createElement("span", "table-cell", text);
   }
@@ -313,12 +436,11 @@
   }
 
   async function loadDashboard() {
-    const [rawMessagesResponse, summaryResponse, messagesResponse, analyticsResponse, combinedResponse] = await Promise.all([
+    const [rawMessagesResponse, summaryResponse, messagesResponse, metricsResponse] = await Promise.all([
       fetch("/api/messages?limit=100"),
       fetch("/api/dashboard/summary"),
       fetch("/api/dashboard/messages"),
-      fetch("/api/dashboard/analytics"),
-      fetch("/api/dashboard/combined-insights"),
+      fetch("/api/dashboard/metrics"),
     ]);
 
     const rawMessagesData = await rawMessagesResponse.json();
@@ -326,8 +448,7 @@
     const rawItems = safeItems(rawMessagesData);
     const summary = await summaryResponse.json();
     const messages = await messagesResponse.json();
-    const analytics = await analyticsResponse.json();
-    const combined = await combinedResponse.json();
+    const metrics = await metricsResponse.json();
     const summaryData = summary && summary.total_messages ? summary : fallbackSummary(rawItems);
     const dashboardMessages =
       messages && (
@@ -343,7 +464,7 @@
     $("metricTotalMessages").textContent = String(summaryData.total_messages || rawItems.length || 0);
     $("metricTopPriority").textContent = humanizeLabel(topKey(summaryData.by_priority));
     $("metricTopTheme").textContent = (summaryData.top_themes && summaryData.top_themes[0] && summaryData.top_themes[0].label) || "-";
-    $("metricGaStatus").textContent = analytics.status === "configured" ? "Live" : "Optional";
+    $("metricGaStatus").textContent = "Live";
 
     $("priorityChart").innerHTML = "";
     $("sentimentChart").innerHTML = "";
@@ -370,39 +491,6 @@
 
     renderMetricList($("topOpportunitiesList"), dashboardMessages.top_opportunities || [], messageCard);
     renderMetricList($("recentHighPriorityList"), dashboardMessages.recent_high_priority || [], messageCard);
-
-    $("analyticsStatusChip").textContent = analytics.status || "not_configured";
-    const analyticsSummary = $("analyticsSummary");
-    analyticsSummary.innerHTML = "";
-    if (analytics.status === "configured") {
-      analyticsSummary.append(
-        createElement("div", "analytics-metric", `Users: ${analytics.totals.users}`),
-        createElement("div", "analytics-metric", `Sessions: ${analytics.totals.sessions}`),
-        createElement("div", "analytics-metric", `Page views: ${analytics.totals.page_views}`),
-        createElement("div", "analytics-metric", `Engaged sessions: ${analytics.totals.engaged_sessions}`)
-      );
-    } else {
-      analyticsSummary.appendChild(
-        createElement("div", "empty-state small-empty", analytics.reason || "GA4 is not configured.")
-      );
-    }
-
-    renderMetricList($("topPagesList"), analytics.top_pages || [], function (item) {
-      const row = createElement("div", "list-row");
-      row.append(createElement("strong", "", item.page), createElement("span", "tag", `${item.page_views} views`));
-      return row;
-    });
-
-    renderMetricList($("trafficSourcesList"), analytics.traffic_sources || [], function (item) {
-      const row = createElement("div", "list-row");
-      row.append(createElement("strong", "", item.channel), createElement("span", "tag", `${item.sessions} sessions`));
-      return row;
-    });
-
-    $("combinedSummary").textContent = combined.summary || "No combined summary yet.";
-    renderMetricList($("combinedInsightsList"), combined.insights || [], function (item) {
-      return createElement("div", "list-row", item);
-    });
 
     const priorityFilter = $("filterPriority");
     const sourceFilter = $("filterSource");
@@ -435,6 +523,22 @@
     });
     searchFilter.addEventListener("input", applyFilters);
     applyFilters();
+
+    destroyCharts();
+    createDonutChart("priorityDonutChart", metrics.distribution && metrics.distribution.priority);
+    createDonutChart("languageDonutChart", metrics.distribution && metrics.distribution.language);
+    createDonutChart("sourceDonutChart", metrics.distribution && metrics.distribution.source);
+    createBarChart("dailyVolumeBarChart", metrics.messages_per_day || [], "#58d4c7");
+    createBarChart("themeBarChart", metrics.top_themes || [], "#7aa2ff");
+    createBarChart("categoryBarChart", metrics.distribution && metrics.distribution.category, "#ffd166");
+
+    const exportPdfButton = $("exportPdfButton");
+    if (exportPdfButton && !exportPdfButton.dataset.bound) {
+      exportPdfButton.dataset.bound = "true";
+      exportPdfButton.addEventListener("click", function () {
+        window.print();
+      });
+    }
   }
 
   loadDashboard().catch(function () {

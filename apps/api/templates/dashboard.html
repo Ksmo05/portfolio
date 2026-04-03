@@ -15,6 +15,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{{ url_for('static', path='widget.css') }}" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
   </head>
   <body>
     <main class="page-shell dashboard-shell">
@@ -140,28 +141,83 @@
           <div id="messageVolumeChart" class="sparkline-bars"></div>
         </article>
 
-        <article class="surface-card span-6">
+        <article class="surface-card span-12 analytics-lab">
           <div class="section-head">
             <div>
-              <span class="section-kicker">Traffic analytics</span>
-              <h2>GA4 signals</h2>
+              <span class="section-kicker">Executive analytics</span>
+              <h2>Inbox distribution and momentum</h2>
             </div>
-            <span class="status-chip" id="analyticsStatusChip">Loading</span>
+            <div class="hero-actions">
+              <a class="ghost-button button-link" href="/api/dashboard/export.xlsx">Export report</a>
+              <button class="ghost-button" type="button" id="exportPdfButton">Export PDF</button>
+            </div>
           </div>
-          <div id="analyticsSummary" class="analytics-summary"></div>
-          <div id="topPagesList" class="list-stack compact-top"></div>
-          <div id="trafficSourcesList" class="list-stack compact-top"></div>
-        </article>
+          <p class="executive-copy analytics-copy">
+            Real inbox analytics based on the same SQLite message flow that powers the current portfolio chatbot,
+            contact form, and dashboard feed.
+          </p>
 
-        <article class="surface-card span-6">
-          <div class="section-head">
-            <div>
-              <span class="section-kicker">Combined insights</span>
-              <h2>Traffic plus inquiry patterns</h2>
-            </div>
+          <div class="analytics-chart-grid compact-top">
+            <article class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">Donut</span>
+                <h3>Priority split</h3>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="priorityDonutChart"></canvas>
+              </div>
+            </article>
+
+            <article class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">Donut</span>
+                <h3>Language split</h3>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="languageDonutChart"></canvas>
+              </div>
+            </article>
+
+            <article class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">Donut</span>
+                <h3>Source split</h3>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="sourceDonutChart"></canvas>
+              </div>
+            </article>
+
+            <article class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">Bars</span>
+                <h3>Messages per day</h3>
+              </div>
+              <div class="chart-canvas-wrap chart-canvas-tall">
+                <canvas id="dailyVolumeBarChart"></canvas>
+              </div>
+            </article>
+
+            <article class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">Bars</span>
+                <h3>Top themes</h3>
+              </div>
+              <div class="chart-canvas-wrap chart-canvas-tall">
+                <canvas id="themeBarChart"></canvas>
+              </div>
+            </article>
+
+            <article class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">Bars</span>
+                <h3>Category mix</h3>
+              </div>
+              <div class="chart-canvas-wrap chart-canvas-tall">
+                <canvas id="categoryBarChart"></canvas>
+              </div>
+            </article>
           </div>
-          <p id="combinedSummary" class="executive-copy">Loading combined insights...</p>
-          <div id="combinedInsightsList" class="list-stack compact-top"></div>
         </article>
 
         <article class="surface-card span-12">

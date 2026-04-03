@@ -672,6 +672,58 @@ h4 {
   gap: 10px;
 }
 
+.analytics-lab {
+  position: relative;
+  overflow: hidden;
+}
+
+.analytics-lab::after {
+  content: "";
+  position: absolute;
+  inset: auto -90px -120px auto;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(88, 212, 199, 0.12), transparent 70%);
+  pointer-events: none;
+}
+
+.analytics-copy {
+  max-width: 78ch;
+}
+
+.analytics-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.chart-surface {
+  padding: 18px;
+  border: 1px solid rgba(149, 181, 255, 0.14);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018));
+}
+
+.chart-surface-head {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.chart-surface-head h3 {
+  font-size: 1.1rem;
+}
+
+.chart-canvas-wrap {
+  position: relative;
+  height: 250px;
+}
+
+.chart-canvas-tall {
+  height: 280px;
+}
+
 .dashboard-toolbar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -797,6 +849,10 @@ h4 {
   .dashboard-toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .analytics-chart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
@@ -843,6 +899,10 @@ h4 {
   }
 
   .dashboard-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-chart-grid {
     grid-template-columns: 1fr;
   }
 

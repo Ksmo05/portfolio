@@ -6,6 +6,7 @@ import sqlite3
 import smtplib
 import ssl
 import unicodedata
+from io import BytesIO
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -16,10 +17,12 @@ from typing import Any
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from openai import OpenAI
+from openpyxl import Workbook
+from openpyxl.styles import Font
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 try:
@@ -956,16 +959,86 @@ def thread_rows(limit: int = 20) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-def aggregate_counts(connection: sqlite3.Connection, column_name: str) -> dict[str, int]:
+def aggregate_counts(connection: sqlite3.Connection, column_name: str, fallback: str = "unknown") -> dict[str, int]:
     rows = connection.execute(
         f"""
-        SELECT COALESCE({column_name}, 'unknown') AS label, COUNT(*) AS total
+        SELECT COALESCE(NULLIF(TRIM({column_name}), ''), ?) AS label, COUNT(*) AS total
         FROM messages
-        GROUP BY COALESCE({column_name}, 'unknown')
+        GROUP BY COALESCE(NULLIF(TRIM({column_name}), ''), ?)
         ORDER BY total DESC
-        """
+        """,
+        (fallback, fallback),
     ).fetchall()
     return {row["label"]: row["total"] for row in rows}
+
+
+def all_messages_for_export(connection: sqlite3.Connection) -> list[dict[str, Any]]:
+    rows = connection.execute(
+        """
+        SELECT
+            m.id,
+            m.created_at,
+            COALESCE(m.user_name, m.sender_name, 'Website Visitor') AS user_name,
+            COALESCE(m.user_email, m.sender_email, '') AS user_email,
+            COALESCE(m.company, '') AS company,
+            COALESCE(NULLIF(TRIM(m.source), ''), 'unknown') AS source,
+            COALESCE(NULLIF(TRIM(m.language), ''), 'unknown') AS language,
+            COALESCE(NULLIF(TRIM(m.category), ''), 'other') AS category,
+            COALESCE(NULLIF(TRIM(m.priority), ''), 'unknown') AS priority,
+            COALESCE(NULLIF(TRIM(m.theme_label), ''), 'Untagged') AS theme_label,
+            COALESCE(NULLIF(TRIM(m.theme_slug), ''), 'untagged') AS theme_slug,
+            COALESCE(m.summary, m.message_summary, '') AS summary
+        FROM messages m
+        ORDER BY m.created_at DESC, m.id DESC
+        """
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def chart_dataset_from_counts(counts: dict[str, int], limit: int | None = None) -> list[dict[str, Any]]:
+    items = [{"label": key or "unknown", "value": int(value)} for key, value in counts.items()]
+    items.sort(key=lambda item: (-item["value"], item["label"]))
+    return items[:limit] if limit is not None else items
+
+
+def dashboard_chart_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
+    metrics = dashboard_message_metrics(connection)
+    by_priority = aggregate_counts(connection, "priority", fallback="unknown")
+    by_language = aggregate_counts(connection, "language", fallback="unknown")
+    by_category = aggregate_counts(connection, "category", fallback="other")
+    by_source = aggregate_counts(connection, "source", fallback="unknown")
+    top_themes = [
+        {
+            "label": item["label"] or "Untagged",
+            "slug": item["slug"] or "untagged",
+            "value": int(item["total"]),
+        }
+        for item in metrics["top_themes"]
+    ]
+    messages_per_day = [
+        {
+            "label": item["day"] or "unknown",
+            "value": int(item["total"]),
+        }
+        for item in metrics["message_volume"]
+    ]
+    return {
+        "total_messages": metrics["total_messages"],
+        "distribution": {
+            "priority": chart_dataset_from_counts(by_priority),
+            "language": chart_dataset_from_counts(by_language),
+            "category": chart_dataset_from_counts(by_category),
+            "source": chart_dataset_from_counts(by_source),
+        },
+        "messages_per_day": messages_per_day,
+        "top_themes": top_themes,
+        "summary": {
+            "by_priority": by_priority,
+            "by_language": by_language,
+            "by_category": by_category,
+            "by_source": by_source,
+        },
+    }
 
 
 def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
@@ -1449,6 +1522,111 @@ async def dashboard_messages() -> JSONResponse:
             "top_opportunities": metrics["top_opportunities"],
             "most_requested_topics": metrics["recurring_interests"],
         }
+    )
+
+
+@app.get("/api/dashboard/metrics")
+async def dashboard_metrics() -> JSONResponse:
+    with closing(get_connection()) as connection:
+        metrics = dashboard_chart_metrics(connection)
+    return JSONResponse(metrics)
+
+
+@app.get("/api/dashboard/export.xlsx")
+async def dashboard_export_excel() -> StreamingResponse:
+    with closing(get_connection()) as connection:
+        messages = all_messages_for_export(connection)
+        metrics = dashboard_chart_metrics(connection)
+
+    workbook = Workbook()
+    summary_sheet = workbook.active
+    summary_sheet.title = "Summary"
+    summary_sheet["A1"] = "Portfolio Inbox Dashboard Summary"
+    summary_sheet["A1"].font = Font(bold=True, size=14)
+    summary_sheet["A3"] = "Total messages"
+    summary_sheet["B3"] = metrics["total_messages"]
+
+    summary_sections = [
+        ("By Priority", metrics["summary"]["by_priority"]),
+        ("By Language", metrics["summary"]["by_language"]),
+        ("By Category", metrics["summary"]["by_category"]),
+        ("By Source", metrics["summary"]["by_source"]),
+    ]
+    current_row = 5
+    for title, values in summary_sections:
+        summary_sheet.cell(row=current_row, column=1, value=title).font = Font(bold=True)
+        current_row += 1
+        summary_sheet.cell(row=current_row, column=1, value="Label").font = Font(bold=True)
+        summary_sheet.cell(row=current_row, column=2, value="Count").font = Font(bold=True)
+        current_row += 1
+        for label, total in values.items():
+            summary_sheet.cell(row=current_row, column=1, value=label)
+            summary_sheet.cell(row=current_row, column=2, value=total)
+            current_row += 1
+        current_row += 1
+
+    summary_sheet.cell(row=current_row, column=1, value="Top Themes").font = Font(bold=True)
+    current_row += 1
+    summary_sheet.cell(row=current_row, column=1, value="Theme").font = Font(bold=True)
+    summary_sheet.cell(row=current_row, column=2, value="Count").font = Font(bold=True)
+    current_row += 1
+    for item in metrics["top_themes"]:
+        summary_sheet.cell(row=current_row, column=1, value=item["label"])
+        summary_sheet.cell(row=current_row, column=2, value=item["value"])
+        current_row += 1
+
+    messages_sheet = workbook.create_sheet("Messages")
+    headers = [
+        "id",
+        "created_at",
+        "name",
+        "email",
+        "company",
+        "source",
+        "language",
+        "category",
+        "priority",
+        "theme_label",
+        "theme_slug",
+        "summary",
+    ]
+    messages_sheet.append(headers)
+    for cell in messages_sheet[1]:
+        cell.font = Font(bold=True)
+
+    for item in messages:
+        messages_sheet.append(
+            [
+                item["id"],
+                item["created_at"],
+                item["user_name"],
+                item["user_email"],
+                item["company"],
+                item["source"],
+                item["language"],
+                item["category"],
+                item["priority"],
+                item["theme_label"],
+                item["theme_slug"],
+                item["summary"],
+            ]
+        )
+
+    for worksheet in workbook.worksheets:
+        worksheet.freeze_panes = "A2"
+        for column_cells in worksheet.columns:
+            max_length = max(len(str(cell.value or "")) for cell in column_cells)
+            worksheet.column_dimensions[column_cells[0].column_letter].width = min(max(max_length + 2, 12), 42)
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    filename = f"portfolio-inbox-dashboard-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}.xlsx"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers,
     )
 
 
