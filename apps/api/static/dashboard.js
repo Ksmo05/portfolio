@@ -1,4 +1,6 @@
 (function () {
+  const API_BASE = window.location.origin;
+
   function $(id) {
     return document.getElementById(id);
   }
@@ -168,11 +170,11 @@
 
   async function loadDashboard() {
     const [rawMessagesResponse, summaryResponse, messagesResponse, analyticsResponse, combinedResponse] = await Promise.all([
-      fetch("/api/messages?limit=100"),
-      fetch("/api/dashboard/summary"),
-      fetch("/api/dashboard/messages"),
-      fetch("/api/dashboard/analytics"),
-      fetch("/api/dashboard/combined-insights"),
+      fetch(`${API_BASE}/api/messages?limit=100`),
+      fetch(`${API_BASE}/api/dashboard/summary`),
+      fetch(`${API_BASE}/api/dashboard/messages`),
+      fetch(`${API_BASE}/api/dashboard/analytics`),
+      fetch(`${API_BASE}/api/dashboard/combined-insights`),
     ]);
 
     const rawMessagesData = await rawMessagesResponse.json();
