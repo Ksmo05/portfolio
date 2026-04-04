@@ -1393,6 +1393,18 @@ def detect_feedback_signal(normalized_text: str) -> tuple[str, str | None]:
     return "none", None
 
 
+def is_scope_gap_question(normalized_text: str, topic: str) -> bool:
+    if topic != "general":
+        return False
+
+    question_terms = {
+        "what", "which", "where", "when", "why", "how", "who",
+        "que", "que ", "cual", "cuales", "donde", "cuando", "por que", "quien", "como",
+        "tell me", "can you explain", "podrias explicar", "puedes explicar",
+    }
+    return "?" in normalized_text or any(term in normalized_text for term in question_terms)
+
+
 def detect_recent_feedback(messages: list[dict[str, str]] | None) -> tuple[str, str | None]:
     if not messages:
         return "none", None
@@ -1482,6 +1494,15 @@ def build_feedback_recovery_reply(language: str, intent: str, whatsapp_offer: bo
         return f"{base} {whatsapp_tail}".strip()
     base = "Understood. I'll keep it more direct. I can focus on experience, projects, or role fit."
     return f"{base} {whatsapp_tail}".strip()
+
+
+def build_scope_gap_reply(language: str, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
+    if whatsapp_offer and whatsapp_reason:
+        return build_whatsapp_cta(language, whatsapp_reason)
+
+    if language == "es":
+        return "No tengo suficiente contexto para responder con precision. Puedes escribirme por el formulario y te respondere personalmente."
+    return "I do not have enough context to answer that precisely. You can reach out through the contact form and Carlos will reply personally."
 
 
 def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
@@ -1841,6 +1862,12 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
 
     if feedback_signal == "negative" and topic == "general":
         return build_feedback_recovery_reply(language, intent, whatsapp_offer, whatsapp_reason), "chat-feedback-recovery", meta
+
+    if is_scope_gap_question(normalized, topic) and not guided_mode:
+        scope_path = "chat-scope-gap"
+        if whatsapp_offer and whatsapp_reason:
+            scope_path = f"{scope_path}-whatsapp-{whatsapp_reason}"
+        return build_scope_gap_reply(language, whatsapp_offer, whatsapp_reason), scope_path, meta
 
     static_reply = build_static_chat_reply(language, topic, intent, contact_ready, guided_mode, whatsapp_offer, whatsapp_reason)
     if static_reply and (topic != "general" or word_count <= 8):
@@ -2292,6 +2319,8 @@ def serialize_message(row: sqlite3.Row) -> dict[str, Any]:
         "theme_label": row["theme_label"],
         "user_name": row["user_name"],
         "user_email": row["user_email"],
+        "name": row["user_name"],
+        "email": row["user_email"],
         "company": row["company"],
         "source": row["source"],
         "language": row["language"] or "en",
@@ -2302,6 +2331,7 @@ def serialize_message(row: sqlite3.Row) -> dict[str, Any]:
         "summary": row["summary"] or "",
         "key_points": parse_json_list(row["key_points_json"]),
         "raw_message": row["raw_message"] or "",
+        "message": row["raw_message"] or "",
         "reply_text": row["reply_text"] or "",
         "thread_summary": row["thread_summary"] or "",
         "email_status": allowed_email_status(row["email_status"] or "skipped"),
@@ -2810,6 +2840,8 @@ async def dashboard(request: Request) -> HTMLResponse:
 @app.get("/api/messages")
 async def list_messages(limit: int = Query(default=12, ge=1, le=100)) -> JSONResponse:
     items = recent_messages(limit)
+    with closing(get_connection()) as connection:
+        total_messages = connection.execute("SELECT COUNT(*) AS total FROM messages").fetchone()["total"]
     by_source: dict[str, int] = {}
     for item in items:
         source = item.get("source") or "unknown"
@@ -2821,7 +2853,14 @@ async def list_messages(limit: int = Query(default=12, ge=1, le=100)) -> JSONRes
         len(items),
         by_source,
     )
-    return JSONResponse({"items": items, "sources": by_source, "database_path": str(settings.database_path)})
+    return JSONResponse(
+        {
+            "items": items,
+            "sources": by_source,
+            "total": total_messages,
+            "database_path": str(settings.database_path),
+        }
+    )
 
 
 @app.get("/api/threads")
