@@ -28,6 +28,11 @@ export type ContactFormPayload = {
   source: string;
 };
 
+export type ChatHistoryItem = {
+  role: "assistant" | "user";
+  content: string;
+};
+
 function normalizeInboxUrl(value: string) {
   return value.replace(/\/+$/, "");
 }
@@ -78,12 +83,13 @@ export async function postInboxPayload<TResponse>(payload: unknown) {
   };
 }
 
-export async function sendChatMessage(message: string) {
+export async function sendChatMessage(message: string, history: ChatHistoryItem[] = []) {
   const { response, data } = await postInboxPayload<ChatReplyResponse>({
     name: "Website Visitor",
     company: null,
     message,
     source: CHAT_WIDGET_SOURCE,
+    messages: history,
   });
 
   if (!response.ok) {

@@ -172,6 +172,9 @@ export default function ChatWidget() {
   async function handleSend(message: string) {
     const trimmed = message.trim();
     if (!trimmed || isLoading) return;
+    const history = [...messages, { id: "pending-user", role: "user" as const, content: trimmed }]
+      .slice(-6)
+      .map(({ role, content }) => ({ role, content }));
 
     setMessages((current) => [...current, makeMessage("user", trimmed)]);
     setInputValue("");
@@ -179,7 +182,7 @@ export default function ChatWidget() {
     setIsOpen(true);
 
     try {
-      const reply = await sendChatMessage(trimmed);
+      const reply = await sendChatMessage(trimmed, history);
       setMessages((current) => [...current, makeMessage("assistant", reply)]);
     } catch {
       setMessages((current) => [...current, makeMessage("assistant", text.fallbackError)]);
