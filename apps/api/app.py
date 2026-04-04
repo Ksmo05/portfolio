@@ -501,6 +501,10 @@ def init_db() -> None:
                 urgency_score INTEGER DEFAULT 0,
                 themes TEXT DEFAULT '[]',
                 needs_follow_up INTEGER DEFAULT 0,
+                feedback_signal TEXT DEFAULT 'none',
+                feedback_reason TEXT,
+                chat_intent TEXT,
+                whatsapp_handoff INTEGER DEFAULT 0,
                 FOREIGN KEY(thread_id) REFERENCES threads(id)
             );
             """
@@ -542,6 +546,10 @@ def init_db() -> None:
                 "email_status": "TEXT",
                 "analysis_engine": "TEXT",
                 "created_at": "TEXT",
+                "feedback_signal": "TEXT DEFAULT 'none'",
+                "feedback_reason": "TEXT",
+                "chat_intent": "TEXT",
+                "whatsapp_handoff": "INTEGER DEFAULT 0",
             },
         )
         connection.execute("CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages(thread_id)")
@@ -741,6 +749,52 @@ def detect_chat_frustration(normalized_text: str) -> bool:
     return any(term in normalized_text for term in frustration_terms)
 
 
+def detect_feedback_signal(normalized_text: str) -> tuple[str, str | None]:
+    negative_patterns = {
+        "wrong_answer": {
+            "no es eso", "eso no responde", "sigues sin entender", "that is not what i asked",
+            "thats not what i asked", "you still dont understand", "you still do not understand",
+        },
+        "too_vague": {
+            "no me sirve", "too vague", "too generic", "be more specific", "mas concreto", "más concreto",
+            "muy generico", "muy genérico", "demasiado vago",
+        },
+        "too_long": {
+            "too long", "demasiado largo", "mas corto", "más corto", "resumelo mas", "resúmelo más",
+        },
+        "not_helpful": {
+            "this is not helping", "not helping", "esto no ayuda", "no me ayuda", "eso no ayuda",
+        },
+    }
+    positive_patterns = {
+        "helpful": {"gracias eso ayuda", "gracias, eso ayuda", "thanks that helps", "thanks, that helps", "that helps"},
+        "exact": {"perfecto", "eso era", "exactly", "that works", "great", "perfect", "justo eso"},
+    }
+
+    for reason, patterns in negative_patterns.items():
+        if any(pattern in normalized_text for pattern in patterns):
+            return "negative", reason
+    for reason, patterns in positive_patterns.items():
+        if any(pattern in normalized_text for pattern in patterns):
+            return "positive", reason
+    return "none", None
+
+
+def detect_recent_feedback(messages: list[dict[str, str]] | None) -> tuple[str, str | None]:
+    if not messages:
+        return "none", None
+    recent_user_messages = [
+        normalize_match_text(item.get("content", ""))
+        for item in reversed(messages[-6:])
+        if item.get("role") == "user" and item.get("content")
+    ]
+    for message in recent_user_messages[:2]:
+        signal, reason = detect_feedback_signal(message)
+        if signal != "none":
+            return signal, reason
+    return "none", None
+
+
 def detect_stuck_conversation(messages: list[dict[str, str]] | None) -> bool:
     if not messages:
         return False
@@ -769,16 +823,16 @@ def detect_stuck_conversation(messages: list[dict[str, str]] | None) -> bool:
 def build_whatsapp_cta(language: str, reason: str) -> str:
     if language == "es":
         if reason == "explicit":
-            return f"Claro. Puedes escribirme directamente por WhatsApp aqui: {WHATSAPP_LINK}"
+            return f"Claro, puedes escribirme directamente por WhatsApp aqui: {WHATSAPP_LINK}. Si quieres, dime antes si buscas una oportunidad profesional, una colaboracion o informacion sobre un proyecto."
         if reason in {"frustration", "stuck", "direct"}:
-            return f"Si prefieres una conversacion mas directa, tambien puedes escribir por WhatsApp al {WHATSAPP_NUMBER}: {WHATSAPP_LINK}"
-        return f"Si quieres hablar directamente sobre la oportunidad o colaboracion, tambien puedes contactar por WhatsApp en {WHATSAPP_NUMBER}: {WHATSAPP_LINK}"
+            return f"Si prefieres una conversacion mas directa, puedes escribirme por WhatsApp aqui: {WHATSAPP_LINK}. Si te va bien, cuentame brevemente que tipo de conversacion buscas."
+        return f"Si quieres hablar directamente sobre la oportunidad o colaboracion, puedes escribirme por WhatsApp aqui: {WHATSAPP_LINK}. Si quieres, dime antes si esto es por un rol, una colaboracion o un proyecto."
 
     if reason == "explicit":
-        return f"Sure. You can contact Carlos directly on WhatsApp here: {WHATSAPP_LINK}"
+        return f"Sure, you can contact Carlos directly on WhatsApp here: {WHATSAPP_LINK}. If you want, tell me briefly whether this is about a role, a collaboration, or a project."
     if reason in {"frustration", "stuck", "direct"}:
-        return f"If you prefer a more direct conversation, you can also reach Carlos on WhatsApp at {WHATSAPP_NUMBER}: {WHATSAPP_LINK}"
-    return f"If you want to discuss the opportunity or collaboration directly, you can also contact Carlos on WhatsApp at {WHATSAPP_NUMBER}: {WHATSAPP_LINK}"
+        return f"If you prefer a more direct conversation, you can reach Carlos on WhatsApp here: {WHATSAPP_LINK}. If helpful, let me know what kind of conversation you're looking for."
+    return f"If you want to discuss the opportunity or collaboration directly, you can contact Carlos on WhatsApp here: {WHATSAPP_LINK}. If helpful, tell me whether this is about a role, a collaboration, or a project."
 
 
 def resolve_whatsapp_offer(
@@ -807,6 +861,15 @@ def resolve_whatsapp_offer(
     return False, None
 
 
+def build_feedback_recovery_reply(language: str, intent: str, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
+    whatsapp_tail = build_whatsapp_cta(language, whatsapp_reason or "direct") if whatsapp_offer and whatsapp_reason else ""
+    if language == "es":
+        base = "Entiendo. Voy a ir mas directo. Puedo enfocarlo en experiencia, proyectos o encaje profesional."
+        return f"{base} {whatsapp_tail}".strip()
+    base = "Understood. I'll keep it more direct. I can focus on experience, projects, or role fit."
+    return f"{base} {whatsapp_tail}".strip()
+
+
 def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
     if whatsapp_offer and whatsapp_reason:
         return build_whatsapp_cta(language, whatsapp_reason)
@@ -814,26 +877,26 @@ def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, 
     if language == "es":
         if contact_ready or topic == "contact":
             if intent == "recruiter":
-                return "Si ya quieres valorar encaje o disponibilidad, el formulario de contacto del portfolio es el mejor siguiente paso."
+                return "Si quieres, puedo resumir su encaje para el rol o indicarte como contactar con el."
             if intent == "client":
-                return "Si ya tienes una necesidad concreta, el formulario de contacto del portfolio es la mejor via para aterrizar el contexto."
-            return "Si prefieres pasar a una conversacion directa, el formulario de contacto del portfolio es el mejor siguiente paso."
+                return "Si ya tienes una necesidad concreta, puedo ayudarte a enfocarla y luego indicarte como contactar."
+            return "Si prefieres una conversacion directa, tambien puedo indicarte como contactar."
         if intent == "recruiter":
-            return "Si te encaja, puedo resumir su fit para un rol, destacar la experiencia mas relevante o indicar el mejor siguiente paso de contacto."
+            return "Si quieres, puedo resumir su encaje para un rol, destacar la experiencia mas relevante o centrarme en proyectos."
         if intent == "client":
-            return "Si te sirve, puedo enfocarlo a procesos, reporting, workflows digitales o uso practico de IA y despues orientarte a contacto."
+            return "Si te sirve, puedo enfocarlo a procesos, reporting, workflows digitales o IA practica."
         return "Si quieres, puedo resumirlo en corto, enfocarlo a experiencia o senalar los proyectos mas relevantes."
 
     if contact_ready or topic == "contact":
         if intent == "recruiter":
-            return "If you already want to assess fit or availability, the portfolio contact form is the best next step."
+            return "If you want, I can summarise his fit for the role or point you to contact."
         if intent == "client":
-            return "If you already have a concrete need, the portfolio contact form is the best way to turn it into a practical conversation."
-        return "If you prefer to move into a direct conversation, the portfolio contact form is the best next step."
+            return "If you already have a concrete need, I can help frame it and then point you to contact."
+        return "If you prefer a direct conversation, I can point you to contact."
     if intent == "recruiter":
-        return "If useful, I can summarize his fit for a role, highlight the most relevant experience, or point you to the best next contact step."
+        return "If useful, I can summarise his fit for a role, highlight the most relevant experience, or focus on projects."
     if intent == "client":
-        return "If helpful, I can frame his value around processes, reporting, digital workflows, or practical AI and then point you to contact."
+        return "If helpful, I can frame his value around processes, reporting, digital workflows, or practical AI."
     return "If you want, I can keep it short, focus on experience, or point you to the most relevant projects."
 
 
@@ -847,7 +910,7 @@ def build_guided_options(language: str, intent: str) -> str:
     if intent == "recruiter":
         return "I can help in three ways: a profile summary, fit for a role, or the most relevant experience."
     if intent == "client":
-        return "I can help in three ways: a profile summary, where he can add value in processes/reporting, or the best next contact step."
+        return "I can help in three ways: a profile summary, where he can add value in processes/reporting, or how to get in touch."
     return "I can help in three ways: a profile summary, key experience, or the most relevant projects."
 
 
@@ -895,7 +958,7 @@ def build_static_chat_reply(
             "projects": build_projects_reply("en"),
             "fit": "Carlos is a strong fit for roles that combine operations, reporting, process support, procurement support, digital coordination, and practical AI use. He is especially relevant for teams that need structured follow-up, business support, KPI visibility, and someone comfortable working across tools, workflows, and operational contexts.\n\n" + tail,
             "practical-ai": "His use of AI is practical and business-oriented. The focus is on writing support, information organization, summarization, and workflow efficiency in everyday workflows.\n\n" + tail,
-            "contact": ("The best next step is to use the contact option in the portfolio if you want to discuss a role, collaboration, or project context. " + tail) if whatsapp_offer else "The best next step is to use the contact option in the portfolio if you want to discuss a role, collaboration, or project context. If helpful first, I can also summarize his experience or highlight the most relevant projects before you reach out.",
+            "contact": ("You can use the contact option in the portfolio if you want to discuss a role, collaboration, or project context. " + tail) if whatsapp_offer else "You can use the contact option in the portfolio if you want to discuss a role, collaboration, or project context. If helpful first, I can also summarise his experience or highlight the most relevant projects before you reach out.",
             "general": "Carlos' portfolio presents a professional profile centered on operations, reporting, process support, digital workflows, and practical AI. The strongest themes are corporate business support, data visibility, coordination, and useful digital initiatives.\n\n" + (build_guided_options(language, intent) if guided_mode else tail),
         },
         "es": {
@@ -906,7 +969,7 @@ def build_static_chat_reply(
             "projects": build_projects_reply("es"),
             "fit": "Carlos encaja bien en roles que combinan operaciones, reporting, soporte a procesos, soporte a compras, coordinacion digital y uso practico de IA. Es especialmente relevante para equipos que necesitan seguimiento estructurado, soporte de negocio, visibilidad KPI y alguien comodo trabajando entre herramientas, workflows y contextos operativos.\n\n" + tail,
             "practical-ai": "Su uso de IA es practico y orientado a negocio. El foco esta en apoyo a redaccion, organizacion de informacion, resumenes y eficiencia de workflows del dia a dia.\n\n" + tail,
-            "contact": ("El mejor siguiente paso es usar la opcion de contacto del portfolio si quieres hablar sobre un rol, una colaboracion o un contexto de proyecto. " + tail) if whatsapp_offer else "El mejor siguiente paso es usar la opcion de contacto del portfolio si quieres hablar sobre un rol, una colaboracion o un contexto de proyecto. Si te ayuda antes, tambien puedo resumir su experiencia o destacar los proyectos mas relevantes.",
+            "contact": ("Puedes usar la opcion de contacto del portfolio si quieres hablar sobre un rol, una colaboracion o un contexto de proyecto. " + tail) if whatsapp_offer else "Puedes usar la opcion de contacto del portfolio si quieres hablar sobre un rol, una colaboracion o un contexto de proyecto. Si te ayuda antes, tambien puedo resumir su experiencia o destacar los proyectos mas relevantes.",
             "general": "El portfolio de Carlos presenta un perfil profesional centrado en operaciones, reporting, soporte a procesos, workflows digitales e IA practica. Los temas mas fuertes son soporte corporativo a negocio, visibilidad de datos, coordinacion e iniciativas digitales utiles.\n\n" + (build_guided_options(language, intent) if guided_mode else tail),
         },
     }
@@ -933,6 +996,8 @@ def build_chat_system_prompt(
     guided_mode: bool,
     whatsapp_offer: bool,
     whatsapp_reason: str | None,
+    feedback_signal: str,
+    feedback_reason: str | None,
 ) -> str:
     brevity_rule = (
         "Responde en un maximo de 3 bullets cortos."
@@ -947,6 +1012,11 @@ def build_chat_system_prompt(
         f"Solo ofrece WhatsApp cuando corresponda. Si debes derivar a WhatsApp, usa exactamente este numero {WHATSAPP_NUMBER} y este enlace {WHATSAPP_LINK}. Motivo actual: {whatsapp_reason or 'none'}."
         if language == "es"
         else f"Offer WhatsApp only when it is clearly appropriate. If you should offer WhatsApp, use exactly this number {WHATSAPP_NUMBER} and this link {WHATSAPP_LINK}. Current reason: {whatsapp_reason or 'none'}."
+    )
+    feedback_rule = (
+        f"Feedback actual del usuario: {feedback_signal} ({feedback_reason or 'none'}). Si es negativo, responde mas corto, mas concreto y ofrece 2 o 3 opciones claras. Si es positivo, manten el nivel de detalle."
+        if language == "es"
+        else f"Current user feedback: {feedback_signal} ({feedback_reason or 'none'}). If it is negative, be shorter, more concrete, and offer 2 or 3 clear options. If it is positive, keep the current level of detail."
     )
 
     if language == "es":
@@ -969,6 +1039,7 @@ Si la intencion es cliente o colaboracion, conecta la respuesta con procesos, re
 Si la pregunta es amplia ({guided_mode}), sintetiza primero y luego ofrece 2 o 3 caminos claros.
 Si la intencion de contacto es explicita ({contact_ready}), orienta el siguiente paso de forma practica y sin presion.
  {whatsapp_rule}
+{feedback_rule}
 Termina con un siguiente paso breve y natural solo cuando realmente ayude.
 """.strip()
 
@@ -991,6 +1062,7 @@ For client or collaboration intent, connect the answer to process support, repor
 If the question is broad ({guided_mode}), synthesize first and then offer 2 or 3 clear directions.
 If contact intent is explicit ({contact_ready}), make the next step practical and low-pressure.
 {whatsapp_rule}
+{feedback_rule}
 End with one brief, natural next step only when it genuinely helps.
 """.strip()
 
@@ -1017,6 +1089,8 @@ def openai_chat_reply(
     guided_mode: bool,
     whatsapp_offer: bool,
     whatsapp_reason: str | None,
+    feedback_signal: str,
+    feedback_reason: str | None,
 ) -> tuple[str | None, str]:
     client = get_openai_client()
     if client is None:
@@ -1037,7 +1111,17 @@ def openai_chat_reply(
 
     facts = "\n".join(f"- {fact}" for fact in CHAT_PROFILE_FACTS.get(language, CHAT_PROFILE_FACTS["en"]))
     history_text = "\n".join(f"{item['role']}: {item['content']}" for item in filtered_history)
-    system_prompt = build_chat_system_prompt(language, intent, topic, contact_ready, guided_mode, whatsapp_offer, whatsapp_reason)
+    system_prompt = build_chat_system_prompt(
+        language,
+        intent,
+        topic,
+        contact_ready,
+        guided_mode,
+        whatsapp_offer,
+        whatsapp_reason,
+        feedback_signal,
+        feedback_reason,
+    )
     labels = translate_chat_labels(language)
     context_block = f"{labels['facts']}:\n{facts}\n\n{labels['conversation']}:\n{history_text}"
     try:
@@ -1059,27 +1143,40 @@ def openai_chat_reply(
         return None, "chat-heuristic"
 
 
-def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, language: str) -> tuple[str, str]:
+def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, language: str) -> tuple[str, str, dict[str, Any]]:
     normalized = normalize_match_text(submission.message)
     intent = detect_chat_intent(normalized)
     topic = detect_chat_topic(normalized)
     contact_ready = detect_contact_readiness(normalized)
     guided_mode = needs_guided_next_step(normalized, topic)
     whatsapp_offer, whatsapp_reason = resolve_whatsapp_offer(language, intent, topic, normalized, submission.messages)
+    feedback_signal, feedback_reason = detect_feedback_signal(normalized)
+    if feedback_signal == "none":
+        feedback_signal, feedback_reason = detect_recent_feedback(submission.messages)
     word_count = len(normalized.split())
+    meta = {
+        "intent": intent,
+        "topic": topic,
+        "feedback_signal": feedback_signal,
+        "feedback_reason": feedback_reason,
+        "whatsapp_handoff": whatsapp_offer,
+    }
+
+    if feedback_signal == "negative" and topic == "general":
+        return build_feedback_recovery_reply(language, intent, whatsapp_offer, whatsapp_reason), "chat-feedback-recovery", meta
 
     static_reply = build_static_chat_reply(language, topic, intent, contact_ready, guided_mode, whatsapp_offer, whatsapp_reason)
     if static_reply and (topic != "general" or word_count <= 8):
         path = f"chat-static-{topic}" if topic != "general" else "chat-static-short"
         if whatsapp_offer and whatsapp_reason:
             path = f"{path}-whatsapp-{whatsapp_reason}"
-        return static_reply, path
+        return static_reply, path, meta
 
     if guided_mode and static_reply:
         guided_path = "chat-static-guided"
         if whatsapp_offer and whatsapp_reason:
             guided_path = f"{guided_path}-whatsapp-{whatsapp_reason}"
-        return static_reply, guided_path
+        return static_reply, guided_path, meta
 
     model_reply, engine = openai_chat_reply(
         submission,
@@ -1091,14 +1188,16 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
         guided_mode,
         whatsapp_offer,
         whatsapp_reason,
+        feedback_signal,
+        feedback_reason,
     )
     if model_reply:
-        return model_reply, engine
+        return model_reply, engine, meta
 
     fallback_path = "chat-fallback"
     if whatsapp_offer and whatsapp_reason:
         fallback_path = f"{fallback_path}-whatsapp-{whatsapp_reason}"
-    return fallback_chat_reply(language, intent, contact_ready, whatsapp_offer, whatsapp_reason), fallback_path
+    return fallback_chat_reply(language, intent, contact_ready, whatsapp_offer, whatsapp_reason), fallback_path, meta
 
 
 def openai_analysis(submission: InboxSubmission) -> tuple[MessageAnalysis, str]:
@@ -1522,6 +1621,10 @@ def serialize_message(row: sqlite3.Row) -> dict[str, Any]:
         "reply_text": row["reply_text"] or "",
         "thread_summary": row["thread_summary"] or "",
         "email_status": allowed_email_status(row["email_status"] or "skipped"),
+        "feedback_signal": row["feedback_signal"] or "none",
+        "feedback_reason": row["feedback_reason"] or "",
+        "chat_intent": row["chat_intent"] or "",
+        "whatsapp_handoff": bool(row["whatsapp_handoff"] or 0),
         "created_at": row["created_at"],
     }
 
@@ -2018,11 +2121,25 @@ async def create_message(payload: InboxSubmission) -> JSONResponse:
             len(payload.messages or []),
         )
         analysis, _ = heuristic_analysis(payload)
-        reply_text, engine = generate_chat_reply(payload, analysis, final_language)
-        logger.info("Chat response trace | chat_response_path=%s | chat_language=%s", engine, final_language)
+        reply_text, engine, chat_meta = generate_chat_reply(payload, analysis, final_language)
+        logger.info(
+            "Chat response trace | chat_response_path=%s | chat_language=%s | feedback_signal=%s | feedback_reason=%s | chat_intent=%s | whatsapp_handoff=%s",
+            engine,
+            final_language,
+            chat_meta["feedback_signal"],
+            chat_meta["feedback_reason"] or "none",
+            chat_meta["intent"],
+            chat_meta["whatsapp_handoff"],
+        )
         analysis = analysis.model_copy(update={"language": final_language, "reply_text": reply_text})
     else:
         analysis, engine = openai_analysis(payload)
+        chat_meta = {
+            "feedback_signal": "none",
+            "feedback_reason": None,
+            "intent": "",
+            "whatsapp_handoff": False,
+        }
     logger.info(
         "Inbox analysis completed | source=%s | engine=%s | theme_slug=%s | category=%s | priority=%s",
         payload.source,
@@ -2042,9 +2159,10 @@ async def create_message(payload: InboxSubmission) -> JSONResponse:
                     thread_id, user_name, user_email, company, source, language, category, priority, lead_score,
                     sentiment, summary, key_points_json, raw_message, reply_text, theme_label, theme_slug,
                     thread_summary, email_status, analysis_engine, created_at, sender_name, sender_email,
-                    message_text, message_summary, suggested_reply, urgency_score, themes, needs_follow_up
+                    message_text, message_summary, suggested_reply, urgency_score, themes, needs_follow_up,
+                    feedback_signal, feedback_reason, chat_intent, whatsapp_handoff
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     thread_id,
@@ -2075,6 +2193,10 @@ async def create_message(payload: InboxSubmission) -> JSONResponse:
                     PRIORITY_RANK.get(analysis.priority, 1) * 25,
                     json.dumps([analysis.theme_label]),
                     1 if analysis.priority != "low" or analysis.lead_score >= 4 else 0,
+                    chat_meta["feedback_signal"],
+                    chat_meta["feedback_reason"],
+                    chat_meta["intent"],
+                    1 if chat_meta["whatsapp_handoff"] else 0,
                 ),
             )
             message_id = int(cursor.lastrowid)
