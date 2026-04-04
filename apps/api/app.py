@@ -87,6 +87,37 @@ CHAT_PROFILE_FACTS = {
     ],
 }
 
+PORTFOLIO_ROLE_FACTS = {
+    "en": {
+        "current_role": "Carlos currently works at The Retail Performance Company (RPC) since November 2025 as an Operations & Business Support Consultant. His current work is focused on Purchasing and Aftersales support, SAP-related follow-up, reporting, incident handling, and operational coordination in a BMW-related business environment.",
+        "education": [
+            "Bachelor's Degree in Business Administration at Universidad Rey Juan Carlos, with an academic foundation in business management, organizational processes, finance, and operational decision-making.",
+            "Higher Technician in Network Systems Administration (ASIR) at Universidad Europea, focused on systems administration, infrastructure fundamentals, and IT support environments.",
+            "University continuing studies in Cybersecurity, Artificial Intelligence and Big Data at Universidad Europea, reinforcing analytical and digital capabilities applied to operations contexts.",
+        ],
+        "previous_experience": [
+            "Endesa (2025) - Back Office Operations, focused on documentation, validation, and coordination in solar financing workflows using Salesforce.",
+            "Ayuntamiento de Madrid (2022 - 2025) - Administrative Procurement Support, with work in documentation control, public procurement coordination, and process follow-up.",
+            "Openbank (2021 - 2022) - Banking Customer Support, covering customer operations, fraud alerts, KYC checks, and regulated banking workflows.",
+            "Movistar Prosegur Alarmas (2019 - 2020) - Technical Support Operations, combining incident handling, service coordination, and technician scheduling.",
+        ],
+    },
+    "es": {
+        "current_role": "Carlos trabaja actualmente en The Retail Performance Company (RPC) desde noviembre de 2025 como Consultor de Operaciones y Soporte de Negocio. Su trabajo actual se centra en soporte a Purchasing y Aftersales, seguimiento relacionado con SAP, reporting, gestion de incidencias y coordinacion operativa en un entorno de negocio vinculado a BMW.",
+        "education": [
+            "Grado en Administracion y Direccion de Empresas en la Universidad Rey Juan Carlos, con base academica en gestion empresarial, procesos organizativos, finanzas y toma de decisiones operativas.",
+            "Tecnico Superior en Administracion de Sistemas en Red (ASIR) en la Universidad Europea, con formacion en administracion de sistemas, fundamentos de infraestructura y entornos de soporte TI.",
+            "Estudios universitarios complementarios en Ciberseguridad, Inteligencia Artificial y Big Data en la Universidad Europea, orientados a reforzar capacidades analiticas y digitales aplicadas a entornos operativos.",
+        ],
+        "previous_experience": [
+            "Endesa (2025) - Operaciones Back Office, con foco en documentacion, validacion y coordinacion en workflows de financiacion solar usando Salesforce.",
+            "Ayuntamiento de Madrid (2022 - 2025) - Soporte Administrativo en Contratacion, trabajando en control documental, coordinacion de contratacion publica y seguimiento de procesos.",
+            "Openbank (2021 - 2022) - Soporte al Cliente Bancario, cubriendo operativa de cliente, alertas de fraude, controles KYC y workflows bancarios regulados.",
+            "Movistar Prosegur Alarmas (2019 - 2020) - Operaciones de Soporte Tecnico, combinando gestion de incidencias, coordinacion de servicio y planificacion de visitas de tecnicos.",
+        ],
+    },
+}
+
 PROJECT_SPOTLIGHTS = {
     "en": [
         {
@@ -1082,7 +1113,44 @@ def fallback_theme(tokens: set[str]) -> tuple[str, str]:
     return "general-inquiries", "General inbound inquiries"
 
 
+def maybe_build_profile_grounded_analysis(submission: InboxSubmission) -> MessageAnalysis | None:
+    normalized_text = normalize_match_text(submission.message or "")
+    topic = detect_profile_grounding_topic(normalized_text)
+    if not topic:
+        return None
+
+    language = normalize_locale_value(submission.locale) or detect_language(submission.message or "")
+    reply_text = build_grounded_profile_reply(language, topic)
+    if not reply_text:
+        return None
+
+    topic_meta = {
+        "current-role": ("current-role", "Current Role", "Current role question"),
+        "education": ("education", "Education", "Education question"),
+        "previous-experience": ("previous-experience", "Previous Experience", "Previous experience question"),
+    }
+    theme_slug, theme_label, thread_title = topic_meta[topic]
+    summary = clean_text(submission.message or thread_title, 220, thread_title)
+    return MessageAnalysis(
+        language=language,
+        category="question",
+        priority="medium",
+        summary=summary,
+        key_points=[summary],
+        theme_label=theme_label,
+        theme_slug=theme_slug,
+        thread_title=thread_title,
+        reply_text=reply_text,
+        lead_score=2,
+        sentiment="neutral",
+    )
+
+
 def heuristic_analysis(submission: InboxSubmission) -> tuple[MessageAnalysis, str]:
+    grounded = maybe_build_profile_grounded_analysis(submission)
+    if grounded is not None:
+        return grounded, "profile-grounded"
+
     message = submission.message.strip()
     lower_text = f"{message} {submission.company or ''}".lower()
     tokens = tokenize(lower_text)
@@ -1192,13 +1260,40 @@ def detect_summary_request(normalized_text: str) -> bool:
     return any(pattern in normalized_text for pattern in summary_patterns)
 
 
+def detect_profile_grounding_topic(normalized_text: str) -> str | None:
+    current_role_terms = {
+        "where does", "works at", "work at", "current company", "current employer", "current job",
+        "where does carlos work", "what company does he work for", "empresa actual", "donde trabaja",
+        "donde trabaja actualmente", "trabaja actualmente", "en que empresa", "current role",
+        "trabajo actual", "rpc", "retail performance company",
+    }
+    education_terms = {
+        "education", "academic background", "studies", "study", "studied", "what has he studied",
+        "what does he study", "formacion", "estudios", "que estudia", "que ha estudiado",
+        "formacion academica", "academic studies",
+    }
+    previous_experience_terms = {
+        "previous experience", "prior experience", "worked before", "where has he worked before",
+        "what has he worked on before", "career history", "experiencia previa", "ha trabajado antes",
+        "donde ha trabajado antes", "en que ha trabajado", "trabajos anteriores", "trayectoria previa",
+    }
+    if any(term in normalized_text for term in current_role_terms):
+        return "current-role"
+    if any(term in normalized_text for term in education_terms):
+        return "education"
+    if any(term in normalized_text for term in previous_experience_terms):
+        return "previous-experience"
+    return None
+
+
 def detect_chat_topic(normalized_text: str) -> str:
     if detect_summary_request(normalized_text):
         return "summary"
+    grounding_topic = detect_profile_grounding_topic(normalized_text)
+    if grounding_topic:
+        return grounding_topic
     if any(term in normalized_text for term in {"whatsapp", "whats app", "wa.me"}):
         return "whatsapp"
-    if any(term in normalized_text for term in {"where does", "works at", "work at", "current company", "current employer", "employer", "empresa actual", "donde trabaja", "dónde trabaja", "trabaja actualmente", "en que empresa", "en qué empresa", "rpc", "retail performance company"}):
-        return "current-role"
     if any(term in normalized_text for term in {"contact", "email", "reach", "connect", "linkedin", "contactar", "correo", "hablar"}):
         return "contact"
     if any(term in normalized_text for term in {"project", "projects", "portfolio", "case study", "proyecto", "proyectos", "examples of his work", "best work", "main projects", "principales proyectos", "mejores proyectos"}):
@@ -1452,6 +1547,63 @@ def build_projects_reply(language: str) -> str:
     )
 
 
+def build_education_reply(language: str) -> str:
+    facts = PORTFOLIO_ROLE_FACTS.get(language, PORTFOLIO_ROLE_FACTS["en"])["education"]
+    if language == "es":
+        body = "\n".join(f"- {item}" for item in facts)
+        return (
+            "En formacion, el portfolio muestra esto:\n"
+            + body
+            + "\n\nSi quieres, puedo resumirlo en una version mas breve o relacionarlo con su perfil profesional actual."
+        )
+    body = "\n".join(f"- {item}" for item in facts)
+    return (
+        "In education, the portfolio shows this:\n"
+        + body
+        + "\n\nIf you want, I can keep it shorter or connect it to his current professional profile."
+    )
+
+
+def build_previous_experience_reply(language: str) -> str:
+    facts = PORTFOLIO_ROLE_FACTS.get(language, PORTFOLIO_ROLE_FACTS["en"])["previous_experience"]
+    if language == "es":
+        body = "\n".join(f"- {item}" for item in facts)
+        return (
+            "En experiencia previa, el portfolio recoge estas etapas:\n"
+            + body
+            + "\n\nSi te interesa, tambien puedo resumir como esa trayectoria conecta con operaciones, reporting y soporte a procesos."
+        )
+    body = "\n".join(f"- {item}" for item in facts)
+    return (
+        "For previous experience, the portfolio includes these roles:\n"
+        + body
+        + "\n\nIf useful, I can also summarise how that background connects with operations, reporting, and process support."
+    )
+
+
+def build_current_role_reply(language: str) -> str:
+    base = PORTFOLIO_ROLE_FACTS.get(language, PORTFOLIO_ROLE_FACTS["en"])["current_role"]
+    if language == "es":
+        return (
+            base
+            + "\n\nSi quieres, tambien puedo resumir sus funciones principales o explicarte como encaja ese rol con su perfil general."
+        )
+    return (
+        base
+        + "\n\nIf you want, I can also summarise his main responsibilities or explain how that role fits his broader profile."
+    )
+
+
+def build_grounded_profile_reply(language: str, topic: str) -> str | None:
+    if topic == "current-role":
+        return build_current_role_reply(language)
+    if topic == "education":
+        return build_education_reply(language)
+    if topic == "previous-experience":
+        return build_previous_experience_reply(language)
+    return None
+
+
 def build_static_chat_reply(
     language: str,
     topic: str,
@@ -1467,7 +1619,9 @@ def build_static_chat_reply(
         "en": {
             "whatsapp": build_whatsapp_cta("en", whatsapp_reason or "explicit"),
             "summary": "Quick summary:\n- Carlos is an operations, data, and digital support professional with a clear corporate profile.\n- His experience is centered on process support, reporting, SAP-related workflows, coordination, incidents, and structured follow-up.\n- He also uses digital tools and practical AI to improve productivity, information handling, and workflow efficiency.",
-            "current-role": "Carlos currently works at The Retail Performance Company (RPC) since November 2025. His role is aligned with operations, reporting, process support, digital workflows, and practical AI in a corporate environment connected to BMW-related processes.\n\n" + tail,
+            "current-role": build_current_role_reply("en") + "\n\n" + tail,
+            "education": build_education_reply("en") + "\n\n" + tail,
+            "previous-experience": build_previous_experience_reply("en") + "\n\n" + tail,
             "profile": "Carlos' profile combines operations, data visibility, digital workflows, and practical AI use. He currently works at The Retail Performance Company (RPC), where his focus is on process coordination, reporting, SAP-related support, and helping teams work with more structure and clarity.\n\n" + tail,
             "experience": "Carlos currently works at The Retail Performance Company (RPC) since November 2025. His recent experience is centered on operations, Purchasing and Aftersales support, SAP-related workflows, reporting follow-up, incident handling, and coordination in a BMW-related corporate environment. His broader background also includes back-office operations, documentation validation, public procurement support, banking operations, and technical support operations.\n\n" + tail,
             "projects": build_projects_reply("en"),
@@ -1479,7 +1633,9 @@ def build_static_chat_reply(
         "es": {
             "whatsapp": build_whatsapp_cta("es", whatsapp_reason or "explicit"),
             "summary": "Resumen rapido:\n- Carlos es un profesional de operaciones, datos y soporte digital con perfil corporativo claro.\n- Su experiencia se centra en soporte a procesos, reporting, workflows relacionados con SAP, coordinacion, incidencias y seguimiento estructurado.\n- Tambien utiliza herramientas digitales e IA practica para mejorar productividad, gestion de la informacion y eficiencia de workflows.",
-            "current-role": "Carlos trabaja actualmente en The Retail Performance Company (RPC) desde noviembre de 2025. Su trabajo esta alineado con operaciones, reporting, soporte a procesos, workflows digitales e IA practica en un entorno corporativo relacionado con procesos vinculados a BMW.\n\n" + tail,
+            "current-role": build_current_role_reply("es") + "\n\n" + tail,
+            "education": build_education_reply("es") + "\n\n" + tail,
+            "previous-experience": build_previous_experience_reply("es") + "\n\n" + tail,
             "profile": "El perfil de Carlos combina operaciones, visibilidad de datos, workflows digitales e IA practica. Actualmente trabaja en The Retail Performance Company (RPC), donde sus puntos mas fuertes estan en coordinacion de procesos, reporting, soporte relacionado con SAP y apoyo a equipos con mas estructura y claridad.\n\n" + tail,
             "experience": "Carlos trabaja actualmente en The Retail Performance Company (RPC) desde noviembre de 2025. Su experiencia reciente se centra en operaciones, soporte a Purchasing y Aftersales, workflows relacionados con SAP, seguimiento de reporting, gestion de incidencias y coordinacion en un entorno corporativo vinculado a BMW. Su trayectoria tambien incluye back office, validacion documental, contratacion publica, operaciones bancarias y soporte tecnico-operativo.\n\n" + tail,
             "projects": build_projects_reply("es"),
@@ -1717,6 +1873,10 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
 
 
 def openai_analysis(submission: InboxSubmission) -> tuple[MessageAnalysis, str]:
+    grounded = maybe_build_profile_grounded_analysis(submission)
+    if grounded is not None:
+        return grounded, "profile-grounded"
+
     client = get_openai_client()
     if client is None:
         return heuristic_analysis(submission)
@@ -3070,4 +3230,5 @@ async def healthcheck() -> JSONResponse:
             "database_path": str(settings.database_path),
         }
     )
+
 
