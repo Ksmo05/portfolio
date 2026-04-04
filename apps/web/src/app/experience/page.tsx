@@ -8,7 +8,7 @@ import { buildMetadata } from "@/lib/metadata";
 export const metadata: Metadata = buildMetadata({
   title: "Professional Experience | Carlos San Miguel",
   description:
-    "Professional timeline across operations, purchasing support, data follow-up, reporting and process coordination.",
+    "Professional timeline across operations support, procurement workflows, reporting, incident handling and process coordination.",
   path: "/experience",
 });
 
@@ -18,14 +18,14 @@ export default function ExperiencePage() {
       <SectionHeader
         eyebrow="Experience"
         title="Professional Experience"
-        description="Experience across operations, purchasing support, data follow-up, reporting and process coordination."
+        description="Experience across operations support, procurement workflows, reporting, incident handling and process coordination."
       />
 
       <ExperienceTimeline entries={experienceEntries} />
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          This timeline brings together roles that connect operations, process support, data follow-up and exposure to different business environments.
+          This timeline brings together roles focused on operational support, documentation, reporting, customer or user assistance and coordination across different business environments.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link

@@ -15,7 +15,7 @@ import { tools } from "@/lib/tools";
 export const metadata = buildMetadata({
   title: "Carlos San Miguel | Operations, Data & Digital Projects",
   description:
-    "Portfolio presenting experience in operations, purchasing support, data analysis, KPI tracking and personal digital projects.",
+    "Portfolio presenting experience in operations support, reporting, data follow-up, process coordination and practical digital initiatives.",
   path: "/",
 });
 
@@ -31,10 +31,10 @@ export default async function HomePage() {
             {siteConfig.name} · {siteConfig.location}
           </p>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900 dark:text-white md:text-6xl">
-            Operations and data professional exploring digital projects, process optimization and practical applications of AI.
+            Operations, data and digital support professional focused on process improvement, reporting and practical AI.
           </h1>
           <p className="mt-4 max-w-2xl text-xl text-slate-700 dark:text-slate-200">
-            Purchasing, KPI tracking and digital tools with a practical business focus.
+            Corporate operations, process coordination, dashboards and digital workflows with a practical business focus.
           </p>
           <p className="mt-6 max-w-2xl text-lg text-slate-600 dark:text-slate-300">{shortBio}</p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -69,7 +69,7 @@ export default async function HomePage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-700 dark:bg-slate-900">
             <p className="text-sm font-semibold text-slate-900 dark:text-white">Tools used in daily work</p>
             <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-              SAP, Qlik Sense and Excel are central to my work in operations, data follow-up and process visibility.
+              SAP, Qlik Sense and Excel support my work in operations, reporting follow-up and process visibility.
             </p>
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {tools.map((tool) => (
@@ -89,7 +89,7 @@ export default async function HomePage() {
         <SectionHeader
           eyebrow="Experience"
           title="Professional Experience Snapshot"
-          description="Experience across operations, purchasing support, KPI follow-up and process coordination."
+          description="Experience across operations support, procurement workflows, reporting and process coordination."
         />
         <div className="grid gap-6 md:grid-cols-2">
           {experienceSnapshot.map((item) => (
@@ -108,15 +108,15 @@ export default async function HomePage() {
         <SectionHeader
           eyebrow="Key Areas"
           title="Operations, data and digital focus"
-          description="Core areas that define my current profile and the direction I am developing."
+          description="Core areas that define my current profile in corporate environments and practical digital work."
         />
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
           {[
             "Operations",
-            "Purchasing",
-            "Data analysis",
+            "Procurement support",
+            "Reporting",
             "KPI / Dashboards",
-            "Process digitalization",
+            "Digital workflows",
           ].map((capability) => (
             <article key={capability} className="rounded-2xl border border-slate-200 bg-white p-5 text-sm font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
               {capability}
@@ -128,8 +128,8 @@ export default async function HomePage() {
       <section className="py-20">
         <SectionHeader
           eyebrow="Projects"
-          title="Personal Digital Projects"
-          description="Personal and exploratory projects related to digital tools, web content, productivity and practical uses of AI."
+          title="Applied Digital Projects"
+          description="Selected initiatives that show how I use digital tools, structured information and practical AI to support communication and efficiency."
         />
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {featuredProjects.map((project) => (
@@ -162,7 +162,7 @@ export default async function HomePage() {
         <SectionHeader
           eyebrow="Interests"
           title="Current areas of interest"
-          description="Topics that connect my professional experience with my personal digital exploration."
+          description="Topics that connect my professional experience with practical digital improvement."
         />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <article className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-slate-900">
@@ -176,21 +176,21 @@ export default async function HomePage() {
             <p className="text-xl">DATA</p>
             <h3 className="mt-3 text-xl font-semibold text-slate-900 dark:text-white">Data analysis and dashboards</h3>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              Dashboards and KPI tracking help make information easier to read and more useful for operational decisions.
+              Dashboards, reporting and KPI tracking help make information easier to read and more useful for operational decisions.
             </p>
           </article>
           <article className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-slate-900">
             <p className="text-xl">TOOLS</p>
             <h3 className="mt-3 text-xl font-semibold text-slate-900 dark:text-white">Digital tools and productivity</h3>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              I explore digital tools that help organize information, improve productivity and make work more manageable.
+              I explore digital tools that help organize information, improve productivity and support smoother workflows.
             </p>
           </article>
           <article className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-slate-900">
             <p className="text-xl">AI</p>
             <h3 className="mt-3 text-xl font-semibold text-slate-900 dark:text-white">Practical uses of AI</h3>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              My interest in AI is practical: content support, information organization and more efficient workflows in everyday work.
+              My interest in AI is practical: better writing support, information organization and more efficient workflows in everyday work.
             </p>
           </article>
         </div>

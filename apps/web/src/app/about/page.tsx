@@ -17,7 +17,7 @@ import {
 export const metadata: Metadata = buildMetadata({
   title: "About Carlos San Miguel",
   description:
-    "Profile overview focused on operations, purchasing support, data analysis, KPI tracking and digital projects.",
+    "Profile overview focused on operations support, reporting, process coordination and practical digital initiatives.",
   path: "/about",
 });
 
@@ -32,10 +32,10 @@ export default function AboutPage() {
             description={`${siteConfig.position} based in ${siteConfig.location}.`}
           />
           <p className="max-w-4xl text-base text-slate-600 dark:text-slate-300">
-            I work in operations and consulting environments supporting Purchasing and Aftersales processes, with experience in data analysis, vendor management and KPI tracking using tools such as SAP, Qlik Sense and Excel.
+            I work in corporate and consulting environments supporting operations and Purchasing and Aftersales processes, with experience in SAP support, reporting follow-up, incident handling and KPI visibility using tools such as SAP, Qlik Sense and Excel.
           </p>
           <p className="mt-4 max-w-4xl text-base text-slate-600 dark:text-slate-300">
-            Alongside my professional work, I explore digital tools, web content and AI-assisted workflows through personal projects. I am especially interested in how technology can improve processes, productivity and information management.
+            Alongside my professional work, I explore digital tools and practical AI workflows through personal initiatives focused on communication, information organization and productivity. The emphasis is applied and business-oriented rather than purely technical.
           </p>
         </div>
         <div className="mx-auto w-fit rounded-full bg-gradient-to-b from-slate-200 to-slate-300 p-1.5 dark:from-slate-700 dark:to-slate-600">
@@ -109,7 +109,7 @@ export default function AboutPage() {
 
       <CtaSection
         title="Portfolio Navigation"
-        description="Explore the sections covering experience, projects and academic background from an operations, data and digital perspective."
+        description="Explore the sections covering experience, projects and academic background from an operations, reporting and practical digital perspective."
         primaryLabel="Professional Profile"
         primaryHref="/professional-profile"
         secondaryLabel="View Education"

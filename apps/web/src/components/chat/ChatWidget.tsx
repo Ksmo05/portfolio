@@ -40,7 +40,7 @@ const copy: Record<Locale, ChatCopy> = {
     title: "Carlos AI Assistant",
     status: "Usually replies instantly",
     welcome:
-      "Hi, I can help you explore projects, understand Carlos' profile, review services and open a contact conversation.",
+      "Hi, I can help you explore Carlos' profile, experience, projects and ways to get in touch.",
     helper: "Start with a suggested question or write your own message.",
     placeholder: "Write your message...",
     openLabel: "Open chat",
@@ -50,12 +50,20 @@ const copy: Record<Locale, ChatCopy> = {
     fallbackError:
       "I can't connect to the assistant right now. Please try again in a moment or use the contact page.",
     quickActions: [
-      { id: "projects", label: "View projects", prompt: "Show me Carlos' most relevant projects and explain why they stand out." },
-      { id: "about", label: "About", prompt: "Tell me about Carlos' professional profile, experience and strongest differentiators." },
       {
-        id: "services",
-        label: "Services",
-        prompt: "What services does Carlos offer around AI, web content or automation?",
+        id: "projects",
+        label: "View projects",
+        prompt: "Show me Carlos' most relevant projects and explain how they relate to operations, data and practical AI.",
+      },
+      {
+        id: "about",
+        label: "About",
+        prompt: "Tell me about Carlos' professional profile, experience and main strengths in operations and business support.",
+      },
+      {
+        id: "fit",
+        label: "Profile fit",
+        prompt: "What type of role or team would be a good fit for Carlos based on his background?",
       },
       {
         id: "contact",
@@ -68,27 +76,35 @@ const copy: Record<Locale, ChatCopy> = {
     title: "Carlos AI Assistant",
     status: "Normalmente responde al instante",
     welcome:
-      "Hola, puedo ayudarte a descubrir proyectos, entender mejor el perfil de Carlos, revisar servicios y abrir una conversación de contacto.",
+      "Hola, puedo ayudarte a descubrir el perfil de Carlos, su experiencia, sus proyectos y las formas de contacto.",
     helper: "Empieza con una sugerencia o escribe tu propio mensaje.",
     placeholder: "Escribe tu mensaje...",
     openLabel: "Abrir chat",
     closeLabel: "Cerrar chat",
-    resetLabel: "Reiniciar conversación",
-    sendingLabel: "Carlos AI Assistant está escribiendo...",
+    resetLabel: "Reiniciar conversacion",
+    sendingLabel: "Carlos AI Assistant esta escribiendo...",
     fallbackError:
-      "No puedo conectar con el asistente ahora mismo. Inténtalo de nuevo en unos segundos o usa la página de contacto.",
+      "No puedo conectar con el asistente ahora mismo. Intentalo de nuevo en unos segundos o usa la pagina de contacto.",
     quickActions: [
-      { id: "projects", label: "Ver proyectos", prompt: "Muéstrame tus proyectos más destacados." },
-      { id: "about", label: "Sobre mí", prompt: "Cuéntame tu perfil profesional y experiencia." },
       {
-        id: "services",
-        label: "Servicios",
-        prompt: "¿Qué servicios ofreces relacionados con IA, contenido web o automatización?",
+        id: "projects",
+        label: "Ver proyectos",
+        prompt: "Muestrame los proyectos mas relevantes de Carlos y explica como se relacionan con operaciones, datos e IA practica.",
+      },
+      {
+        id: "about",
+        label: "Sobre mi",
+        prompt: "Cuentame el perfil profesional de Carlos, su experiencia y sus puntos fuertes en operaciones y soporte de negocio.",
+      },
+      {
+        id: "fit",
+        label: "Encaje",
+        prompt: "Que tipo de rol o equipo encajaria bien con Carlos segun su trayectoria?",
       },
       {
         id: "contact",
         label: "Contactar",
-        prompt: "Quiero contactar contigo para hablar de una oportunidad o proyecto.",
+        prompt: "Quiero contactar con Carlos para hablar de una oportunidad o proyecto.",
       },
     ],
   },
@@ -207,7 +223,7 @@ export default function ChatWidget() {
                     </div>
                   </div>
                 </div>
-                <p className="mt-3 text-xs leading-5 text-slate-400">Ask about projects, services, fit, or open a direct contact conversation.</p>
+                <p className="mt-3 text-xs leading-5 text-slate-400">Ask about experience, projects, profile fit, or open a direct contact conversation.</p>
               </div>
               <div className="flex items-center gap-1">
                 <button
@@ -275,9 +291,11 @@ export default function ChatWidget() {
                         : "rounded-bl-md border border-white/10 bg-white/[0.06] text-slate-100"
                     }`}
                   >
-                    <div className={`mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
-                      message.role === "user" ? "text-cyan-100/80" : "text-slate-400"
-                    }`}>
+                    <div
+                      className={`mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                        message.role === "user" ? "text-cyan-100/80" : "text-slate-400"
+                      }`}
+                    >
                       {message.role === "user" ? "You" : "Assistant"}
                     </div>
                     {message.content}

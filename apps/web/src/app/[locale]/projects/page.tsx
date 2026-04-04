@@ -11,22 +11,22 @@ type Props = { params: Promise<{ locale: string }> };
 const copy: Record<Locale, { eyebrow: string; title: string; desc: string; bullets: string[] }> = {
   en: {
     eyebrow: "Projects",
-    title: "Personal Digital Projects",
-    desc: "Personal and exploratory projects related to digital tools, web content, productivity and practical uses of AI.",
+    title: "Applied Digital Projects",
+    desc: "Selected initiatives that show how I use digital tools, structured information and practical AI to support communication and efficiency.",
     bullets: [
-      "Projects developed to present ideas, interests and useful digital workflows.",
-      "A practical mix of web content, productivity tools and information organization.",
-      "Focused on realistic exploration rather than advanced technical development.",
+      "Projects used to communicate ideas, organize information and support useful workflows.",
+      "A practical mix of digital communication, productivity tools and operational thinking.",
+      "Presented as applied initiatives, not as a purely technical showcase.",
     ],
   },
   es: {
     eyebrow: "Proyectos",
-    title: "Proyectos Digitales Personales",
-    desc: "Proyectos personales y exploratorios relacionados con herramientas digitales, contenido web, productividad y usos practicos de la IA.",
+    title: "Proyectos Digitales Aplicados",
+    desc: "Iniciativas seleccionadas que muestran como utilizo herramientas digitales, informacion estructurada e IA practica para apoyar comunicacion y eficiencia.",
     bullets: [
-      "Proyectos desarrollados para presentar ideas, intereses y flujos digitales utiles.",
-      "Una combinacion practica de contenido web, herramientas de productividad y organizacion de informacion.",
-      "Enfocados en exploracion realista, no en desarrollo tecnico avanzado.",
+      "Proyectos utilizados para comunicar ideas, organizar informacion y apoyar workflows utiles.",
+      "Una combinacion practica de comunicacion digital, herramientas de productividad y enfoque operativo.",
+      "Presentados como iniciativas aplicadas, no como una muestra de ingenieria de software pura.",
     ],
   },
 };

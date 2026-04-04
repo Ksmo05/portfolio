@@ -60,7 +60,7 @@ const copy: Record<
   en: {
     eyebrow: "Contact Form",
     title: "Contact form",
-    description: "Share an idea, project, collaboration request or question. Your message is sent through the live backend and analyzed automatically.",
+    description: "Share a professional inquiry, project context, collaboration request or question. Your message is sent through the live backend and organized automatically.",
     name: "Name",
     email: "Email",
     company: "Company",
@@ -72,7 +72,7 @@ const copy: Record<
     success: "Your message was sent successfully.",
     error: "The contact form could not process your message right now. Please try again in a moment.",
     networkError: "The contact service is not reachable right now. Please try again in a moment.",
-    analysis: "AI routing summary",
+    analysis: "Automatic routing summary",
     priority: "Priority",
     category: "Category",
     language: "Language",
@@ -81,7 +81,7 @@ const copy: Record<
   es: {
     eyebrow: "Formulario de contacto",
     title: "Formulario de contacto",
-    description: "Comparte una idea, proyecto, propuesta de colaboracion o consulta. Tu mensaje se envia a traves del backend activo y se analiza automaticamente.",
+    description: "Comparte una consulta profesional, contexto de proyecto, propuesta de colaboracion o pregunta. Tu mensaje se envia a traves del backend activo y se organiza automaticamente.",
     name: "Nombre",
     email: "Email",
     company: "Empresa",
@@ -93,7 +93,7 @@ const copy: Record<
     success: "Tu mensaje se ha enviado correctamente.",
     error: "El formulario no ha podido procesar tu mensaje ahora mismo. Intentalo de nuevo en unos minutos.",
     networkError: "El servicio de contacto no esta disponible ahora mismo. Intentalo de nuevo en unos minutos.",
-    analysis: "Resumen del enrutado IA",
+    analysis: "Resumen del enrutado automatico",
     priority: "Prioridad",
     category: "Categoria",
     language: "Idioma",
@@ -215,13 +215,13 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
               <article className="rounded-[1.6rem] border border-white/70 bg-white/70 p-5 shadow-[0_18px_50px_-30px_rgba(14,116,144,0.35)] dark:border-white/10 dark:bg-white/5">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-cyan-300">Live routing</p>
                 <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  Messages go to the same production inbox flow used by the chatbot, dashboard, and email alerts.
+                  Messages go to the same production inbox flow used by the chatbot, dashboard and email alerts.
                 </p>
               </article>
               <article className="rounded-[1.6rem] border border-white/70 bg-white/70 p-5 shadow-[0_18px_50px_-30px_rgba(14,116,144,0.35)] dark:border-white/10 dark:bg-white/5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-cyan-300">Professional review</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-cyan-300">Message review</p>
                 <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  Priority, category, language, and reply guidance are generated automatically after submission.
+                  Priority, category, language and reply guidance are generated automatically after submission.
                 </p>
               </article>
             </div>
@@ -231,7 +231,7 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[1.4rem] border border-slate-200/80 bg-slate-50/90 px-4 py-3 dark:border-white/10 dark:bg-white/5">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-cyan-300">Inbox channel</p>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Professional inquiries, project opportunities, and collaboration requests.</p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Professional inquiries, role discussions, project opportunities and collaboration requests.</p>
               </div>
               <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" />
@@ -305,7 +305,7 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
                   {error ? <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
                   {!error && result ? <p className="text-sm text-emerald-600 dark:text-emerald-300">{text.success}</p> : null}
                   {!error && !result ? (
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Your message is analyzed and routed after submission.</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Your message is organized and routed after submission.</p>
                   ) : null}
                 </div>
               </div>

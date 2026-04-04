@@ -27,28 +27,28 @@ const copy: Record<
 > = {
   en: {
     eyebrow: "Professional Profile",
-    title: "Operations, Data & Digital Projects",
-    desc: "A professional profile focused on operations, data, digital tools and practical uses of technology.",
+    title: "Operations, Data & Practical Digital Support",
+    desc: "A professional profile focused on corporate operations, reporting, process support and practical uses of digital tools.",
     statementTitle: "About",
     statement:
-      "I work in operations and consulting environments supporting Purchasing and Aftersales processes, with experience in data analysis, vendor management and KPI tracking using tools such as SAP, Qlik Sense and Excel.",
+      "I work in corporate and consulting environments supporting operations, Purchasing and Aftersales processes. My experience includes SAP support, reporting follow-up, incident handling, coordination and KPI visibility using tools such as SAP, Qlik Sense and Excel.",
     statement2:
-      "Alongside my professional work, I explore digital tools, web content and AI-assisted workflows through personal projects. I am especially interested in how technology can improve processes, productivity and information management.",
+      "Alongside my professional work, I explore digital tools and practical AI workflows through personal initiatives focused on communication, information organization and productivity. My interest is applied and business-oriented rather than purely technical.",
     focusTitle: "Focus Areas",
     focus: [
       "Operations and business processes",
-      "Purchasing and vendor coordination",
-      "Data analysis and KPI dashboards",
-      "Process digitalization",
-      "Digital tools and web content",
+      "Procurement support and workflow coordination",
+      "Reporting, data follow-up and KPI dashboards",
+      "Documentation control and structured support",
+      "Digital tools for communication and productivity",
       "Practical uses of AI for productivity",
     ],
     contextTitle: "Professional Context",
     context: [
-      "Consulting support for Purchasing and Aftersales processes",
-      "Data tracking, KPI follow-up and reporting in business environments",
-      "Experience across automotive consulting, energy operations, public procurement and banking support",
-      "Personal interest in digital tools, web content and practical AI workflows",
+      "Support for Purchasing and Aftersales processes in a corporate environment linked to BMW",
+      "Experience in reporting, SAP support, process follow-up and issue coordination",
+      "Background across automotive, energy operations, public procurement, banking support and technical operations",
+      "Practical interest in digital tools and AI to improve productivity and information flows",
     ],
     educationTitle: "Education",
     education: [
@@ -58,32 +58,32 @@ const copy: Record<
     ],
     closingTitle: "Positioning",
     closing:
-      "This portfolio presents a profile built around operations, data, process improvement and personal digital projects, with a practical interest in how technology can support everyday work.",
+      "This portfolio presents a profile built around operations, reporting, process support and practical digital improvement, with AI used as a tool for productivity rather than as the center of the profile.",
   },
   es: {
     eyebrow: "Perfil Profesional",
-    title: "Operaciones, Datos y Proyectos Digitales",
-    desc: "Perfil profesional centrado en operaciones, datos, herramientas digitales y usos practicos de la tecnologia.",
+    title: "Operaciones, Datos y Soporte Digital Practico",
+    desc: "Perfil profesional centrado en operaciones corporativas, reporting, soporte a procesos y usos practicos de herramientas digitales.",
     statementTitle: "Sobre mi",
     statement:
-      "Trabajo en entornos de operaciones y consultoria dando soporte a procesos de Purchasing y Aftersales, con experiencia en analisis de datos, gestion de proveedores y seguimiento de KPI mediante herramientas como SAP, Qlik Sense y Excel.",
+      "Trabajo en entornos corporativos y de consultoria dando soporte a operaciones y a procesos de Purchasing y Aftersales. Mi experiencia incluye soporte SAP, seguimiento de reporting, gestion de incidencias, coordinacion y visibilidad de KPI mediante herramientas como SAP, Qlik Sense y Excel.",
     statement2:
-      "Paralelamente exploro herramientas digitales, contenido web y flujos de trabajo asistidos por IA a traves de proyectos personales. Me interesa especialmente como la tecnologia puede mejorar procesos, productividad y gestion de la informacion.",
+      "Paralelamente exploro herramientas digitales y flujos practicos de IA a traves de iniciativas personales centradas en comunicacion, organizacion de informacion y productividad. Mi interes es aplicado y orientado a negocio, no puramente tecnico.",
     focusTitle: "Areas de Enfoque",
     focus: [
       "Operaciones y procesos de negocio",
-      "Compras y coordinacion de proveedores",
-      "Analisis de datos y dashboards KPI",
-      "Digitalizacion de procesos",
-      "Herramientas digitales y contenido web",
+      "Soporte a compras y coordinacion de workflows",
+      "Reporting, seguimiento de datos y dashboards KPI",
+      "Control documental y soporte estructurado",
+      "Herramientas digitales para comunicacion y productividad",
       "Usos practicos de la IA para productividad",
     ],
     contextTitle: "Contexto Profesional",
     context: [
-      "Soporte de consultoria para procesos de Purchasing y Aftersales",
-      "Seguimiento de datos, KPI y reporting en entornos de negocio",
-      "Experiencia en consultoria de automocion, operaciones energeticas, contratacion publica y soporte bancario",
-      "Interes personal en herramientas digitales, contenido web y flujos practicos de IA",
+      "Soporte a procesos de Purchasing y Aftersales en un entorno corporativo vinculado a BMW",
+      "Experiencia en reporting, soporte SAP, seguimiento de procesos y coordinacion de incidencias",
+      "Trayectoria en automocion, operaciones energeticas, contratacion publica, soporte bancario y operaciones tecnicas",
+      "Interes practico en herramientas digitales e IA para mejorar productividad y flujos de informacion",
     ],
     educationTitle: "Formacion",
     education: [
@@ -93,7 +93,7 @@ const copy: Record<
     ],
     closingTitle: "Posicionamiento",
     closing:
-      "Este portfolio presenta un perfil construido alrededor de operaciones, datos, mejora de procesos y proyectos digitales personales, con un interes practico por como la tecnologia puede apoyar el trabajo del dia a dia.",
+      "Este portfolio presenta un perfil construido alrededor de operaciones, reporting, soporte a procesos y mejora digital practica, con la IA utilizada como herramienta de productividad y no como centro del perfil.",
   },
 };
 
