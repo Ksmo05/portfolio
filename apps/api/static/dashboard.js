@@ -495,6 +495,15 @@
         ? messages
         : fallbackDashboardMessages(rawItems);
 
+    console.debug("[dashboard] loaded messages", {
+      rawCount: rawItems.length,
+      summaryTotal: summaryData.total_messages || 0,
+      rawSources: rawMessagesData && rawMessagesData.sources ? rawMessagesData.sources : {},
+      dashboardSources: summaryData.by_source || {},
+      gaStatus: analytics && analytics.status ? analytics.status : "unknown",
+      databasePath: rawMessagesData && rawMessagesData.database_path ? rawMessagesData.database_path : "unknown",
+    });
+
     $("executiveSummary").textContent = summaryData.executive_summary || "No summary yet.";
     $("metricTotalMessages").textContent = String(summaryData.total_messages || rawItems.length || 0);
     $("metricTopPriority").textContent = humanizeLabel(topKey(summaryData.by_priority));

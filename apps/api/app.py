@@ -582,6 +582,8 @@ def build_message_payload(
     created_at: str | None = None,
 ) -> dict[str, Any]:
     meta = chat_meta or {}
+    whatsapp_handoff = bool(meta.get("whatsapp_handoff", False))
+    whatsapp_url = build_whatsapp_url(analysis.language) if whatsapp_handoff else ""
     return {
         "id": message_id,
         "thread_id": thread_id,
@@ -607,7 +609,8 @@ def build_message_payload(
         "feedback_signal": meta.get("feedback_signal", "none"),
         "feedback_reason": meta.get("feedback_reason") or "",
         "chat_intent": meta.get("intent") or "",
-        "whatsapp_handoff": bool(meta.get("whatsapp_handoff", False)),
+        "whatsapp_handoff": whatsapp_handoff,
+        "whatsapp_url": whatsapp_url,
         "created_at": created_at or utc_now(),
         "saved": saved,
     }
@@ -907,10 +910,12 @@ async def handle_inbox_submission(request: Request) -> JSONResponse:
         }
 
     logger.info(
-        "Inbox submission completed | saved=%s | message_id=%s | thread_id=%s | response_keys=%s | message_keys=%s",
+        "Inbox submission completed | saved=%s | message_id=%s | thread_id=%s | whatsapp_handoff=%s | whatsapp_url=%s | response_keys=%s | message_keys=%s",
         saved,
         response_payload["message"].get("id"),
         (response_payload.get("thread") or {}).get("id") if isinstance(response_payload.get("thread"), dict) else None,
+        response_payload["message"].get("whatsapp_handoff", False),
+        response_payload["message"].get("whatsapp_url", ""),
         list(response_payload.keys()),
         list(response_payload["message"].keys()),
     )
@@ -2804,7 +2809,19 @@ async def dashboard(request: Request) -> HTMLResponse:
 
 @app.get("/api/messages")
 async def list_messages(limit: int = Query(default=12, ge=1, le=100)) -> JSONResponse:
-    return JSONResponse({"items": recent_messages(limit)})
+    items = recent_messages(limit)
+    by_source: dict[str, int] = {}
+    for item in items:
+        source = item.get("source") or "unknown"
+        by_source[source] = by_source.get(source, 0) + 1
+    logger.info(
+        "Dashboard raw messages served | database_path=%s | limit=%s | returned=%s | sources=%s",
+        settings.database_path,
+        limit,
+        len(items),
+        by_source,
+    )
+    return JSONResponse({"items": items, "sources": by_source, "database_path": str(settings.database_path)})
 
 
 @app.get("/api/threads")
@@ -3055,10 +3072,12 @@ async def dashboard_messages() -> JSONResponse:
     with closing(get_connection()) as connection:
         metrics = dashboard_message_metrics(connection)
     logger.info(
-        "Dashboard messages served | recent_high_priority=%s | top_opportunities=%s | message_volume_days=%s",
+        "Dashboard messages served | database_path=%s | recent_high_priority=%s | top_opportunities=%s | message_volume_days=%s | sources=%s",
+        settings.database_path,
         len(metrics["recent_high_priority"]),
         len(metrics["top_opportunities"]),
         len(metrics["message_volume"]),
+        metrics["by_source"],
     )
     return JSONResponse(
         {

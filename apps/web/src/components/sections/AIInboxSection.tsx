@@ -11,6 +11,8 @@ type AIInboxSectionProps = {
 
 type SubmissionState = {
   reply_text: string;
+  whatsapp_handoff?: boolean;
+  whatsapp_url?: string;
 };
 
 function isSubmissionState(value: InboxSuccessResponse["message"]): value is SubmissionState {
@@ -49,6 +51,8 @@ const copy: Record<
     reply: string;
     replyHint: string;
     idleHint: string;
+    whatsappCta: string;
+    whatsappHint: string;
   }
 > = {
   en: {
@@ -71,6 +75,8 @@ const copy: Record<
     reply: "Reply suggestion",
     replyHint: "If helpful, you can use this reply as a starting point for a follow-up conversation.",
     idleHint: "You will see a confirmation here once your message has been processed.",
+    whatsappCta: "Continue on WhatsApp",
+    whatsappHint: "If you prefer a direct follow-up, you can continue the conversation on WhatsApp.",
   },
   es: {
     eyebrow: "Formulario de contacto",
@@ -92,6 +98,8 @@ const copy: Record<
     reply: "Respuesta sugerida",
     replyHint: "Si te ayuda, puedes usar esta respuesta como punto de partida para continuar la conversacion.",
     idleHint: "Aqui veras una confirmacion cuando tu mensaje se haya procesado.",
+    whatsappCta: "Continuar por WhatsApp",
+    whatsappHint: "Si prefieres un seguimiento directo, puedes continuar la conversacion por WhatsApp.",
   },
 };
 
@@ -168,7 +176,18 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
       startTransition(() => {
         setResult({
           reply_text: responseMessage.reply_text,
+          whatsapp_handoff: responseMessage.whatsapp_handoff === true,
+          whatsapp_url:
+            typeof responseMessage.whatsapp_url === "string" && responseMessage.whatsapp_url
+              ? responseMessage.whatsapp_url
+              : undefined,
         });
+        if (responseMessage.whatsapp_handoff === true && typeof responseMessage.whatsapp_url === "string") {
+          console.debug("[AIInboxSection] form CTA rendered", {
+            whatsappHandoff: true,
+            whatsappUrl: responseMessage.whatsapp_url,
+          });
+        }
         setForm(initialForm);
       });
     } catch (submissionError) {
@@ -308,6 +327,20 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
                   <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">{text.reply}</p>
                   <p className="mt-3 text-sm leading-6 text-slate-200">{result.reply_text}</p>
                 </div>
+                {result.whatsapp_handoff && result.whatsapp_url ? (
+                  <div className="card-surface-soft mt-4 rounded-[1.3rem] p-4">
+                    <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">WhatsApp</p>
+                    <p className="mt-3 text-sm leading-6 text-slate-300">{text.whatsappHint}</p>
+                    <a
+                      href={result.whatsapp_url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="mt-4 inline-flex rounded-full border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20 hover:text-white"
+                    >
+                      {text.whatsappCta}
+                    </a>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>

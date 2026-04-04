@@ -119,6 +119,13 @@ function makeMessage(role: ChatRole, content: string, id?: string): ChatMessage 
   };
 }
 
+function withWhatsAppCta(content: string, whatsappUrl: string | null) {
+  if (!whatsappUrl || content.includes(whatsappUrl)) {
+    return content;
+  }
+  return `${content}\n${whatsappUrl}`;
+}
+
 function getInitialMessages(locale: Locale) {
   return [makeMessage("assistant", copy[locale].welcome, `assistant-welcome-${locale}`)];
 }
@@ -247,8 +254,15 @@ export default function ChatWidget() {
     setIsOpen(true);
 
     try {
-      const reply = await sendChatMessage(trimmed, history, locale);
-      setMessages((current) => [...current, makeMessage("assistant", reply)]);
+      const result = await sendChatMessage(trimmed, history, locale);
+      const assistantMessage = withWhatsAppCta(result.reply, result.whatsappUrl);
+      if (result.whatsappHandoff && result.whatsappUrl) {
+        console.debug("[ChatWidget] chat CTA rendered", {
+          whatsappHandoff: result.whatsappHandoff,
+          whatsappUrl: result.whatsappUrl,
+        });
+      }
+      setMessages((current) => [...current, makeMessage("assistant", assistantMessage)]);
     } catch {
       setMessages((current) => [...current, makeMessage("assistant", text.fallbackError)]);
     } finally {

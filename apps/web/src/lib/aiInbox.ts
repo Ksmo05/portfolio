@@ -10,6 +10,8 @@ type ChatReplyResponse = {
     | {
         reply_text?: string;
         reply?: string;
+        whatsapp_handoff?: boolean;
+        whatsapp_url?: string;
       };
 };
 
@@ -34,6 +36,12 @@ export type ChatHistoryItem = {
 };
 
 export type ChatLocale = "en" | "es";
+
+export type ChatSendResult = {
+  reply: string;
+  whatsappHandoff: boolean;
+  whatsappUrl: string | null;
+};
 
 function normalizeInboxUrl(value: string) {
   return value.replace(/\/+$/, "");
@@ -112,7 +120,23 @@ export async function sendChatMessage(message: string, history: ChatHistoryItem[
     throw new Error("chat-empty-response");
   }
 
-  return reply;
+  const whatsappHandoff =
+    typeof data?.message === "object" &&
+    data?.message !== null &&
+    data.message.whatsapp_handoff === true;
+  const whatsappUrl =
+    typeof data?.message === "object" &&
+    data?.message !== null &&
+    typeof data.message.whatsapp_url === "string" &&
+    data.message.whatsapp_url
+      ? data.message.whatsapp_url
+      : null;
+
+  return {
+    reply,
+    whatsappHandoff,
+    whatsappUrl,
+  } satisfies ChatSendResult;
 }
 
 export { AI_INBOX_API_URL };
