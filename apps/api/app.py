@@ -214,7 +214,7 @@ def detect_language_from_history(messages: list[dict[str, str]] | None) -> str |
     return "es" if es_total > en_total else "en"
 
 
-def resolve_chat_language(submission: InboxSubmission) -> str:
+def resolve_chat_language(submission: "InboxSubmission") -> str:
     normalized_message = normalize_match_text(submission.message)
     explicit = explicit_chat_language(normalized_message)
     if explicit:
