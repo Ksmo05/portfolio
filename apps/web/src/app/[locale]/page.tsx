@@ -1,4 +1,4 @@
-﻿import Image from "next/image";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BlogCard from "@/components/cards/BlogCard";
@@ -161,35 +161,35 @@ export default async function LocalizedHomePage({ params }: PageProps) {
   const education = getEducationEntries(locale);
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-0 px-6 py-10 md:py-12">
-      <section className="grid items-center gap-12 py-20 lg:grid-cols-[1.1fr_0.9fr]">
+    <div className="page-shell space-y-0 py-10 md:py-14">
+      <section className="grid items-center gap-12 py-16 md:gap-16 md:py-24 lg:grid-cols-[1.08fr_0.92fr]">
         <div className="animate-fade-up">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">{site.name} · {site.location}</p>
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900 dark:text-white md:text-6xl">{text.heroTitle}</h1>
-          <p className="mt-4 max-w-2xl text-xl text-slate-700 dark:text-slate-200">{text.heroSubtitle}</p>
-          <p className="mt-6 max-w-2xl text-lg text-slate-600 dark:text-slate-300">{getShortBio(locale)}</p>
+          <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">{site.name} · {site.location}</p>
+          <h1 className="mt-6 max-w-4xl text-5xl font-semibold tracking-[-0.05em] text-white md:text-7xl md:leading-[0.96]">{text.heroTitle}</h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200 md:text-2xl md:leading-9">{text.heroSubtitle}</p>
+          <p className="text-muted mt-6 max-w-2xl text-base leading-8 md:text-lg">{getShortBio(locale)}</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href={`/${locale}/experience`} className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">{text.viewExperience}</Link>
-            <Link href={`/${locale}/professional-profile`} className="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-600 dark:border-slate-600 dark:text-slate-200">{text.profileButton}</Link>
+            <Link href={`/${locale}/experience`} className="button-primary rounded-full px-5 py-3 text-sm font-semibold">{text.viewExperience}</Link>
+            <Link href={`/${locale}/professional-profile`} className="button-secondary rounded-full px-5 py-3 text-sm font-semibold">{text.profileButton}</Link>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="mx-auto w-fit rounded-full bg-gradient-to-b from-slate-200 to-slate-300 p-1.5 dark:from-slate-700 dark:to-slate-600">
-            <div className="h-52 w-52 overflow-hidden rounded-full border-4 border-white shadow-xl dark:border-slate-900">
+          <div className="mx-auto w-fit rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.03))] p-2 shadow-[0_30px_80px_-36px_rgba(2,6,23,0.95)]">
+            <div className="h-56 w-56 overflow-hidden rounded-full border border-white/14 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] md:h-64 md:w-64">
               <Image src="/profile.jpg" alt="Professional portrait of Carlos San Miguel Ortega" width={320} height={320} className="h-full w-full object-cover" priority />
             </div>
           </div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-700 dark:bg-slate-900">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">{text.toolsTitle}</p>
-            <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">{text.toolsDesc}</p>
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="section-shell rounded-[2rem] p-8">
+            <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">{text.toolsTitle}</p>
+            <p className="text-muted mt-4 text-sm leading-6">{text.toolsDesc}</p>
+            <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {tools.map((tool) => (
-                <div key={tool.slug} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 p-2">
-                  <div className="flex items-center justify-center w-16 h-16 rounded-lg bg-white/5 border border-white/10">
-                    <Image src={tool.logo} alt={`${tool.name} logo`} width={48} height={48} className="w-12 h-12 object-contain" />
+                <div key={tool.slug} className="rounded-[1.2rem] border border-white/8 bg-white/[0.03] p-3">
+                  <div className="flex h-16 items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03]">
+                    <Image src={tool.logo} alt={`${tool.name} logo`} width={48} height={48} className="h-12 w-12 object-contain" />
                   </div>
-                  <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{tool.name}</span>
+                  <span className="mt-3 block text-xs font-medium text-slate-200">{tool.name}</span>
                 </div>
               ))}
             </div>
@@ -199,7 +199,7 @@ export default async function LocalizedHomePage({ params }: PageProps) {
 
       <AIInboxSection locale={locale} />
 
-      <section className="py-20">
+      <section className="py-20 md:py-24">
         <SectionHeader eyebrow={locale === "es" ? "Experiencia" : "Experience"} title={text.experienceTitle} description={text.experienceDesc} />
         <div className="grid gap-6 md:grid-cols-2">
           {experience.map((item) => (
@@ -208,16 +208,16 @@ export default async function LocalizedHomePage({ params }: PageProps) {
         </div>
       </section>
 
-      <section className="rounded-2xl bg-neutral-50 px-6 py-20 dark:bg-neutral-900">
+      <section className="section-shell-muted rounded-[2rem] px-6 py-20 md:px-8">
         <SectionHeader eyebrow={locale === "es" ? "Areas Clave" : "Key Areas"} title={text.capabilitiesTitle} description={text.capabilitiesDesc} />
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
           {text.capabilities.map((capability) => (
-            <article key={capability} className="rounded-2xl border border-slate-200 bg-white p-5 text-sm font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">{capability}</article>
+            <article key={capability} className="card-surface-soft rounded-[1.35rem] p-5 text-sm font-medium text-slate-200">{capability}</article>
           ))}
         </div>
       </section>
 
-      <section className="py-20">
+      <section className="py-20 md:py-24">
         <SectionHeader eyebrow={locale === "es" ? "Proyectos" : "Projects"} title={text.projectsTitle} description={text.projectsDesc} />
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
@@ -226,36 +226,36 @@ export default async function LocalizedHomePage({ params }: PageProps) {
         </div>
       </section>
 
-      <section className="rounded-2xl bg-neutral-50 px-6 py-20 dark:bg-neutral-900">
+      <section className="section-shell-muted rounded-[2rem] px-6 py-20 md:px-8">
         <SectionHeader eyebrow={locale === "es" ? "Formacion" : "Education"} title={text.educationTitle} description={text.educationDesc} />
         <div className="grid gap-6 md:grid-cols-3">
           {education.map((entry) => (
-            <article key={entry.title} className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-slate-900">
-              <div className="flex h-16 items-center justify-center rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+            <article key={entry.title} className="card-surface-soft rounded-[1.6rem] p-6">
+              <div className="flex h-16 items-center justify-center rounded-[1rem] border border-white/8 bg-white p-3 shadow-sm">
                 <Image src={entry.logo} alt={entry.logoAlt} width={180} height={36} className="max-h-full max-w-full object-contain" />
               </div>
-              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300">{entry.institutionType}</p>
-              <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">{entry.institution}</p>
-              <h3 className="mt-3 text-lg font-semibold text-slate-900 dark:text-white">{entry.title}</h3>
+              <p className="eyebrow-label mt-4 text-[0.72rem] font-semibold uppercase">{entry.institutionType}</p>
+              <p className="mt-2 text-sm font-medium text-slate-300">{entry.institution}</p>
+              <h3 className="mt-3 text-lg font-semibold text-white">{entry.title}</h3>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="py-20">
+      <section className="py-20 md:py-24">
         <SectionHeader eyebrow={text.thinkingTitle} title={text.thinkingTitle} description={text.thinkingDesc} />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {text.thinkingCards.map((card) => (
-            <article key={card.title} className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-slate-900">
-              <p className="text-xl">{card.icon}</p>
-              <h3 className="mt-3 text-xl font-semibold text-slate-900 dark:text-white">{card.title}</h3>
-              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{card.body}</p>
+            <article key={card.title} className="card-surface-soft rounded-[1.6rem] p-6">
+              <p className="text-xl text-slate-300">{card.icon}</p>
+              <h3 className="mt-3 text-xl font-semibold text-white">{card.title}</h3>
+              <p className="text-muted mt-3 text-sm leading-6">{card.body}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="py-24">
+      <section className="py-24 md:py-28">
         <SectionHeader eyebrow="Blog" title={text.blogTitle} description={text.blogDesc} />
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => (
@@ -266,4 +266,3 @@ export default async function LocalizedHomePage({ params }: PageProps) {
     </div>
   );
 }
-

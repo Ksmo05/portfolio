@@ -119,45 +119,45 @@ export default async function ProfessionalProfilePage({ params }: Props) {
   const text = copy[locale];
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-12 px-6 py-14 md:py-20">
+    <div className="page-shell max-w-5xl space-y-12 py-14 md:py-20">
       <SectionHeader eyebrow={text.eyebrow} title={text.title} description={text.desc} />
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-7 dark:border-slate-700 dark:bg-slate-900">
-        <h2 className="text-2xl font-semibold">{text.statementTitle}</h2>
-        <p className="mt-4 text-slate-600 dark:text-slate-300">{text.statement}</p>
-        <p className="mt-3 text-slate-600 dark:text-slate-300">{text.statement2}</p>
+      <section className="section-shell rounded-[2rem] p-7 md:p-8">
+        <h2 className="text-2xl font-semibold text-white">{text.statementTitle}</h2>
+        <p className="text-muted mt-4 leading-7">{text.statement}</p>
+        <p className="text-muted mt-3 leading-7">{text.statement2}</p>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-7 dark:border-slate-700 dark:bg-slate-900">
-        <h2 className="text-2xl font-semibold">{text.focusTitle}</h2>
-        <ul className="mt-4 grid gap-3 text-sm text-slate-600 dark:text-slate-300 md:grid-cols-2">
+      <section className="section-shell rounded-[2rem] p-7 md:p-8">
+        <h2 className="text-2xl font-semibold text-white">{text.focusTitle}</h2>
+        <ul className="mt-4 grid gap-3 text-sm text-slate-300 md:grid-cols-2">
           {text.focus.map((item) => (
-            <li key={item} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">{item}</li>
+            <li key={item} className="card-surface-soft rounded-[1.2rem] px-4 py-3">{item}</li>
           ))}
         </ul>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-7 dark:border-slate-700 dark:bg-slate-900">
-        <h2 className="text-2xl font-semibold">{text.contextTitle}</h2>
-        <ul className="mt-4 space-y-2 text-slate-600 dark:text-slate-300">
+      <section className="section-shell rounded-[2rem] p-7 md:p-8">
+        <h2 className="text-2xl font-semibold text-white">{text.contextTitle}</h2>
+        <ul className="text-muted mt-4 space-y-2 leading-7">
           {text.context.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-7 dark:border-slate-700 dark:bg-slate-900">
-        <h2 className="text-2xl font-semibold">{text.educationTitle}</h2>
-        <ul className="mt-4 space-y-2 text-slate-600 dark:text-slate-300">
+      <section className="section-shell rounded-[2rem] p-7 md:p-8">
+        <h2 className="text-2xl font-semibold text-white">{text.educationTitle}</h2>
+        <ul className="text-muted mt-4 space-y-2 leading-7">
           {text.education.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-7 dark:border-slate-700 dark:bg-slate-800/60">
-        <h2 className="text-xl font-semibold">{text.closingTitle}</h2>
-        <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{text.closing}</p>
+      <section className="section-shell-muted rounded-[2rem] p-7 md:p-8">
+        <h2 className="text-xl font-semibold text-white">{text.closingTitle}</h2>
+        <p className="text-muted mt-3 text-sm leading-7">{text.closing}</p>
       </section>
     </div>
   );

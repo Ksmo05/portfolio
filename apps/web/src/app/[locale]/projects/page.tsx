@@ -54,13 +54,13 @@ export default async function ProjectsPage({ params }: Props) {
   const projects = getProjects(locale);
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-10 px-6 py-14 md:py-20">
+    <div className="page-shell space-y-10 py-14 md:py-20">
       <SectionHeader eyebrow={text.eyebrow} title={text.title} description={text.desc} />
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
-        <div className="grid gap-4 text-sm text-slate-600 dark:text-slate-300 md:grid-cols-3">
+      <section className="section-shell-muted rounded-[2rem] p-6 md:p-8">
+        <div className="grid gap-4 text-sm text-slate-300 md:grid-cols-3">
           {text.bullets.map((item) => (
-            <p key={item} className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800">{item}</p>
+            <p key={item} className="card-surface-soft rounded-[1.35rem] p-4">{item}</p>
           ))}
         </div>
       </section>

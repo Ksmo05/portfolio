@@ -14,7 +14,7 @@ export const metadata: Metadata = buildMetadata({
 
 export default function ExperiencePage() {
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-10 px-6 py-14 md:py-20">
+    <div className="page-shell space-y-10 py-14 md:py-20">
       <SectionHeader
         eyebrow="Experience"
         title="Professional Experience"
@@ -23,20 +23,20 @@ export default function ExperiencePage() {
 
       <ExperienceTimeline entries={experienceEntries} />
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
-        <p className="text-sm text-slate-600 dark:text-slate-300">
+      <div className="section-shell rounded-[2rem] p-6 md:p-8">
+        <p className="text-muted text-sm leading-7">
           This timeline brings together roles focused on operational support, documentation, reporting, customer or user assistance and coordination across different business environments.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
             href="/professional-profile"
-            className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+            className="button-primary rounded-full px-5 py-2.5 text-sm font-semibold"
           >
             View Professional Profile
           </Link>
           <Link
             href="/education"
-            className="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-600 dark:border-slate-600 dark:text-slate-200"
+            className="button-secondary rounded-full px-5 py-2.5 text-sm font-semibold"
           >
             View Education
           </Link>

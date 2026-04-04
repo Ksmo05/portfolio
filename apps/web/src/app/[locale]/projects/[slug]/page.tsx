@@ -70,32 +70,32 @@ export default async function ProjectDetailPage({ params }: Props) {
   const text = copy[locale];
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-10 px-6 py-14 md:py-20">
-      <Link href={`/${locale}/projects`} className="text-sm font-medium text-sky-700 hover:text-sky-900 dark:text-sky-300 dark:hover:text-sky-100">{text.back}</Link>
+    <div className="page-shell max-w-5xl space-y-10 py-14 md:py-20">
+      <Link href={`/${locale}/projects`} className="eyebrow-label text-sm font-medium hover:text-white">{text.back}</Link>
 
-      <header className="overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-        <div className="relative aspect-[16/8] w-full border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+      <header className="section-shell overflow-hidden rounded-[2rem]">
+        <div className="relative aspect-[16/8] w-full border-b border-white/8 bg-slate-950/40">
           <Image src={project.imageSrc} alt={project.imageAlt} fill priority sizes="(max-width: 1024px) 100vw, 1024px" className="rounded-lg object-cover" />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/30 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#020617]/80 via-[#020617]/18 to-transparent" />
         </div>
 
-        <div className="space-y-5 p-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">{text.project}</p>
-          <h1 className="text-4xl font-semibold tracking-tight text-slate-900 dark:text-white md:text-5xl">{project.title}</h1>
-          <p className="max-w-3xl text-slate-600 dark:text-slate-300">{project.summary}</p>
+        <div className="space-y-5 p-8 md:p-10">
+          <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">{text.project}</p>
+          <h1 className="text-4xl font-semibold tracking-[-0.04em] text-white md:text-5xl">{project.title}</h1>
+          <p className="text-muted max-w-3xl leading-7">{project.summary}</p>
 
           <div className="flex flex-wrap gap-2">
             {project.tags.map((tag) => (
-              <span key={tag} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">{tag}</span>
+              <span key={tag} className="pill-chip rounded-full px-3 py-1 text-xs font-medium">{tag}</span>
             ))}
           </div>
         </div>
       </header>
 
       {project.videoSrc ? (
-        <section className="rounded-2xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-slate-900">
-          <h2 className="text-2xl font-semibold">{text.video}</h2>
-          <div className="mx-auto my-8 w-full max-w-3xl overflow-hidden rounded-xl border border-slate-200 bg-black shadow-sm dark:border-slate-700">
+        <section className="section-shell rounded-[2rem] p-8 md:p-10">
+          <h2 className="text-2xl font-semibold text-white">{text.video}</h2>
+          <div className="mx-auto my-8 w-full max-w-3xl overflow-hidden rounded-[1.25rem] border border-white/8 bg-black shadow-sm">
             <video
               className="aspect-video w-full object-cover"
               controls
@@ -109,15 +109,15 @@ export default async function ProjectDetailPage({ params }: Props) {
         </section>
       ) : null}
 
-      <section className="space-y-8 rounded-3xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-slate-900">
+      <section className="section-shell space-y-8 rounded-[2rem] p-8 md:p-10">
         <div>
-          <h2 className="text-2xl font-semibold">{text.overview}</h2>
-          <p className="mt-2 text-slate-600 dark:text-slate-300">{project.overview}</p>
+          <h2 className="text-2xl font-semibold text-white">{text.overview}</h2>
+          <p className="text-muted mt-3 leading-7">{project.overview}</p>
         </div>
 
         <div>
-          <h2 className="text-2xl font-semibold">{text.activities}</h2>
-          <ul className="mt-3 space-y-2 text-slate-600 dark:text-slate-300">
+          <h2 className="text-2xl font-semibold text-white">{text.activities}</h2>
+          <ul className="text-muted mt-3 space-y-2 leading-7">
             {project.keyActivities.map((item) => (
               <li key={item}>• {item}</li>
             ))}
@@ -125,7 +125,7 @@ export default async function ProjectDetailPage({ params }: Props) {
         </div>
 
         <div>
-          <h2 className="text-2xl font-semibold">{text.tools}</h2>
+          <h2 className="text-2xl font-semibold text-white">{text.tools}</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             {project.tools.map((tool) => (
               <SkillBadge key={tool} label={tool} />
@@ -133,9 +133,9 @@ export default async function ProjectDetailPage({ params }: Props) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800">
-          <h2 className="text-xl font-semibold">{text.impact}</h2>
-          <p className="mt-2 text-slate-600 dark:text-slate-300">{project.operationalImpact}</p>
+        <div className="section-shell-muted rounded-[1.5rem] p-5">
+          <h2 className="text-xl font-semibold text-white">{text.impact}</h2>
+          <p className="text-muted mt-2 leading-7">{project.operationalImpact}</p>
         </div>
       </section>
     </div>

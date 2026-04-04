@@ -16,7 +16,7 @@ export default async function BlogPage() {
   const { tags, categories } = await getBlogFilters();
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-14 md:py-20">
+    <div className="page-shell py-14 md:py-20">
       <SectionHeader
         eyebrow="Knowledge Hub"
         title="Operations and Reporting Blog"

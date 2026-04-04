@@ -18,20 +18,21 @@ export default function CtaSection({
   secondaryHref,
 }: CtaSectionProps) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-gradient-to-r from-sky-50 to-cyan-50 p-8 dark:border-slate-700 dark:from-slate-900 dark:to-slate-800">
-      <h3 className="text-2xl font-semibold text-slate-900 dark:text-white">{title}</h3>
-      <p className="mt-3 max-w-2xl text-slate-600 dark:text-slate-300">{description}</p>
+    <section className="section-shell relative overflow-hidden rounded-[2rem] p-8 md:p-10">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(191,219,254,0.16),transparent_55%)]" />
+      <h3 className="relative text-2xl font-semibold tracking-[-0.03em] text-white md:text-3xl">{title}</h3>
+      <p className="text-muted relative mt-4 max-w-2xl text-base leading-7">{description}</p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link
           href={primaryHref}
-          className="rounded-full bg-slate-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+          className="button-primary rounded-full px-5 py-2.5 text-sm font-medium"
         >
           {primaryLabel}
         </Link>
         {secondaryLabel && secondaryHref ? (
           <Link
             href={secondaryHref}
-            className="rounded-full border border-slate-300 px-5 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-500 dark:border-slate-600 dark:text-slate-200"
+            className="button-secondary rounded-full px-5 py-2.5 text-sm font-medium"
           >
             {secondaryLabel}
           </Link>

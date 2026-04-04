@@ -51,14 +51,14 @@ export default async function ExperiencePage({ params }: Props) {
   const entries = getExperienceEntries(locale);
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-10 px-6 py-14 md:py-20">
+    <div className="page-shell space-y-10 py-14 md:py-20">
       <SectionHeader eyebrow={text.eyebrow} title={text.title} description={text.desc} />
       <ExperienceTimeline entries={entries} />
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
-        <p className="text-sm text-slate-600 dark:text-slate-300">{text.panel}</p>
+      <div className="section-shell rounded-[2rem] p-6 md:p-8">
+        <p className="text-muted text-sm leading-7">{text.panel}</p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Link href={`/${locale}/professional-profile`} className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">{text.btn1}</Link>
-          <Link href={`/${locale}/education`} className="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-600 dark:border-slate-600 dark:text-slate-200">{text.btn2}</Link>
+          <Link href={`/${locale}/professional-profile`} className="button-primary rounded-full px-5 py-2.5 text-sm font-semibold">{text.btn1}</Link>
+          <Link href={`/${locale}/education`} className="button-secondary rounded-full px-5 py-2.5 text-sm font-semibold">{text.btn2}</Link>
         </div>
       </div>
     </div>

@@ -46,9 +46,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${manrope.variable} ${spaceGrotesk.variable} bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-50`}>
+      <body className={`${manrope.variable} ${spaceGrotesk.variable} bg-[#060816] text-slate-50 antialiased`}>
         <div className="relative min-h-screen overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.14),_transparent_45%),radial-gradient(circle_at_bottom_left,_rgba(20,184,166,0.12),_transparent_40%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.12),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(244,114,182,0.08),_transparent_18%),radial-gradient(circle_at_bottom_left,_rgba(56,189,248,0.1),_transparent_26%)]" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),transparent)]" />
           <div className="relative flex min-h-screen flex-col">
             <Navbar />
             <main className="flex-1">{children}</main>

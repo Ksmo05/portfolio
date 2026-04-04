@@ -42,11 +42,11 @@ export default function SkillBadge({ label }: SkillBadgeProps) {
 
   return (
     <span
-      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+      className="pill-chip inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium shadow-[0_14px_35px_-24px_rgba(15,23,42,0.95)]"
       aria-label={icon || isFallbackTool ? `${label} logo` : label}
     >
       {icon ? (
-        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/8">
           <svg
             viewBox="0 0 24 24"
             aria-hidden="true"
@@ -57,7 +57,7 @@ export default function SkillBadge({ label }: SkillBadgeProps) {
           </svg>
         </span>
       ) : isFallbackTool ? (
-        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-100 px-1 text-[10px] font-semibold tracking-wide text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white/8 px-1 text-[10px] font-semibold tracking-wide text-slate-100">
           {getInitials(label)}
         </span>
       ) : null}

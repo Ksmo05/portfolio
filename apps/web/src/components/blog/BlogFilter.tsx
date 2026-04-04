@@ -47,13 +47,13 @@ export default function BlogFilter({ posts, tags, categories, locale = "en" }: B
 
   return (
     <div>
-      <div className="mb-8 grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900 md:grid-cols-2">
-        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+      <div className="section-shell-muted mb-10 grid gap-4 rounded-[1.75rem] p-5 md:grid-cols-2 md:p-6">
+        <label className="text-sm font-medium text-slate-200">
           {copy.filterCategory}
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+            className="mt-2 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3 text-sm text-slate-100 outline-none"
           >
             <option value={copy.all}>{copy.all}</option>
             {categories.map((category) => (
@@ -64,12 +64,12 @@ export default function BlogFilter({ posts, tags, categories, locale = "en" }: B
           </select>
         </label>
 
-        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+        <label className="text-sm font-medium text-slate-200">
           {copy.filterTag}
           <select
             value={selectedTag}
             onChange={(e) => setSelectedTag(e.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
+            className="mt-2 w-full rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3 text-sm text-slate-100 outline-none"
           >
             <option value={copy.all}>{copy.all}</option>
             {tags.map((tag) => (
@@ -82,7 +82,7 @@ export default function BlogFilter({ posts, tags, categories, locale = "en" }: B
       </div>
 
       {filteredPosts.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-600 dark:border-slate-700 dark:text-slate-300">
+        <p className="section-shell-muted rounded-[1.75rem] border border-dashed p-8 text-center text-slate-300">
           {copy.noMatch}
         </p>
       ) : (

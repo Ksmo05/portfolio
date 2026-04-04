@@ -45,19 +45,19 @@ export default async function EducationPage({ params }: Props) {
   const entries = getEducationEntries(locale);
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-10 px-6 py-14 md:py-20">
+    <div className="page-shell space-y-10 py-14 md:py-20">
       <SectionHeader eyebrow={text.eyebrow} title={text.title} description={text.desc} />
 
       <div className="grid gap-6 md:grid-cols-3">
         {entries.map((entry) => (
-          <article key={entry.title} className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-slate-900">
-            <div className="bg-white rounded-lg p-3 flex items-center justify-center h-16">
+          <article key={entry.title} className="card-surface rounded-[1.6rem] p-6">
+            <div className="flex h-16 items-center justify-center rounded-[1rem] bg-white p-3">
               <Image src={entry.logo} alt={entry.logoAlt} width={240} height={64} className="object-contain max-h-full max-w-full h-full w-auto" />
             </div>
-            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300">{entry.institutionType}</p>
-            <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">{entry.institution}</p>
-            <h2 className="mt-3 text-lg font-semibold text-slate-900 dark:text-white">{entry.title}</h2>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{entry.description}</p>
+            <p className="eyebrow-label mt-4 text-[0.72rem] font-semibold uppercase">{entry.institutionType}</p>
+            <p className="mt-2 text-sm font-medium text-slate-300">{entry.institution}</p>
+            <h2 className="mt-3 text-lg font-semibold text-white">{entry.title}</h2>
+            <p className="text-muted mt-3 text-sm leading-6">{entry.description}</p>
           </article>
         ))}
       </div>

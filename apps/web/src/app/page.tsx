@@ -1,4 +1,4 @@
-﻿import Image from "next/image";
+import Image from "next/image";
 import Link from "next/link";
 import BlogCard from "@/components/cards/BlogCard";
 import ExperienceSnapshotCard from "@/components/cards/ExperienceSnapshotCard";
@@ -24,38 +24,32 @@ export default async function HomePage() {
   const featuredProjects = projects.slice(0, 3);
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-0 px-6 py-10 md:py-12">
-      <section className="grid items-center gap-12 py-20 lg:grid-cols-[1.1fr_0.9fr]">
+    <div className="page-shell space-y-0 py-10 md:py-14">
+      <section className="grid items-center gap-12 py-16 md:gap-16 md:py-24 lg:grid-cols-[1.08fr_0.92fr]">
         <div className="animate-fade-up">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+          <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">
             {siteConfig.name} · {siteConfig.location}
           </p>
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900 dark:text-white md:text-6xl">
+          <h1 className="mt-6 max-w-4xl text-5xl font-semibold tracking-[-0.05em] text-white md:text-7xl md:leading-[0.96]">
             Operations, data and digital support professional focused on process improvement, reporting and practical AI.
           </h1>
-          <p className="mt-4 max-w-2xl text-xl text-slate-700 dark:text-slate-200">
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200 md:text-2xl md:leading-9">
             Corporate operations, process coordination, dashboards and digital workflows with a practical business focus.
           </p>
-          <p className="mt-6 max-w-2xl text-lg text-slate-600 dark:text-slate-300">{shortBio}</p>
+          <p className="text-muted mt-6 max-w-2xl text-base leading-8 md:text-lg">{shortBio}</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/experience"
-              className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
-            >
+            <Link href="/experience" className="button-primary rounded-full px-5 py-3 text-sm font-semibold">
               View Experience
             </Link>
-            <Link
-              href="/professional-profile"
-              className="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-600 dark:border-slate-600 dark:text-slate-200"
-            >
+            <Link href="/professional-profile" className="button-secondary rounded-full px-5 py-3 text-sm font-semibold">
               Professional Profile
             </Link>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="mx-auto w-fit rounded-full bg-gradient-to-b from-slate-200 to-slate-300 p-1.5 dark:from-slate-700 dark:to-slate-600">
-            <div className="h-52 w-52 overflow-hidden rounded-full border-4 border-white shadow-xl dark:border-slate-900">
+          <div className="mx-auto w-fit rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.03))] p-2 shadow-[0_30px_80px_-36px_rgba(2,6,23,0.95)]">
+            <div className="h-56 w-56 overflow-hidden rounded-full border border-white/14 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] md:h-64 md:w-64">
               <Image
                 src="/profile.jpg"
                 alt="Professional portrait of Carlos San Miguel Ortega"
@@ -66,18 +60,18 @@ export default async function HomePage() {
               />
             </div>
           </div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-700 dark:bg-slate-900">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Tools used in daily work</p>
-            <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
+          <div className="section-shell rounded-[2rem] p-8">
+            <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">Tools used in daily work</p>
+            <p className="text-muted mt-4 text-sm leading-6">
               SAP, Qlik Sense and Excel support my work in operations, reporting follow-up and process visibility.
             </p>
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {tools.map((tool) => (
-                <div key={tool.slug} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 p-2">
-                  <div className="flex items-center justify-center w-16 h-16 rounded-lg bg-white/5 border border-white/10">
-                    <Image src={tool.logo} alt={`${tool.name} logo`} width={48} height={48} className="w-12 h-12 object-contain" />
+                <div key={tool.slug} className="rounded-[1.2rem] border border-white/8 bg-white/[0.03] p-3">
+                  <div className="flex h-16 items-center justify-center rounded-[1rem] border border-white/8 bg-white/[0.03]">
+                    <Image src={tool.logo} alt={`${tool.name} logo`} width={48} height={48} className="h-12 w-12 object-contain" />
                   </div>
-                  <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{tool.name}</span>
+                  <span className="mt-3 block text-xs font-medium text-slate-200">{tool.name}</span>
                 </div>
               ))}
             </div>
@@ -85,7 +79,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="py-20">
+      <section className="py-20 md:py-24">
         <SectionHeader
           eyebrow="Experience"
           title="Professional Experience Snapshot"
@@ -104,28 +98,22 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="rounded-2xl bg-neutral-50 px-6 py-20 dark:bg-neutral-900">
+      <section className="section-shell-muted rounded-[2rem] px-6 py-20 md:px-8">
         <SectionHeader
           eyebrow="Key Areas"
           title="Operations, data and digital focus"
           description="Core areas that define my current profile in corporate environments and practical digital work."
         />
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
-          {[
-            "Operations",
-            "Procurement support",
-            "Reporting",
-            "KPI / Dashboards",
-            "Digital workflows",
-          ].map((capability) => (
-            <article key={capability} className="rounded-2xl border border-slate-200 bg-white p-5 text-sm font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+          {["Operations", "Procurement support", "Reporting", "KPI / Dashboards", "Digital workflows"].map((capability) => (
+            <article key={capability} className="card-surface-soft rounded-[1.35rem] p-5 text-sm font-medium text-slate-200">
               {capability}
             </article>
           ))}
         </div>
       </section>
 
-      <section className="py-20">
+      <section className="py-20 md:py-24">
         <SectionHeader
           eyebrow="Projects"
           title="Applied Digital Projects"
@@ -138,7 +126,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="rounded-2xl bg-neutral-50 px-6 py-20 dark:bg-neutral-900">
+      <section className="section-shell-muted rounded-[2rem] px-6 py-20 md:px-8">
         <SectionHeader
           eyebrow="Education"
           title="Academic Background"
@@ -146,57 +134,57 @@ export default async function HomePage() {
         />
         <div className="grid gap-6 md:grid-cols-3">
           {educationEntries.map((entry) => (
-            <article key={entry.title} className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-slate-900">
-              <div className="flex h-16 items-center justify-center rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+            <article key={entry.title} className="card-surface-soft rounded-[1.6rem] p-6">
+              <div className="flex h-16 items-center justify-center rounded-[1rem] border border-white/8 bg-white p-3 shadow-sm">
                 <Image src={entry.logo} alt={entry.logoAlt} width={180} height={36} className="max-h-full max-w-full object-contain" />
               </div>
-              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300">{entry.institutionType}</p>
-              <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">{entry.institution}</p>
-              <h3 className="mt-3 text-lg font-semibold text-slate-900 dark:text-white">{entry.title}</h3>
+              <p className="eyebrow-label mt-4 text-[0.72rem] font-semibold uppercase">{entry.institutionType}</p>
+              <p className="mt-2 text-sm font-medium text-slate-300">{entry.institution}</p>
+              <h3 className="mt-3 text-lg font-semibold text-white">{entry.title}</h3>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="py-20">
+      <section className="py-20 md:py-24">
         <SectionHeader
           eyebrow="Interests"
           title="Current areas of interest"
           description="Topics that connect my professional experience with practical digital improvement."
         />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <article className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-slate-900">
-            <p className="text-xl">OPS</p>
-            <h3 className="mt-3 text-xl font-semibold text-slate-900 dark:text-white">Operations and business processes</h3>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+          <article className="card-surface-soft rounded-[1.6rem] p-6">
+            <p className="text-xl text-slate-300">OPS</p>
+            <h3 className="mt-3 text-xl font-semibold text-white">Operations and business processes</h3>
+            <p className="text-muted mt-3 text-sm leading-6">
               I am interested in how clearer processes, better coordination and structured follow-up improve day-to-day execution.
             </p>
           </article>
-          <article className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-slate-900">
-            <p className="text-xl">DATA</p>
-            <h3 className="mt-3 text-xl font-semibold text-slate-900 dark:text-white">Data analysis and dashboards</h3>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+          <article className="card-surface-soft rounded-[1.6rem] p-6">
+            <p className="text-xl text-slate-300">DATA</p>
+            <h3 className="mt-3 text-xl font-semibold text-white">Data analysis and dashboards</h3>
+            <p className="text-muted mt-3 text-sm leading-6">
               Dashboards, reporting and KPI tracking help make information easier to read and more useful for operational decisions.
             </p>
           </article>
-          <article className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-slate-900">
-            <p className="text-xl">TOOLS</p>
-            <h3 className="mt-3 text-xl font-semibold text-slate-900 dark:text-white">Digital tools and productivity</h3>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+          <article className="card-surface-soft rounded-[1.6rem] p-6">
+            <p className="text-xl text-slate-300">TOOLS</p>
+            <h3 className="mt-3 text-xl font-semibold text-white">Digital tools and productivity</h3>
+            <p className="text-muted mt-3 text-sm leading-6">
               I explore digital tools that help organize information, improve productivity and support smoother workflows.
             </p>
           </article>
-          <article className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-slate-900">
-            <p className="text-xl">AI</p>
-            <h3 className="mt-3 text-xl font-semibold text-slate-900 dark:text-white">Practical uses of AI</h3>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+          <article className="card-surface-soft rounded-[1.6rem] p-6">
+            <p className="text-xl text-slate-300">AI</p>
+            <h3 className="mt-3 text-xl font-semibold text-white">Practical uses of AI</h3>
+            <p className="text-muted mt-3 text-sm leading-6">
               My interest in AI is practical: better writing support, information organization and more efficient workflows in everyday work.
             </p>
           </article>
         </div>
       </section>
 
-      <section className="py-24">
+      <section className="py-24 md:py-28">
         <SectionHeader
           eyebrow="Blog"
           title="Latest Insights"
@@ -211,4 +199,3 @@ export default async function HomePage() {
     </div>
   );
 }
-

@@ -48,14 +48,14 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
     .filter((postItem): postItem is NonNullable<typeof postItem> => Boolean(postItem));
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-10 px-6 py-14 md:py-20">
-      <Link href="/blog" className="text-sm font-medium text-sky-700 hover:text-sky-900 dark:text-sky-300 dark:hover:text-sky-100">
+    <div className="page-shell max-w-4xl space-y-10 py-14 md:py-20">
+      <Link href="/blog" className="eyebrow-label text-sm font-medium hover:text-white">
         {"<- Back to Blog"}
       </Link>
 
-      <article className="rounded-3xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-slate-900">
+      <article className="section-shell rounded-[2rem] p-8 md:p-10">
         {post.featuredImage ? (
-          <div className="mb-8 overflow-hidden rounded-2xl">
+          <div className="mb-8 overflow-hidden rounded-[1.5rem] border border-white/8">
             <Image
               src={post.featuredImage}
               alt={post.title}
@@ -67,9 +67,9 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
           </div>
         ) : null}
 
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">{post.category}</p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900 dark:text-white">{post.title}</h1>
-        <p className="mt-4 text-sm text-slate-700 dark:text-slate-300">
+        <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">{post.category}</p>
+        <h1 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-white md:text-5xl">{post.title}</h1>
+        <p className="mt-4 text-sm uppercase tracking-[0.18em] text-slate-500">
           {new Date(post.date).toLocaleDateString("en-US", {
             year: "numeric",
             month: "long",
@@ -79,7 +79,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           {post.tags.map((tag) => (
-            <span key={tag} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <span key={tag} className="pill-chip rounded-full px-3 py-1 text-xs font-medium">
               {tag}
             </span>
           ))}
@@ -91,10 +91,10 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
       </article>
 
       <section>
-        <h2 className="text-2xl font-semibold">Related Posts</h2>
+        <h2 className="text-2xl font-semibold text-white">Related Posts</h2>
         <div className="mt-5 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {cards.length === 0 ? (
-            <p className="text-sm text-slate-600 dark:text-slate-300">No related posts available yet.</p>
+            <p className="text-sm text-slate-300">No related posts available yet.</p>
           ) : (
             cards.map((card) => <BlogCard key={card.slug} post={card} />)
           )}
