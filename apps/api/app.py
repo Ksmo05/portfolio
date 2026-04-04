@@ -1341,16 +1341,19 @@ def detect_profile_grounding_topic(normalized_text: str) -> str | None:
         "previous experience", "prior experience", "worked before", "where has he worked before",
         "what has he worked on before", "career history", "experiencia previa", "ha trabajado antes",
         "donde ha trabajado antes", "donde trabajaste antes", "en que ha trabajado", "en que trabajabas antes",
-        "que experiencia tienes", "trabajos anteriores", "trayectoria previa",
+        "que experiencia tienes", "que hacias antes", "que hacias antes de rpc", "antes de rpc",
+        "antes de trabajar en rpc", "antes de rpc?", "trabajos anteriores", "trayectoria previa",
     }
+    if "antes" in normalized_text and "rpc" in normalized_text:
+        return "previous-experience"
     if any(term in normalized_text for term in name_terms):
         return "name"
-    if any(term in normalized_text for term in current_role_terms):
-        return "current-role"
-    if any(term in normalized_text for term in education_terms):
-        return "education"
     if any(term in normalized_text for term in previous_experience_terms):
         return "previous-experience"
+    if any(term in normalized_text for term in education_terms):
+        return "education"
+    if any(term in normalized_text for term in current_role_terms):
+        return "current-role"
     return None
 
 
@@ -2410,36 +2413,40 @@ Dashboard
         return "failed"
 
 
+def row_value(row: sqlite3.Row, key: str, default: Any = None) -> Any:
+    return row[key] if key in row.keys() else default
+
+
 def serialize_message(row: sqlite3.Row) -> dict[str, Any]:
     return {
-        "id": row["id"],
-        "thread_id": row["thread_id"],
-        "thread_title": row["thread_title"],
-        "theme_slug": row["theme_slug"],
-        "theme_label": row["theme_label"],
-        "user_name": row["user_name"],
-        "user_email": row["user_email"],
-        "name": row["user_name"],
-        "email": row["user_email"],
-        "company": row["company"],
-        "source": row["source"],
-        "language": row["language"] or "en",
-        "category": row["category"] or "general feedback",
-        "priority": row["priority"] or "low",
-        "lead_score": row["lead_score"] or 1,
-        "sentiment": row["sentiment"] or "neutral",
-        "summary": row["summary"] or "",
-        "key_points": parse_json_list(row["key_points_json"]),
-        "raw_message": row["raw_message"] or "",
-        "message": row["raw_message"] or "",
-        "reply_text": row["reply_text"] or "",
-        "thread_summary": row["thread_summary"] or "",
-        "email_status": allowed_email_status(row["email_status"] or "skipped"),
-        "feedback_signal": row["feedback_signal"] or "none",
-        "feedback_reason": row["feedback_reason"] or "",
-        "chat_intent": row["chat_intent"] or "",
-        "whatsapp_handoff": bool(row["whatsapp_handoff"] or 0),
-        "created_at": row["created_at"],
+        "id": row_value(row, "id"),
+        "thread_id": row_value(row, "thread_id"),
+        "thread_title": row_value(row, "thread_title", ""),
+        "theme_slug": row_value(row, "theme_slug", ""),
+        "theme_label": row_value(row, "theme_label", ""),
+        "user_name": row_value(row, "user_name", ""),
+        "user_email": row_value(row, "user_email", ""),
+        "name": row_value(row, "user_name", ""),
+        "email": row_value(row, "user_email", ""),
+        "company": row_value(row, "company", ""),
+        "source": row_value(row, "source", "unknown"),
+        "language": row_value(row, "language", "en") or "en",
+        "category": row_value(row, "category", "general feedback") or "general feedback",
+        "priority": row_value(row, "priority", "low") or "low",
+        "lead_score": row_value(row, "lead_score", 1) or 1,
+        "sentiment": row_value(row, "sentiment", "neutral") or "neutral",
+        "summary": row_value(row, "summary", "") or "",
+        "key_points": parse_json_list(row_value(row, "key_points_json", "[]")),
+        "raw_message": row_value(row, "raw_message", "") or "",
+        "message": row_value(row, "raw_message", "") or "",
+        "reply_text": row_value(row, "reply_text", "") or "",
+        "thread_summary": row_value(row, "thread_summary", "") or "",
+        "email_status": allowed_email_status(row_value(row, "email_status", "skipped") or "skipped"),
+        "feedback_signal": row_value(row, "feedback_signal", "none") or "none",
+        "feedback_reason": row_value(row, "feedback_reason", "") or "",
+        "chat_intent": row_value(row, "chat_intent", "") or "",
+        "whatsapp_handoff": bool(row_value(row, "whatsapp_handoff", 0) or 0),
+        "created_at": row_value(row, "created_at", utc_now()),
     }
 
 
