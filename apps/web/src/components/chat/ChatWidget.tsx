@@ -182,7 +182,7 @@ export default function ChatWidget() {
     setIsOpen(true);
 
     try {
-      const reply = await sendChatMessage(trimmed, history);
+      const reply = await sendChatMessage(trimmed, history, locale);
       setMessages((current) => [...current, makeMessage("assistant", reply)]);
     } catch {
       setMessages((current) => [...current, makeMessage("assistant", text.fallbackError)]);

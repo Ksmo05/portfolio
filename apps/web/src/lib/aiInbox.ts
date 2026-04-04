@@ -33,6 +33,8 @@ export type ChatHistoryItem = {
   content: string;
 };
 
+export type ChatLocale = "en" | "es";
+
 function normalizeInboxUrl(value: string) {
   return value.replace(/\/+$/, "");
 }
@@ -83,13 +85,14 @@ export async function postInboxPayload<TResponse>(payload: unknown) {
   };
 }
 
-export async function sendChatMessage(message: string, history: ChatHistoryItem[] = []) {
+export async function sendChatMessage(message: string, history: ChatHistoryItem[] = [], locale?: ChatLocale) {
   const { response, data } = await postInboxPayload<ChatReplyResponse>({
     name: "Website Visitor",
     company: null,
     message,
     source: CHAT_WIDGET_SOURCE,
     messages: history,
+    locale,
   });
 
   if (!response.ok) {
