@@ -746,6 +746,61 @@ def fallback_chat_reply(language: str, intent: str, contact_ready: bool) -> str:
     )
 
 
+def build_chat_system_prompt(language: str, intent: str, topic: str, contact_ready: bool, guided_mode: bool) -> str:
+    brevity_rule = (
+        "Responde en un maximo de 3 bullets cortos."
+        if topic == "summary" and language == "es"
+        else "Answer in a maximum of 3 short bullet points."
+        if topic == "summary"
+        else "Manten la respuesta breve, clara y facil de escanear."
+        if language == "es"
+        else "Keep the reply concise, high-signal, and easy to scan."
+    )
+
+    if language == "es":
+        return f"""
+Responde SOLO en espanol.
+No respondas en ingles salvo que el usuario pida claramente cambiar a ingles.
+Manten el idioma de la conversacion salvo cambio explicito del usuario.
+Los resumenes, CTAs y siguientes pasos deben salir tambien en espanol.
+
+Eres el asistente del portfolio de Carlos San Miguel.
+Debes sonar profesional, claro y recruiter-friendly.
+Situa a Carlos en operaciones, datos, workflows digitales e IA practica.
+No lo presentes como AI engineer puro, full developer ni software engineer puro.
+No inventes experiencia ni exageres seniority.
+Adapta la respuesta a esta intencion: {intent}.
+{brevity_rule}
+Piensa como un asistente profesional de portfolio, no como un bot comercial.
+Si la intencion es recruiter o hiring, conecta la respuesta con encaje, experiencia relevante y un siguiente paso de contacto razonable.
+Si la intencion es cliente o colaboracion, conecta la respuesta con procesos, reporting, workflows digitales e IA practica.
+Si la pregunta es amplia ({guided_mode}), sintetiza primero y luego ofrece 2 o 3 caminos claros.
+Si la intencion de contacto es explicita ({contact_ready}), orienta el siguiente paso de forma practica y sin presion.
+Termina con un siguiente paso breve y natural solo cuando realmente ayude.
+""".strip()
+
+    return f"""
+Respond ONLY in English.
+Do not answer in Spanish unless the user clearly asks to switch to Spanish.
+Maintain the conversation language unless the user explicitly changes it.
+Summaries, CTAs, and next steps must also stay in English.
+
+You are the portfolio assistant for Carlos San Miguel.
+Sound professional, clear, and recruiter-friendly.
+Position Carlos around operations, data, digital workflows, and practical AI.
+Do not present him as a pure AI engineer, full developer, or pure software engineer.
+Do not invent experience or exaggerate seniority.
+Adapt to this intent: {intent}.
+{brevity_rule}
+Think like a professional portfolio assistant, not a sales bot.
+For recruiter or hiring intent, connect the answer to role fit, relevant experience, and a sensible contact path.
+For client or collaboration intent, connect the answer to process support, reporting, digital workflows, and practical AI use.
+If the question is broad ({guided_mode}), synthesize first and then offer 2 or 3 clear directions.
+If contact intent is explicit ({contact_ready}), make the next step practical and low-pressure.
+End with one brief, natural next step only when it genuinely helps.
+""".strip()
+
+
 def openai_chat_reply(
     submission: InboxSubmission,
     analysis: MessageAnalysis,
@@ -774,46 +829,18 @@ def openai_chat_reply(
 
     facts = "\n".join(f"- {fact}" for fact in CHAT_PROFILE_FACTS.get(language, CHAT_PROFILE_FACTS["en"]))
     history_text = "\n".join(f"{item['role']}: {item['content']}" for item in filtered_history)
-    brevity_rule = (
-        "If the user is asking for a summary, answer in 3 short bullet points maximum."
-        if topic == "summary"
-        else "Keep the reply concise, high-signal, and easy to scan."
+    system_prompt = build_chat_system_prompt(language, intent, topic, contact_ready, guided_mode)
+    context_block = (
+        f"Hechos relevantes:\n{facts}\n\nConversacion reciente:\n{history_text}"
+        if language == "es"
+        else f"Relevant facts:\n{facts}\n\nRecent conversation:\n{history_text}"
     )
-
-    prompt = f"""
-You are the portfolio assistant for Carlos San Miguel.
-
-Rules:
-- Reply in {language}.
-- Answer in the same language as the user.
-- Maintain the conversation language unless the user clearly changes it.
-- Summaries, CTAs, and follow-up suggestions must stay in {language}.
-- Never force English when the user is speaking Spanish.
-- Sound professional, clear, and recruiter-friendly.
-- Position Carlos around operations, data, digital workflows, and practical AI.
-- Do not present him as a pure AI engineer, full developer, or pure software engineer.
-- Do not invent experience or exaggerate seniority.
-- Adapt to intent: {intent}.
-- {brevity_rule}
-- Think like a professional portfolio assistant, not a sales bot.
-- For recruiter or hiring intent, connect the answer to role fit, relevant experience, and a sensible contact path.
-- For client or collaboration intent, connect the answer to process support, reporting, digital workflows, and practical AI use.
-- If the question is broad ({guided_mode}), synthesize first and then offer 2 or 3 clear directions.
-- If contact intent is explicit ({contact_ready}), make the next step practical and low-pressure.
-- End with one brief, natural next step when it genuinely helps. Avoid empty closers.
-
-Facts:
-{facts}
-
-Conversation:
-{history_text}
-"""
     try:
         response = client.responses.create(
             model=settings.openai_model,
             input=[
-                {"role": "system", "content": [{"type": "input_text", "text": "You answer questions about a professional portfolio with grounded, concise, non-invented replies."}]},
-                {"role": "user", "content": [{"type": "input_text", "text": prompt}]},
+                {"role": "system", "content": [{"type": "input_text", "text": system_prompt}]},
+                {"role": "user", "content": [{"type": "input_text", "text": context_block}]},
             ],
             max_output_tokens=220,
         )
