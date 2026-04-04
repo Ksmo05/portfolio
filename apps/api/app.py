@@ -63,17 +63,54 @@ THEME_RULES = [
 CHAT_PROFILE_FACTS = {
     "en": [
         "Carlos works at the intersection of operations, data, digital workflows, and practical AI.",
-        "His profile is corporate and business-oriented, not a pure software engineering or AI engineering profile.",
+        "His profile is corporate, business-oriented, and grounded in operations, reporting, process coordination, and digital support.",
         "He has experience supporting Purchasing and Aftersales processes in a BMW-related environment, including SAP support, reporting follow-up, incident handling, and coordination.",
         "His background also includes back-office operations, documentation validation, public procurement support, banking operations, and technical support operations.",
         "His projects show practical uses of digital tools, dashboards, structured information, and AI for productivity.",
     ],
     "es": [
         "Carlos trabaja en la interseccion entre operaciones, datos, workflows digitales e IA practica.",
-        "Su perfil es corporativo y orientado a negocio, no un perfil puro de software engineering ni de AI engineering.",
+        "Su perfil es corporativo, orientado a negocio y centrado en operaciones, reporting, coordinacion de procesos y soporte digital.",
         "Tiene experiencia dando soporte a procesos de Purchasing y Aftersales en un entorno vinculado a BMW, incluyendo soporte SAP, seguimiento de reporting, gestion de incidencias y coordinacion.",
         "Su trayectoria tambien incluye back office, validacion documental, soporte a contratacion publica, operaciones bancarias y soporte tecnico-operativo.",
         "Sus proyectos muestran usos practicos de herramientas digitales, dashboards, informacion estructurada e IA para productividad.",
+    ],
+}
+
+PROJECT_SPOTLIGHTS = {
+    "en": [
+        {
+            "title": "Dashboards, KPI Tracking and Data Analysis",
+            "summary": "Practical dashboard and reporting work focused on KPI visibility, operational follow-up, and clearer business monitoring.",
+            "value": "It matters because it shows how Carlos turns data into usable visibility for teams and day-to-day decisions.",
+        },
+        {
+            "title": "AI Tools for Content and Productivity",
+            "summary": "Applied use of AI tools to organize information, support writing, and simplify recurring tasks.",
+            "value": "It matters because it reflects a realistic, productivity-focused use of practical AI in business routines.",
+        },
+        {
+            "title": "Personal Portfolio Website",
+            "summary": "A structured digital project that brings together experience, projects, and professional communication in one place.",
+            "value": "It matters because it shows how Carlos organizes information and presents workflows, experience, and digital initiatives clearly.",
+        },
+    ],
+    "es": [
+        {
+            "title": "Dashboards, KPI y Analisis de Datos",
+            "summary": "Trabajo practico de dashboards y reporting orientado a visibilidad KPI, seguimiento operativo y lectura mas clara del negocio.",
+            "value": "Importa porque muestra como Carlos convierte datos en visibilidad util para equipos y decisiones del dia a dia.",
+        },
+        {
+            "title": "Herramientas de IA para Contenido y Productividad",
+            "summary": "Uso aplicado de herramientas de IA para organizar informacion, apoyar redaccion y simplificar tareas recurrentes.",
+            "value": "Importa porque refleja un uso realista y orientado a productividad de la IA practica en rutinas de negocio.",
+        },
+        {
+            "title": "Portfolio Personal",
+            "summary": "Proyecto digital estructurado que reune experiencia, proyectos y comunicacion profesional en un solo espacio.",
+            "value": "Importa porque muestra como Carlos organiza informacion y presenta con claridad workflows, experiencia e iniciativas digitales.",
+        },
     ],
 }
 
@@ -643,7 +680,7 @@ def detect_chat_topic(normalized_text: str) -> str:
         return "whatsapp"
     if any(term in normalized_text for term in {"contact", "email", "reach", "connect", "linkedin", "contactar", "correo", "hablar"}):
         return "contact"
-    if any(term in normalized_text for term in {"project", "projects", "portfolio", "case study", "proyecto", "proyectos"}):
+    if any(term in normalized_text for term in {"project", "projects", "portfolio", "case study", "proyecto", "proyectos", "examples of his work", "best work", "main projects", "principales proyectos", "mejores proyectos"}):
         return "projects"
     if any(term in normalized_text for term in {"experience", "background", "career", "trayectoria", "experiencia"}):
         return "experience"
@@ -677,7 +714,8 @@ def needs_guided_next_step(normalized_text: str, topic: str) -> bool:
 def detect_whatsapp_request(normalized_text: str) -> bool:
     whatsapp_terms = {
         "whatsapp", "whats app", "wa.me", "escribirte por whatsapp", "hablar por whatsapp",
-        "contact on whatsapp", "talk on whatsapp", "message on whatsapp",
+        "contact on whatsapp", "talk on whatsapp", "message on whatsapp", "pasame tu whatsapp",
+        "pasa tu whatsapp", "quiero escribirte por whatsapp", "do you have whatsapp",
     }
     return any(term in normalized_text for term in whatsapp_terms)
 
@@ -687,6 +725,7 @@ def detect_direct_contact_request(normalized_text: str) -> bool:
         "human", "person", "directly", "direct conversation", "direct contact", "speak with carlos",
         "talk to carlos", "speak to a person", "real person", "persona", "humano", "directamente",
         "hablar contigo", "hablar con carlos", "hablar con una persona", "contacto directo",
+        "message directly", "write directly", "escribirte directamente", "quiero escribirte directamente",
         "via mas directa", "vía mas directa", "una persona",
     }
     return any(term in normalized_text for term in direct_terms)
@@ -730,13 +769,13 @@ def detect_stuck_conversation(messages: list[dict[str, str]] | None) -> bool:
 def build_whatsapp_cta(language: str, reason: str) -> str:
     if language == "es":
         if reason == "explicit":
-            return f"Si, puedes escribir directamente por WhatsApp al {WHATSAPP_NUMBER}: {WHATSAPP_LINK}"
+            return f"Claro. Puedes escribirme directamente por WhatsApp aqui: {WHATSAPP_LINK}"
         if reason in {"frustration", "stuck", "direct"}:
             return f"Si prefieres una conversacion mas directa, tambien puedes escribir por WhatsApp al {WHATSAPP_NUMBER}: {WHATSAPP_LINK}"
         return f"Si quieres hablar directamente sobre la oportunidad o colaboracion, tambien puedes contactar por WhatsApp en {WHATSAPP_NUMBER}: {WHATSAPP_LINK}"
 
     if reason == "explicit":
-        return f"Yes, you can contact Carlos directly on WhatsApp at {WHATSAPP_NUMBER}: {WHATSAPP_LINK}"
+        return f"Sure. You can contact Carlos directly on WhatsApp here: {WHATSAPP_LINK}"
     if reason in {"frustration", "stuck", "direct"}:
         return f"If you prefer a more direct conversation, you can also reach Carlos on WhatsApp at {WHATSAPP_NUMBER}: {WHATSAPP_LINK}"
     return f"If you want to discuss the opportunity or collaboration directly, you can also contact Carlos on WhatsApp at {WHATSAPP_NUMBER}: {WHATSAPP_LINK}"
@@ -812,6 +851,30 @@ def build_guided_options(language: str, intent: str) -> str:
     return "I can help in three ways: a profile summary, key experience, or the most relevant projects."
 
 
+def build_projects_reply(language: str) -> str:
+    entries = PROJECT_SPOTLIGHTS.get(language, PROJECT_SPOTLIGHTS["en"])
+    if language == "es":
+        body = "\n".join(
+            f"- {item['title']} - {item['summary']} {item['value']}"
+            for item in entries[:3]
+        )
+        return (
+            "Estos son los proyectos mas relevantes:\n"
+            + body
+            + "\n\nSi quieres, puedo resumir uno de ellos con mas detalle o decirte cual encaja mejor con operaciones, datos o IA practica."
+        )
+
+    body = "\n".join(
+        f"- {item['title']} - {item['summary']} {item['value']}"
+        for item in entries[:3]
+    )
+    return (
+        "These are the most relevant projects:\n"
+        + body
+        + "\n\nIf you want, I can expand on one of them or tell you which one is most relevant for operations, data, or practical AI."
+    )
+
+
 def build_static_chat_reply(
     language: str,
     topic: str,
@@ -827,22 +890,22 @@ def build_static_chat_reply(
         "en": {
             "whatsapp": build_whatsapp_cta("en", whatsapp_reason or "explicit"),
             "summary": "Quick summary:\n- Carlos is an operations, data, and digital support professional with a clear corporate profile.\n- His experience is centered on process support, reporting, SAP-related workflows, coordination, incidents, and structured follow-up.\n- He also uses digital tools and practical AI to improve productivity, information handling, and workflow efficiency.",
-            "profile": "Carlos' profile sits at the intersection of operations, data, digital workflows, and practical AI. He is best understood as a corporate, business-support profile focused on process coordination, reporting, SAP support, and operational improvement rather than as a pure developer or AI engineer.\n\n" + tail,
+            "profile": "Carlos' profile combines operations, data visibility, digital workflows, and practical AI use. His strongest areas are process coordination, reporting, SAP-related support, and helping teams work with more structure and clarity.\n\n" + tail,
             "experience": "His recent experience includes supporting Purchasing and Aftersales processes in a BMW-related environment, with SAP support, reporting follow-up, incident handling, and coordination. His broader background also includes back-office operations, documentation validation, public procurement support, banking operations, and technical support operations.\n\n" + tail,
-            "projects": "The projects in the portfolio are positioned as applied digital initiatives. They show how Carlos structures information, communicates clearly, works with dashboards and reporting, and uses practical AI to support productivity rather than as a pure engineering showcase.\n\n" + tail,
+            "projects": build_projects_reply("en"),
             "fit": "Carlos is a strong fit for roles that combine operations, reporting, process support, procurement support, digital coordination, and practical AI use. He is especially relevant for teams that need structured follow-up, business support, KPI visibility, and someone comfortable working across tools, workflows, and operational contexts.\n\n" + tail,
-            "practical-ai": "His use of AI is practical and business-oriented. The focus is on writing support, information organization, summarization, and workflow efficiency, not on positioning himself as a pure AI engineer.\n\n" + tail,
+            "practical-ai": "His use of AI is practical and business-oriented. The focus is on writing support, information organization, summarization, and workflow efficiency in everyday workflows.\n\n" + tail,
             "contact": ("The best next step is to use the contact option in the portfolio if you want to discuss a role, collaboration, or project context. " + tail) if whatsapp_offer else "The best next step is to use the contact option in the portfolio if you want to discuss a role, collaboration, or project context. If helpful first, I can also summarize his experience or highlight the most relevant projects before you reach out.",
             "general": "Carlos' portfolio presents a professional profile centered on operations, reporting, process support, digital workflows, and practical AI. The strongest themes are corporate business support, data visibility, coordination, and useful digital initiatives.\n\n" + (build_guided_options(language, intent) if guided_mode else tail),
         },
         "es": {
             "whatsapp": build_whatsapp_cta("es", whatsapp_reason or "explicit"),
             "summary": "Resumen rapido:\n- Carlos es un profesional de operaciones, datos y soporte digital con perfil corporativo claro.\n- Su experiencia se centra en soporte a procesos, reporting, workflows relacionados con SAP, coordinacion, incidencias y seguimiento estructurado.\n- Tambien utiliza herramientas digitales e IA practica para mejorar productividad, gestion de la informacion y eficiencia de workflows.",
-            "profile": "El perfil de Carlos se situa en la interseccion entre operaciones, datos, workflows digitales e IA practica. Se entiende mejor como un perfil corporativo y de soporte a negocio enfocado en coordinacion de procesos, reporting, soporte SAP y mejora operativa, no como un developer puro ni como un AI engineer.\n\n" + tail,
+            "profile": "El perfil de Carlos combina operaciones, visibilidad de datos, workflows digitales e IA practica. Sus puntos mas fuertes estan en coordinacion de procesos, reporting, soporte relacionado con SAP y apoyo a equipos con mas estructura y claridad.\n\n" + tail,
             "experience": "Su experiencia reciente incluye soporte a procesos de Purchasing y Aftersales en un entorno vinculado a BMW, con soporte SAP, seguimiento de reporting, gestion de incidencias y coordinacion. Su trayectoria tambien incluye back office, validacion documental, contratacion publica, operaciones bancarias y soporte tecnico-operativo.\n\n" + tail,
-            "projects": "Los proyectos del portfolio estan planteados como iniciativas digitales aplicadas. Muestran como Carlos estructura informacion, comunica con claridad, trabaja con dashboards y reporting, y utiliza IA practica para apoyar productividad, no como una muestra de ingenieria pura.\n\n" + tail,
+            "projects": build_projects_reply("es"),
             "fit": "Carlos encaja bien en roles que combinan operaciones, reporting, soporte a procesos, soporte a compras, coordinacion digital y uso practico de IA. Es especialmente relevante para equipos que necesitan seguimiento estructurado, soporte de negocio, visibilidad KPI y alguien comodo trabajando entre herramientas, workflows y contextos operativos.\n\n" + tail,
-            "practical-ai": "Su uso de IA es practico y orientado a negocio. El foco esta en apoyo a redaccion, organizacion de informacion, resumenes y eficiencia de workflows, no en presentarse como un AI engineer puro.\n\n" + tail,
+            "practical-ai": "Su uso de IA es practico y orientado a negocio. El foco esta en apoyo a redaccion, organizacion de informacion, resumenes y eficiencia de workflows del dia a dia.\n\n" + tail,
             "contact": ("El mejor siguiente paso es usar la opcion de contacto del portfolio si quieres hablar sobre un rol, una colaboracion o un contexto de proyecto. " + tail) if whatsapp_offer else "El mejor siguiente paso es usar la opcion de contacto del portfolio si quieres hablar sobre un rol, una colaboracion o un contexto de proyecto. Si te ayuda antes, tambien puedo resumir su experiencia o destacar los proyectos mas relevantes.",
             "general": "El portfolio de Carlos presenta un perfil profesional centrado en operaciones, reporting, soporte a procesos, workflows digitales e IA practica. Los temas mas fuertes son soporte corporativo a negocio, visibilidad de datos, coordinacion e iniciativas digitales utiles.\n\n" + (build_guided_options(language, intent) if guided_mode else tail),
         },
@@ -896,8 +959,8 @@ Los resumenes, CTAs y siguientes pasos deben salir tambien en espanol.
 Eres el asistente del portfolio de Carlos San Miguel.
 Debes sonar profesional, claro y recruiter-friendly.
 Situa a Carlos en operaciones, datos, workflows digitales e IA practica.
-No lo presentes como AI engineer puro, full developer ni software engineer puro.
 No inventes experiencia ni exageres seniority.
+Habla siempre en positivo y centrado en valor real. No definas el perfil por negacion.
 Adapta la respuesta a esta intencion: {intent}.
 {brevity_rule}
 Piensa como un asistente profesional de portfolio, no como un bot comercial.
@@ -918,8 +981,8 @@ Summaries, CTAs, and next steps must also stay in English.
 You are the portfolio assistant for Carlos San Miguel.
 Sound professional, clear, and recruiter-friendly.
 Position Carlos around operations, data, digital workflows, and practical AI.
-Do not present him as a pure AI engineer, full developer, or pure software engineer.
 Do not invent experience or exaggerate seniority.
+Always use positive framing centered on what Carlos contributes. Do not define the profile through negation.
 Adapt to this intent: {intent}.
 {brevity_rule}
 Think like a professional portfolio assistant, not a sales bot.
