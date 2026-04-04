@@ -214,24 +214,29 @@ def detect_language_from_history(messages: list[dict[str, str]] | None) -> str |
     return "es" if es_total > en_total else "en"
 
 
-def resolve_chat_language(submission: "InboxSubmission") -> str:
+def resolve_chat_language_details(submission: "InboxSubmission") -> tuple[str, str]:
     normalized_message = normalize_match_text(submission.message)
     explicit = explicit_chat_language(normalized_message)
     if explicit:
-        return explicit
+        return explicit, f"explicit_{'spanish' if explicit == 'es' else 'english'}"
 
     current_es, current_en = language_scores(submission.message)
     if current_es != current_en and max(current_es, current_en) >= 1:
-        return "es" if current_es > current_en else "en"
+        return ("es", "user_message") if current_es > current_en else ("en", "user_message")
 
     history_language = detect_language_from_history(submission.messages)
     if history_language:
-        return history_language
+        return history_language, "conversation_history"
 
     if submission.locale in {"es", "en"}:
-        return submission.locale
+        return submission.locale, "frontend_locale"
 
-    return detect_language(submission.message)
+    return detect_language(submission.message), "legacy_detector"
+
+
+def resolve_chat_language(submission: "InboxSubmission") -> str:
+    language, _ = resolve_chat_language_details(submission)
+    return language
 
 
 @dataclass
@@ -801,9 +806,22 @@ End with one brief, natural next step only when it genuinely helps.
 """.strip()
 
 
+def translate_chat_labels(language: str) -> dict[str, str]:
+    if language == "es":
+        return {
+            "facts": "Hechos relevantes",
+            "conversation": "Conversacion reciente",
+        }
+    return {
+        "facts": "Relevant facts",
+        "conversation": "Recent conversation",
+    }
+
+
 def openai_chat_reply(
     submission: InboxSubmission,
     analysis: MessageAnalysis,
+    language: str,
     intent: str,
     topic: str,
     contact_ready: bool,
@@ -813,7 +831,6 @@ def openai_chat_reply(
     if client is None:
         return None, "chat-heuristic"
 
-    language = analysis.language or resolve_chat_language(submission)
     history = submission.messages or []
     filtered_history = [
         {
@@ -830,11 +847,8 @@ def openai_chat_reply(
     facts = "\n".join(f"- {fact}" for fact in CHAT_PROFILE_FACTS.get(language, CHAT_PROFILE_FACTS["en"]))
     history_text = "\n".join(f"{item['role']}: {item['content']}" for item in filtered_history)
     system_prompt = build_chat_system_prompt(language, intent, topic, contact_ready, guided_mode)
-    context_block = (
-        f"Hechos relevantes:\n{facts}\n\nConversacion reciente:\n{history_text}"
-        if language == "es"
-        else f"Relevant facts:\n{facts}\n\nRecent conversation:\n{history_text}"
-    )
+    labels = translate_chat_labels(language)
+    context_block = f"{labels['facts']}:\n{facts}\n\n{labels['conversation']}:\n{history_text}"
     try:
         response = client.responses.create(
             model=settings.openai_model,
@@ -851,8 +865,7 @@ def openai_chat_reply(
         return None, "chat-heuristic"
 
 
-def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis) -> tuple[str, str]:
-    language = analysis.language or resolve_chat_language(submission)
+def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, language: str) -> tuple[str, str]:
     normalized = normalize_match_text(submission.message)
     intent = detect_chat_intent(normalized)
     topic = detect_chat_topic(normalized)
@@ -862,12 +875,13 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis) 
 
     static_reply = build_static_chat_reply(language, topic, intent, contact_ready, guided_mode)
     if static_reply and (topic != "general" or word_count <= 8):
-        return static_reply, "chat-heuristic"
+        path = f"chat-static-{topic}" if topic != "general" else "chat-static-short"
+        return static_reply, path
 
     if guided_mode and static_reply:
-        return static_reply, "chat-heuristic"
+        return static_reply, "chat-static-guided"
 
-    model_reply, engine = openai_chat_reply(submission, analysis, intent, topic, contact_ready, guided_mode)
+    model_reply, engine = openai_chat_reply(submission, analysis, language, intent, topic, contact_ready, guided_mode)
     if model_reply:
         return model_reply, engine
 
@@ -1781,10 +1795,19 @@ async def create_message(payload: InboxSubmission) -> JSONResponse:
         },
     )
     if is_chat_request:
+        final_language, language_source = resolve_chat_language_details(payload)
+        logger.info(
+            "Chat request trace | endpoint=/api/inbox | source=%s | chat_locale=%s | chat_language=%s | chat_language_source=%s | history_items=%s",
+            payload.source,
+            payload.locale or "none",
+            final_language,
+            language_source,
+            len(payload.messages or []),
+        )
         analysis, _ = heuristic_analysis(payload)
-        chat_language = resolve_chat_language(payload)
-        reply_text, engine = generate_chat_reply(payload, analysis)
-        analysis = analysis.model_copy(update={"language": chat_language, "reply_text": reply_text})
+        reply_text, engine = generate_chat_reply(payload, analysis, final_language)
+        logger.info("Chat response trace | chat_response_path=%s | chat_language=%s", engine, final_language)
+        analysis = analysis.model_copy(update={"language": final_language, "reply_text": reply_text})
     else:
         analysis, engine = openai_analysis(payload)
     logger.info(
