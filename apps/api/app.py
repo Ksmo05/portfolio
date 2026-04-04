@@ -118,6 +118,39 @@ PORTFOLIO_ROLE_FACTS = {
     },
 }
 
+EXPERIENCE_DETAIL_FACTS = {
+    "rpc": {
+        "terms": {"rpc", "retail performance company"},
+        "en": "At The Retail Performance Company (RPC), Carlos works as an Operations & Business Support Consultant. The role combines Purchasing and Aftersales support, SAP-related follow-up, reporting, incident handling, coordination, and data visibility in a BMW-related business environment.",
+        "es": "En The Retail Performance Company (RPC), Carlos trabaja como Consultor de Operaciones y Soporte de Negocio. El rol combina soporte a Purchasing y Aftersales, seguimiento relacionado con SAP, reporting, gestion de incidencias, coordinacion y visibilidad de datos en un entorno de negocio vinculado a BMW.",
+        "thread_title": "RPC experience",
+    },
+    "endesa": {
+        "terms": {"endesa"},
+        "en": "At Endesa, Carlos worked in back-office operations focused on documentation, validation, and coordination in solar financing workflows. He also used Salesforce to track incidents, updates, and process status.",
+        "es": "En Endesa, Carlos trabajo en operaciones de back office centradas en documentacion, validacion y coordinacion dentro de workflows de financiacion solar. Tambien utilizaba Salesforce para registrar incidencias, actualizaciones y el estado del proceso.",
+        "thread_title": "Endesa experience",
+    },
+    "ayuntamiento-madrid": {
+        "terms": {"ayuntamiento de madrid", "madrid city council", "ayuntamiento", "contratacion publica"},
+        "en": "At Ayuntamiento de Madrid, Carlos provided administrative support in public procurement. His work was centered on documentation control, tender and contract records, platform handling, coordination, and process follow-up across the different administrative steps.",
+        "es": "En el Ayuntamiento de Madrid, Carlos dio soporte administrativo en contratacion publica. Su trabajo se centraba en control documental, gestion de expedientes y licitaciones, uso de plataformas de contratacion, coordinacion y seguimiento de las distintas fases administrativas.",
+        "thread_title": "Ayuntamiento de Madrid experience",
+    },
+    "openbank": {
+        "terms": {"openbank"},
+        "en": "At Openbank, Carlos worked in operational banking support. The role included customer queries, fraud-alert tasks, KYC checks, and support for regulated banking workflows with attention to accuracy and response time.",
+        "es": "En Openbank, Carlos trabajo en soporte bancario operativo. El rol incluia atencion a consultas de clientes, tareas relacionadas con alertas de fraude, controles KYC y soporte a workflows bancarios regulados con foco en precision y tiempos de respuesta.",
+        "thread_title": "Openbank experience",
+    },
+    "movistar-prosegur": {
+        "terms": {"movistar prosegur alarmas", "prosegur alarmas", "movistar"},
+        "en": "At Movistar Prosegur Alarmas, Carlos worked in technical support operations. The role combined incident handling, service coordination, and scheduling or follow-up for technician visits.",
+        "es": "En Movistar Prosegur Alarmas, Carlos trabajo en operaciones de soporte tecnico. El rol combinaba gestion de incidencias, coordinacion del servicio y planificacion o seguimiento de visitas de tecnicos.",
+        "thread_title": "Movistar Prosegur experience",
+    },
+}
+
 PROJECT_SPOTLIGHTS = {
     "en": [
         {
@@ -1121,20 +1154,42 @@ def fallback_theme(tokens: set[str]) -> tuple[str, str]:
 def maybe_build_profile_grounded_analysis(submission: InboxSubmission) -> MessageAnalysis | None:
     normalized_text = normalize_match_text(submission.message or "")
     topic = detect_profile_grounding_topic(normalized_text)
-    if not topic:
-        return None
-
     language = normalize_locale_value(submission.locale) or detect_language(submission.message or "")
-    reply_text = build_grounded_profile_reply(language, topic)
-    if not reply_text:
+
+    if topic:
+        reply_text = build_grounded_profile_reply(language, topic)
+        if not reply_text:
+            return None
+
+        topic_meta = {
+            "name": ("name", "Name", "Name question"),
+            "current-role": ("current-role", "Current Role", "Current role question"),
+            "education": ("education", "Education", "Education question"),
+            "previous-experience": ("previous-experience", "Previous Experience", "Previous experience question"),
+        }
+        theme_slug, theme_label, thread_title = topic_meta[topic]
+        summary = clean_text(submission.message or thread_title, 220, thread_title)
+        return MessageAnalysis(
+            language=language,
+            category="question",
+            priority="medium",
+            summary=summary,
+            key_points=[summary],
+            theme_label=theme_label,
+            theme_slug=theme_slug,
+            thread_title=thread_title,
+            reply_text=reply_text,
+            lead_score=2,
+            sentiment="neutral",
+        )
+
+    specific_experience_key = detect_specific_experience_key(normalized_text)
+    if not specific_experience_key:
         return None
 
-    topic_meta = {
-        "current-role": ("current-role", "Current Role", "Current role question"),
-        "education": ("education", "Education", "Education question"),
-        "previous-experience": ("previous-experience", "Previous Experience", "Previous experience question"),
-    }
-    theme_slug, theme_label, thread_title = topic_meta[topic]
+    experience_fact = EXPERIENCE_DETAIL_FACTS[specific_experience_key]
+    reply_text = experience_fact.get(language, experience_fact["en"])
+    thread_title = experience_fact["thread_title"]
     summary = clean_text(submission.message or thread_title, 220, thread_title)
     return MessageAnalysis(
         language=language,
@@ -1142,8 +1197,8 @@ def maybe_build_profile_grounded_analysis(submission: InboxSubmission) -> Messag
         priority="medium",
         summary=summary,
         key_points=[summary],
-        theme_label=theme_label,
-        theme_slug=theme_slug,
+        theme_label="Specific Experience",
+        theme_slug="specific-experience",
         thread_title=thread_title,
         reply_text=reply_text,
         lead_score=2,
@@ -1266,6 +1321,10 @@ def detect_summary_request(normalized_text: str) -> bool:
 
 
 def detect_profile_grounding_topic(normalized_text: str) -> str | None:
+    name_terms = {
+        "como te llamas", "cual es tu nombre", "quien eres", "who are you", "what is your name",
+        "your name", "whats your name", "what's your name",
+    }
     current_role_terms = {
         "where does", "works at", "work at", "current company", "current employer", "current job",
         "where does carlos work", "what company does he work for", "empresa actual", "donde trabaja",
@@ -1282,12 +1341,21 @@ def detect_profile_grounding_topic(normalized_text: str) -> str | None:
         "what has he worked on before", "career history", "experiencia previa", "ha trabajado antes",
         "donde ha trabajado antes", "en que ha trabajado", "trabajos anteriores", "trayectoria previa",
     }
+    if any(term in normalized_text for term in name_terms):
+        return "name"
     if any(term in normalized_text for term in current_role_terms):
         return "current-role"
     if any(term in normalized_text for term in education_terms):
         return "education"
     if any(term in normalized_text for term in previous_experience_terms):
         return "previous-experience"
+    return None
+
+
+def detect_specific_experience_key(normalized_text: str) -> str | None:
+    for key, item in EXPERIENCE_DETAIL_FACTS.items():
+        if any(term in normalized_text for term in item["terms"]):
+            return key
     return None
 
 
@@ -1497,12 +1565,10 @@ def build_feedback_recovery_reply(language: str, intent: str, whatsapp_offer: bo
 
 
 def build_scope_gap_reply(language: str, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
-    if whatsapp_offer and whatsapp_reason:
-        return build_whatsapp_cta(language, whatsapp_reason)
-
+    whatsapp_url = build_whatsapp_url(language)
     if language == "es":
-        return "No tengo suficiente contexto para responder con precision. Puedes escribirme por el formulario y te respondere personalmente."
-    return "I do not have enough context to answer that precisely. You can reach out through the contact form and Carlos will reply personally."
+        return f"No tengo esa informacion con suficiente precision. Puedes consultarmelo escribiendo en el formulario o a traves de WhatsApp. {whatsapp_url}"
+    return f"I do not have that information with enough precision. You can ask through the contact form or on WhatsApp. {whatsapp_url}"
 
 
 def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
@@ -1620,7 +1686,15 @@ def build_current_role_reply(language: str) -> str:
     )
 
 
+def build_name_reply(language: str) -> str:
+    if language == "es":
+        return "Mi nombre es Carlos San Miguel."
+    return "My name is Carlos San Miguel."
+
+
 def build_grounded_profile_reply(language: str, topic: str) -> str | None:
+    if topic == "name":
+        return build_name_reply(language)
     if topic == "current-role":
         return build_current_role_reply(language)
     if topic == "education":
@@ -1675,15 +1749,7 @@ def build_static_chat_reply(
 
 
 def fallback_chat_reply(language: str, intent: str, contact_ready: bool, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
-    if language == "es":
-        return (
-            "Puedo ayudarte con un resumen del perfil, experiencia, proyectos o encaje profesional. "
-            + build_chat_cta(language, intent, "general", contact_ready, whatsapp_offer, whatsapp_reason)
-        )
-    return (
-        "I can help with a profile summary, experience overview, projects, or role fit. "
-        + build_chat_cta(language, intent, "general", contact_ready, whatsapp_offer, whatsapp_reason)
-    )
+    return build_scope_gap_reply(language, whatsapp_offer, whatsapp_reason)
 
 
 def build_chat_system_prompt(
@@ -1860,14 +1926,20 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
         "whatsapp_handoff": whatsapp_offer,
     }
 
+    if analysis.theme_slug in {"name", "current-role", "education", "previous-experience", "specific-experience"} and analysis.reply_text:
+        grounded_path = f"chat-grounded-{analysis.theme_slug}"
+        return analysis.reply_text, grounded_path, meta
+
     if feedback_signal == "negative" and topic == "general":
         return build_feedback_recovery_reply(language, intent, whatsapp_offer, whatsapp_reason), "chat-feedback-recovery", meta
 
     if is_scope_gap_question(normalized, topic) and not guided_mode:
         scope_path = "chat-scope-gap"
+        scope_meta = dict(meta)
+        scope_meta["whatsapp_handoff"] = True
         if whatsapp_offer and whatsapp_reason:
             scope_path = f"{scope_path}-whatsapp-{whatsapp_reason}"
-        return build_scope_gap_reply(language, whatsapp_offer, whatsapp_reason), scope_path, meta
+        return build_scope_gap_reply(language, True, whatsapp_reason), scope_path, scope_meta
 
     static_reply = build_static_chat_reply(language, topic, intent, contact_ready, guided_mode, whatsapp_offer, whatsapp_reason)
     if static_reply and (topic != "general" or word_count <= 8):
@@ -1899,9 +1971,11 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
         return model_reply, engine, meta
 
     fallback_path = "chat-fallback"
+    fallback_meta = dict(meta)
+    fallback_meta["whatsapp_handoff"] = True
     if whatsapp_offer and whatsapp_reason:
         fallback_path = f"{fallback_path}-whatsapp-{whatsapp_reason}"
-    return fallback_chat_reply(language, intent, contact_ready, whatsapp_offer, whatsapp_reason), fallback_path, meta
+    return fallback_chat_reply(language, intent, contact_ready, True, whatsapp_reason), fallback_path, fallback_meta
 
 
 def openai_analysis(submission: InboxSubmission) -> tuple[MessageAnalysis, str]:

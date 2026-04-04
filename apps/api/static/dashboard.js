@@ -20,6 +20,22 @@
     return Array.isArray(data && data.items) ? data.items : [];
   }
 
+  async function fetchJsonOrNull(url) {
+    try {
+      const response = await fetch(url);
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : null;
+      if (!response.ok) {
+        console.warn("[dashboard] endpoint returned non-2xx", { url, status: response.status, data });
+        return null;
+      }
+      return data;
+    } catch (error) {
+      console.warn("[dashboard] endpoint failed", { url, error });
+      return null;
+    }
+  }
+
   function countBy(items, key) {
     return items.reduce((acc, item) => {
       const value = item && item[key];
@@ -469,21 +485,14 @@
   }
 
   async function loadDashboard() {
-    const [rawMessagesResponse, summaryResponse, messagesResponse, metricsResponse, analyticsResponse] = await Promise.all([
-      fetch("/api/messages?limit=100"),
-      fetch("/api/dashboard/summary"),
-      fetch("/api/dashboard/messages"),
-      fetch("/api/dashboard/metrics"),
-      fetch("/api/dashboard/analytics"),
+    const [rawMessagesData, summary, messages, metrics, analytics] = await Promise.all([
+      fetchJsonOrNull("/api/messages?limit=100"),
+      fetchJsonOrNull("/api/dashboard/summary"),
+      fetchJsonOrNull("/api/dashboard/messages"),
+      fetchJsonOrNull("/api/dashboard/metrics"),
+      fetchJsonOrNull("/api/dashboard/analytics"),
     ]);
-
-    const rawMessagesData = await rawMessagesResponse.json();
-    console.log("Messages API response:", rawMessagesData);
     const rawItems = safeItems(rawMessagesData);
-    const summary = await summaryResponse.json();
-    const messages = await messagesResponse.json();
-    const metrics = await metricsResponse.json();
-    const analytics = await analyticsResponse.json();
     const summaryData = summary && summary.total_messages ? summary : fallbackSummary(rawItems);
     const dashboardMessages =
       messages && (
@@ -494,6 +503,31 @@
       )
         ? messages
         : fallbackDashboardMessages(rawItems);
+    const chartMetrics =
+      metrics && metrics.distribution
+        ? metrics
+        : {
+            distribution: {
+              priority: Object.entries(summaryData.by_priority || {}).map(function ([label, value]) {
+                return { label, value };
+              }),
+              language: Object.entries(summaryData.by_language || {}).map(function ([label, value]) {
+                return { label, value };
+              }),
+              category: Object.entries(summaryData.by_category || {}).map(function ([label, value]) {
+                return { label, value };
+              }),
+              source: Object.entries(summaryData.by_source || {}).map(function ([label, value]) {
+                return { label, value };
+              }),
+            },
+            messages_per_day: (dashboardMessages.message_volume || []).map(function (item) {
+              return { label: item.day, value: item.total };
+            }),
+            top_themes: (summaryData.top_themes || []).map(function (item) {
+              return { label: item.label, value: item.total || item.value || 0 };
+            }),
+          };
 
     console.debug("[dashboard] loaded messages", {
       rawCount: rawItems.length,
@@ -548,7 +582,7 @@
     });
     renderMetricList(
       $("sourceActivityList"),
-      (metrics.distribution && metrics.distribution.source) ||
+      (chartMetrics.distribution && chartMetrics.distribution.source) ||
         Object.entries(summaryData.by_source || {}).map(function ([label, value]) {
           return { label, value };
         }),
@@ -592,12 +626,12 @@
     applyFilters();
 
     destroyCharts();
-    createDonutChart("priorityDonutChart", metrics.distribution && metrics.distribution.priority);
-    createDonutChart("languageDonutChart", metrics.distribution && metrics.distribution.language);
-    createDonutChart("sourceDonutChart", metrics.distribution && metrics.distribution.source);
-    createBarChart("dailyVolumeBarChart", metrics.messages_per_day || [], "#58d4c7");
-    createBarChart("themeBarChart", metrics.top_themes || [], "#7aa2ff");
-    createBarChart("categoryBarChart", metrics.distribution && metrics.distribution.category, "#ffd166");
+    createDonutChart("priorityDonutChart", chartMetrics.distribution && chartMetrics.distribution.priority);
+    createDonutChart("languageDonutChart", chartMetrics.distribution && chartMetrics.distribution.language);
+    createDonutChart("sourceDonutChart", chartMetrics.distribution && chartMetrics.distribution.source);
+    createBarChart("dailyVolumeBarChart", chartMetrics.messages_per_day || [], "#58d4c7");
+    createBarChart("themeBarChart", chartMetrics.top_themes || [], "#7aa2ff");
+    createBarChart("categoryBarChart", chartMetrics.distribution && chartMetrics.distribution.category, "#ffd166");
 
     const exportPdfButton = $("exportPdfButton");
     if (exportPdfButton && !exportPdfButton.dataset.bound) {
