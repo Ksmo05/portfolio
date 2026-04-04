@@ -1322,24 +1322,26 @@ def detect_summary_request(normalized_text: str) -> bool:
 
 def detect_profile_grounding_topic(normalized_text: str) -> str | None:
     name_terms = {
-        "como te llamas", "cual es tu nombre", "quien eres", "who are you", "what is your name",
-        "your name", "whats your name", "what's your name",
+        "como te llamas", "como se llama", "cual es tu nombre", "quien eres", "who are you", "what is your name",
+        "your name", "whats your name", "what's your name", "who is this",
     }
     current_role_terms = {
         "where does", "works at", "work at", "current company", "current employer", "current job",
         "where does carlos work", "what company does he work for", "empresa actual", "donde trabaja",
-        "donde trabaja actualmente", "trabaja actualmente", "en que empresa", "current role",
-        "trabajo actual", "rpc", "retail performance company",
+        "donde trabaja actualmente", "donde trabaja ahora", "trabaja actualmente", "en que empresa", "current role",
+        "trabajo actual", "en que trabajas", "en que trabaja", "y en que trabaja", "a que te dedicas",
+        "a que se dedica", "en que trabajas ahora", "en que trabaja ahora", "rpc", "retail performance company",
     }
     education_terms = {
         "education", "academic background", "studies", "study", "studied", "what has he studied",
         "what does he study", "formacion", "estudios", "que estudia", "que ha estudiado",
-        "formacion academica", "academic studies",
+        "que estudiaste", "que has estudiado", "que formacion tienes", "formacion academica", "academic studies",
     }
     previous_experience_terms = {
         "previous experience", "prior experience", "worked before", "where has he worked before",
         "what has he worked on before", "career history", "experiencia previa", "ha trabajado antes",
-        "donde ha trabajado antes", "en que ha trabajado", "trabajos anteriores", "trayectoria previa",
+        "donde ha trabajado antes", "donde trabajaste antes", "en que ha trabajado", "en que trabajabas antes",
+        "que experiencia tienes", "trabajos anteriores", "trayectoria previa",
     }
     if any(term in normalized_text for term in name_terms):
         return "name"
@@ -1428,6 +1430,18 @@ def detect_chat_frustration(normalized_text: str) -> bool:
         "sigues sin entender", "no entiendes", "esto no ayuda", "esto no me sirve", "mejor hablar con alguien",
     }
     return any(term in normalized_text for term in frustration_terms)
+
+
+def detect_conversation_close_intent(normalized_text: str) -> bool:
+    close_terms = {
+        "adios", "hasta luego", "hasta pronto", "gracias ya esta", "gracias ya esta.", "ya esta",
+        "ya esta gracias", "eso es todo", "no quiero seguir", "no quiero hablar mas", "no quiero hablar mas contigo",
+        "vale gracias", "perfecto nada mas", "nada mas", "no necesito mas", "gracias por todo",
+        "goodbye", "bye", "thanks thats all", "thanks that's all", "thats all", "that's all",
+        "i dont want to continue", "i do not want to continue", "i dont want to keep talking",
+        "no more questions", "all good thanks", "all good, thanks", "thats enough", "that's enough",
+    }
+    return any(term in normalized_text for term in close_terms)
 
 
 def detect_feedback_signal(normalized_text: str) -> tuple[str, str | None]:
@@ -1569,6 +1583,13 @@ def build_scope_gap_reply(language: str, whatsapp_offer: bool, whatsapp_reason: 
     if language == "es":
         return f"No tengo esa informacion con suficiente precision. Puedes consultarmelo escribiendo en el formulario o a traves de WhatsApp. {whatsapp_url}"
     return f"I do not have that information with enough precision. You can ask through the contact form or on WhatsApp. {whatsapp_url}"
+
+
+def build_conversation_close_reply(language: str) -> str:
+    whatsapp_url = build_whatsapp_url(language)
+    if language == "es":
+        return f"Encantado de haberte ayudado. Para cualquier otra duda puedes escribirme a traves del formulario o abrir conversacion por WhatsApp. {whatsapp_url}"
+    return f"Glad I could help. If you need anything else, you can reach out through the contact form or open a WhatsApp conversation. {whatsapp_url}"
 
 
 def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
@@ -1929,6 +1950,11 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
     if analysis.theme_slug in {"name", "current-role", "education", "previous-experience", "specific-experience"} and analysis.reply_text:
         grounded_path = f"chat-grounded-{analysis.theme_slug}"
         return analysis.reply_text, grounded_path, meta
+
+    if detect_conversation_close_intent(normalized):
+        close_meta = dict(meta)
+        close_meta["whatsapp_handoff"] = True
+        return build_conversation_close_reply(language), "chat-close-conversation", close_meta
 
     if feedback_signal == "negative" and topic == "general":
         return build_feedback_recovery_reply(language, intent, whatsapp_offer, whatsapp_reason), "chat-feedback-recovery", meta

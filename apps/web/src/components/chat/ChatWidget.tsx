@@ -34,8 +34,6 @@ type ChatCopy = {
   quickActions: QuickAction[];
 };
 
-const STORAGE_PREFIX = "portfolio-chat-widget";
-
 const copy: Record<Locale, ChatCopy> = {
   en: {
     title: "Carlos AI Assistant",
@@ -198,7 +196,6 @@ export default function ChatWidget() {
   const pathname = usePathname();
   const locale = getLocaleFromPathname(pathname);
   const text = copy[locale];
-  const storageKey = `${STORAGE_PREFIX}:${locale}`;
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -210,25 +207,10 @@ export default function ChatWidget() {
   const showQuickActions = messages.length <= 1 && messages.every((message) => message.role !== "user");
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved) as ChatMessage[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
-          return;
-        }
-      }
-    } catch {
-      // Ignore invalid persisted state and restore a clean conversation.
-    }
-
     setMessages(getInitialMessages(locale));
-  }, [locale, storageKey]);
-
-  useEffect(() => {
-    window.localStorage.setItem(storageKey, JSON.stringify(messages));
-  }, [messages, storageKey]);
+    setInputValue("");
+    setIsLoading(false);
+  }, [locale]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -274,7 +256,11 @@ export default function ChatWidget() {
     setMessages(getInitialMessages(locale));
     setInputValue("");
     setIsLoading(false);
-    window.localStorage.removeItem(storageKey);
+  }
+
+  function handleCloseChat() {
+    handleReset();
+    setIsOpen(false);
   }
 
   return (
@@ -326,7 +312,7 @@ export default function ChatWidget() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsOpen(false)}
+                  onClick={handleCloseChat}
                   aria-label={text.closeLabel}
                   className="rounded-full border border-white/10 bg-white/5 p-2 text-slate-400 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
                 >
@@ -438,7 +424,14 @@ export default function ChatWidget() {
 
       <button
         type="button"
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={() => {
+          if (isOpen) {
+            handleCloseChat();
+            return;
+          }
+          handleReset();
+          setIsOpen(true);
+        }}
         aria-expanded={isOpen}
         aria-label={text.openLabel}
         className="ml-auto flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-[1.4rem] border border-white/10 bg-[linear-gradient(135deg,rgba(34,211,238,0.95),rgba(15,23,42,0.95))] text-white shadow-[0_24px_80px_-24px_rgba(8,145,178,0.9)] transition hover:scale-[1.02] hover:brightness-110"
