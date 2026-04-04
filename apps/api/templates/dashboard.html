@@ -86,7 +86,7 @@
             <span class="status-chip soft-status">Traffic</span>
           </div>
           <h3 id="metricGaStatus">{{ "Live" if ga4_enabled else "Optional" }}</h3>
-          <p>Traffic analytics connection status</p>
+          <p id="metricGaDetail">Traffic analytics connection status</p>
         </article>
       </section>
 
@@ -106,22 +106,19 @@
         <article class="surface-card span-4 executive-side-card">
           <div class="section-head section-head-tight">
             <div>
-              <span class="section-kicker">Operating view</span>
-              <h2>Review focus</h2>
+              <span class="section-kicker">Live visibility</span>
+              <h2>Source and traffic status</h2>
             </div>
           </div>
-          <div class="mini-insight-stack">
-            <div class="mini-insight-row">
-              <strong>Priority first</strong>
-              <p>Review urgency, source, and lead signals before diving into message detail.</p>
+          <p class="section-helper">A quick check that the dashboard is reading real inbox sources and, when configured, live GA4 traffic data.</p>
+          <div class="split-list-grid">
+            <div>
+              <div class="subsection-label">Inbox sources</div>
+              <div id="sourceActivityList" class="list-stack"></div>
             </div>
-            <div class="mini-insight-row">
-              <strong>Compact analytics</strong>
-              <p>Charts, lists, filters, and exports stay grouped for fast executive scanning.</p>
-            </div>
-            <div class="mini-insight-row">
-              <strong>Graceful empty states</strong>
-              <p>The dashboard remains usable even with low data volume or partial analytics.</p>
+            <div>
+              <div class="subsection-label">GA4 snapshot</div>
+              <div id="gaTrafficList" class="list-stack"></div>
             </div>
           </div>
         </article>

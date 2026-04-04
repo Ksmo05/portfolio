@@ -162,6 +162,7 @@
       by_sentiment: countBy(items, "sentiment"),
       by_language: countBy(items, "language"),
       by_category: countBy(items, "category"),
+      by_source: countBy(items, "source"),
       top_themes: topThemes,
       executive_summary:
         items.length > 0
@@ -192,6 +193,38 @@
     items.forEach((item) => {
       container.appendChild(formatter(item));
     });
+  }
+
+  function sourceActivityRow(item) {
+    const row = createElement("div", "list-row");
+    row.append(
+      createElement("strong", "", humanizeLabel(item.label || item.source || "unknown")),
+      createElement("span", "tag", `${item.value ?? item.total ?? 0} messages`)
+    );
+    return row;
+  }
+
+  function gaSnapshotRow(label, value) {
+    const row = createElement("div", "list-row");
+    row.append(createElement("strong", "", label), createElement("span", "tag", value));
+    return row;
+  }
+
+  function renderGaSnapshot(container, analytics) {
+    if (!container) return;
+    container.innerHTML = "";
+    if (!analytics || analytics.status !== "configured") {
+      const reason = analytics && analytics.reason ? analytics.reason : "GA4 is not configured yet.";
+      container.appendChild(createElement("div", "empty-state small-empty", reason));
+      return;
+    }
+
+    const totals = analytics.totals || {};
+    container.appendChild(gaSnapshotRow("Sessions", String(totals.sessions || 0)));
+    container.appendChild(gaSnapshotRow("Users", String(totals.users || 0)));
+    container.appendChild(gaSnapshotRow("Page views", String(totals.page_views || 0)));
+    const topPage = analytics.top_pages && analytics.top_pages[0] ? analytics.top_pages[0].page : "/";
+    container.appendChild(gaSnapshotRow("Top page", topPage));
   }
 
   function renderBarChart(container, title, dataObject) {
@@ -436,11 +469,12 @@
   }
 
   async function loadDashboard() {
-    const [rawMessagesResponse, summaryResponse, messagesResponse, metricsResponse] = await Promise.all([
+    const [rawMessagesResponse, summaryResponse, messagesResponse, metricsResponse, analyticsResponse] = await Promise.all([
       fetch("/api/messages?limit=100"),
       fetch("/api/dashboard/summary"),
       fetch("/api/dashboard/messages"),
       fetch("/api/dashboard/metrics"),
+      fetch("/api/dashboard/analytics"),
     ]);
 
     const rawMessagesData = await rawMessagesResponse.json();
@@ -449,6 +483,7 @@
     const summary = await summaryResponse.json();
     const messages = await messagesResponse.json();
     const metrics = await metricsResponse.json();
+    const analytics = await analyticsResponse.json();
     const summaryData = summary && summary.total_messages ? summary : fallbackSummary(rawItems);
     const dashboardMessages =
       messages && (
@@ -464,7 +499,21 @@
     $("metricTotalMessages").textContent = String(summaryData.total_messages || rawItems.length || 0);
     $("metricTopPriority").textContent = humanizeLabel(topKey(summaryData.by_priority));
     $("metricTopTheme").textContent = (summaryData.top_themes && summaryData.top_themes[0] && summaryData.top_themes[0].label) || "-";
-    $("metricGaStatus").textContent = "Live";
+    $("metricGaStatus").textContent =
+      analytics && analytics.status === "configured"
+        ? "Live"
+        : analytics && analytics.status === "error"
+          ? "Error"
+          : "Optional";
+    const metricGaDetail = $("metricGaDetail");
+    if (metricGaDetail) {
+      metricGaDetail.textContent =
+        analytics && analytics.status === "configured"
+          ? `${analytics.totals && analytics.totals.sessions ? analytics.totals.sessions : 0} sessions in the last 30 days`
+          : analytics && analytics.reason
+            ? analytics.reason
+            : "Traffic analytics connection status";
+    }
 
     $("priorityChart").innerHTML = "";
     $("sentimentChart").innerHTML = "";
@@ -488,6 +537,15 @@
       row.append(createElement("strong", "", item.label || item), createElement("span", "tag", `${item.total || ""}`.trim()));
       return row;
     });
+    renderMetricList(
+      $("sourceActivityList"),
+      (metrics.distribution && metrics.distribution.source) ||
+        Object.entries(summaryData.by_source || {}).map(function ([label, value]) {
+          return { label, value };
+        }),
+      sourceActivityRow
+    );
+    renderGaSnapshot($("gaTrafficList"), analytics);
 
     renderMetricList($("topOpportunitiesList"), dashboardMessages.top_opportunities || [], messageCard);
     renderMetricList($("recentHighPriorityList"), dashboardMessages.recent_high_priority || [], messageCard);

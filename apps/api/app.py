@@ -27,6 +27,7 @@ import requests
 try:
     from google.analytics.data_v1beta import BetaAnalyticsDataClient
     from google.analytics.data_v1beta.types import DateRange, Dimension, Metric, RunReportRequest
+    from google.oauth2 import service_account
 
     GA4_CLIENT_AVAILABLE = True
 except ImportError:
@@ -310,6 +311,7 @@ class Settings:
     ai_match_threshold: float
     ga4_property_id: str
     google_application_credentials: str
+    google_application_credentials_json: str
 
 
 def parse_bool_env(value: str, default: bool = False) -> bool:
@@ -350,6 +352,10 @@ def load_settings() -> Settings:
         ai_match_threshold=float(os.getenv("AI_MATCH_THRESHOLD", "0.33")),
         ga4_property_id=os.getenv("GA4_PROPERTY_ID", "").strip(),
         google_application_credentials=os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip(),
+        google_application_credentials_json=(
+            os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
+            or os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
+        ),
     )
 
 
@@ -2175,7 +2181,14 @@ def recent_messages(limit: int = 12) -> list[dict[str, Any]]:
             """,
             (limit,),
         ).fetchall()
-    return [serialize_message(row) for row in rows]
+    items = [serialize_message(row) for row in rows]
+    logger.info(
+        "Dashboard recent messages read | database_path=%s | limit=%s | returned=%s",
+        settings.database_path,
+        limit,
+        len(items),
+    )
+    return items
 
 
 def safe_recent_messages(limit: int = 12) -> list[dict[str, Any]]:
@@ -2294,6 +2307,7 @@ def dashboard_chart_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
 
 def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
     total_messages = connection.execute("SELECT COUNT(*) AS total FROM messages").fetchone()["total"]
+    by_source = aggregate_counts(connection, "source", fallback="unknown")
     top_themes = [
         dict(row)
         for row in connection.execute(
@@ -2388,12 +2402,13 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
             """
         ).fetchall()
     ]
-    return {
+    metrics = {
         "total_messages": total_messages,
         "by_priority": aggregate_counts(connection, "priority"),
         "by_category": aggregate_counts(connection, "category"),
         "by_language": aggregate_counts(connection, "language"),
         "by_sentiment": aggregate_counts(connection, "sentiment"),
+        "by_source": by_source,
         "top_themes": top_themes,
         "message_volume": message_volume,
         "highest_leads": highest_leads,
@@ -2401,6 +2416,14 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
         "top_opportunities": [item for item in highest_leads if item["lead_score"] >= 4][:4],
         "recurring_interests": top_themes[:4],
     }
+    logger.info(
+        "Dashboard metrics read | database_path=%s | total_messages=%s | by_source=%s | by_language=%s",
+        settings.database_path,
+        metrics["total_messages"],
+        metrics["by_source"],
+        metrics["by_language"],
+    )
+    return metrics
 
 
 def fallback_executive_summary(metrics: dict[str, Any]) -> str:
@@ -2435,19 +2458,54 @@ def generate_executive_summary(metrics: dict[str, Any]) -> str:
 
 
 def ga4_configured() -> bool:
-    return bool(settings.ga4_property_id and settings.google_application_credentials and GA4_CLIENT_AVAILABLE)
+    return bool(
+        settings.ga4_property_id
+        and (settings.google_application_credentials or settings.google_application_credentials_json)
+        and GA4_CLIENT_AVAILABLE
+    )
+
+
+def get_ga4_client() -> tuple[BetaAnalyticsDataClient, str] | tuple[None, str]:
+    if not GA4_CLIENT_AVAILABLE:
+        return None, "client_unavailable"
+    if settings.google_application_credentials_json:
+        try:
+            credentials = service_account.Credentials.from_service_account_info(
+                json.loads(settings.google_application_credentials_json)
+            )
+            return BetaAnalyticsDataClient(credentials=credentials), "json_env"
+        except Exception:
+            logger.exception("Failed to build GA4 client from GOOGLE_APPLICATION_CREDENTIALS_JSON")
+            return None, "invalid_json_credentials"
+    if settings.google_application_credentials:
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = settings.google_application_credentials
+        return BetaAnalyticsDataClient(), "file_path"
+    return None, "missing_credentials"
 
 
 def fetch_ga4_analytics() -> dict[str, Any]:
     if not settings.ga4_property_id:
+        logger.warning("GA4 read skipped | reason=missing_property_id")
         return {"status": "not_configured", "reason": "GA4_PROPERTY_ID is not set."}
-    if not settings.google_application_credentials:
-        return {"status": "not_configured", "reason": "GOOGLE_APPLICATION_CREDENTIALS is not set."}
+    if not settings.google_application_credentials and not settings.google_application_credentials_json:
+        logger.warning("GA4 read skipped | reason=missing_credentials")
+        return {
+            "status": "not_configured",
+            "reason": "GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_APPLICATION_CREDENTIALS_JSON is not set.",
+        }
     if not GA4_CLIENT_AVAILABLE:
+        logger.warning("GA4 read skipped | reason=client_library_missing")
         return {"status": "not_configured", "reason": "google-analytics-data client library is not installed."}
     try:
-        client = BetaAnalyticsDataClient()
+        client, auth_mode = get_ga4_client()
+        if client is None:
+            return {"status": "error", "reason": f"Unable to initialize GA4 client ({auth_mode})."}
         property_name = f"properties/{settings.ga4_property_id}"
+        logger.info(
+            "GA4 read start | property=%s | auth_mode=%s",
+            property_name,
+            auth_mode,
+        )
         totals = client.run_report(
             RunReportRequest(
                 property=property_name,
@@ -2482,8 +2540,16 @@ def fetch_ga4_analytics() -> dict[str, Any]:
                 limit=6,
             )
         )
+        logger.info(
+            "GA4 read success | property=%s | users=%s | sessions=%s | page_views=%s",
+            property_name,
+            int(totals_row[0].value) if len(totals_row) > 0 else 0,
+            int(totals_row[1].value) if len(totals_row) > 1 else 0,
+            int(totals_row[2].value) if len(totals_row) > 2 else 0,
+        )
         return {
             "status": "configured",
+            "auth_mode": auth_mode,
             "totals": {
                 "users": int(totals_row[0].value) if len(totals_row) > 0 else 0,
                 "sessions": int(totals_row[1].value) if len(totals_row) > 1 else 0,
@@ -2816,6 +2882,11 @@ async def dashboard_summary() -> JSONResponse:
     with closing(get_connection()) as connection:
         metrics = dashboard_message_metrics(connection)
     metrics["executive_summary"] = generate_executive_summary(metrics)
+    logger.info(
+        "Dashboard summary served | total_messages=%s | top_theme=%s",
+        metrics["total_messages"],
+        metrics["top_themes"][0]["label"] if metrics["top_themes"] else "none",
+    )
     return JSONResponse(metrics)
 
 
@@ -2823,6 +2894,12 @@ async def dashboard_summary() -> JSONResponse:
 async def dashboard_messages() -> JSONResponse:
     with closing(get_connection()) as connection:
         metrics = dashboard_message_metrics(connection)
+    logger.info(
+        "Dashboard messages served | recent_high_priority=%s | top_opportunities=%s | message_volume_days=%s",
+        len(metrics["recent_high_priority"]),
+        len(metrics["top_opportunities"]),
+        len(metrics["message_volume"]),
+    )
     return JSONResponse(
         {
             "recent_high_priority": metrics["recent_high_priority"],
@@ -2830,6 +2907,7 @@ async def dashboard_messages() -> JSONResponse:
             "message_volume": metrics["message_volume"],
             "top_opportunities": metrics["top_opportunities"],
             "most_requested_topics": metrics["recurring_interests"],
+            "by_source": metrics["by_source"],
         }
     )
 
@@ -2838,6 +2916,11 @@ async def dashboard_messages() -> JSONResponse:
 async def dashboard_metrics() -> JSONResponse:
     with closing(get_connection()) as connection:
         metrics = dashboard_chart_metrics(connection)
+    logger.info(
+        "Dashboard chart metrics served | total_messages=%s | source_buckets=%s",
+        metrics["total_messages"],
+        len(metrics["distribution"]["source"]),
+    )
     return JSONResponse(metrics)
 
 
@@ -2941,7 +3024,13 @@ async def dashboard_export_excel() -> StreamingResponse:
 
 @app.get("/api/dashboard/analytics")
 async def dashboard_analytics() -> JSONResponse:
-    return JSONResponse(fetch_ga4_analytics())
+    analytics = fetch_ga4_analytics()
+    logger.info(
+        "Dashboard analytics served | status=%s | reason=%s",
+        analytics.get("status"),
+        analytics.get("reason", "none"),
+    )
+    return JSONResponse(analytics)
 
 
 @app.get("/api/dashboard/combined-insights")

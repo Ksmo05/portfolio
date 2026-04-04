@@ -10,18 +10,12 @@ type AIInboxSectionProps = {
 };
 
 type SubmissionState = {
-  priority: string;
-  category: string;
-  language: string;
   reply_text: string;
 };
 
 function isSubmissionState(value: InboxSuccessResponse["message"]): value is SubmissionState {
   return Boolean(
     value &&
-      typeof value.priority === "string" &&
-      typeof value.category === "string" &&
-      typeof value.language === "string" &&
       typeof value.reply_text === "string",
   );
 }
@@ -52,17 +46,15 @@ const copy: Record<
     error: string;
     networkError: string;
     analysis: string;
-    summaryHint: string;
-    priority: string;
-    category: string;
-    language: string;
     reply: string;
+    replyHint: string;
+    idleHint: string;
   }
 > = {
   en: {
     eyebrow: "Contact Form",
     title: "Contact form",
-    description: "Share a professional inquiry, project context, collaboration request or question. Your message is reviewed and routed automatically after submission.",
+    description: "Share a professional inquiry, project context, collaboration request or question. You will receive a clear confirmation after sending your message.",
     name: "Name",
     email: "Email",
     company: "Company",
@@ -71,21 +63,19 @@ const copy: Record<
     optional: "Optional",
     submit: "Send message",
     submitting: "Sending...",
-    submittingHint: "Submitting your message and preparing the routing summary...",
+    submittingHint: "Submitting your message and preparing your confirmation...",
     success: "Your message was sent successfully.",
     error: "The contact form could not process your message right now. Please try again in a moment.",
     networkError: "The contact service is not reachable right now. Please try again in a moment.",
-    analysis: "Submission summary",
-    summaryHint: "This response is generated from the real backend workflow used by the dashboard and contact routing.",
-    priority: "Priority",
-    category: "Category",
-    language: "Language",
+    analysis: "Thanks, your message was sent",
     reply: "Reply suggestion",
+    replyHint: "If helpful, you can use this reply as a starting point for a follow-up conversation.",
+    idleHint: "You will see a confirmation here once your message has been processed.",
   },
   es: {
     eyebrow: "Formulario de contacto",
     title: "Formulario de contacto",
-    description: "Comparte una consulta profesional, contexto de proyecto, propuesta de colaboracion o pregunta. Tu mensaje se revisa y enruta automaticamente tras el envio.",
+    description: "Comparte una consulta profesional, contexto de proyecto, propuesta de colaboracion o pregunta. Recibiras una confirmacion clara despues del envio.",
     name: "Nombre",
     email: "Email",
     company: "Empresa",
@@ -94,16 +84,14 @@ const copy: Record<
     optional: "Opcional",
     submit: "Enviar mensaje",
     submitting: "Enviando...",
-    submittingHint: "Enviando tu mensaje y preparando el resumen de enrutado...",
+    submittingHint: "Enviando tu mensaje y preparando la confirmacion...",
     success: "Tu mensaje se ha enviado correctamente.",
     error: "El formulario no ha podido procesar tu mensaje ahora mismo. Intentalo de nuevo en unos minutos.",
     networkError: "El servicio de contacto no esta disponible ahora mismo. Intentalo de nuevo en unos minutos.",
-    analysis: "Resumen del envio",
-    summaryHint: "Esta respuesta se genera desde el flujo real del backend usado por el dashboard y el enrutado de contacto.",
-    priority: "Prioridad",
-    category: "Categoria",
-    language: "Idioma",
+    analysis: "Gracias, tu mensaje se ha enviado",
     reply: "Respuesta sugerida",
+    replyHint: "Si te ayuda, puedes usar esta respuesta como punto de partida para continuar la conversacion.",
+    idleHint: "Aqui veras una confirmacion cuando tu mensaje se haya procesado.",
   },
 };
 
@@ -179,9 +167,6 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
 
       startTransition(() => {
         setResult({
-          priority: responseMessage.priority,
-          category: responseMessage.category,
-          language: responseMessage.language,
           reply_text: responseMessage.reply_text,
         });
         setForm(initialForm);
@@ -223,8 +208,8 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
             <div className="section-shell-muted mt-8 rounded-[1.7rem] p-5">
               <p className="text-muted text-sm leading-6">
                 {locale === "es"
-                  ? "Usa este formulario para oportunidades profesionales, colaboraciones, contexto de proyecto o preguntas concretas. El sistema mantiene el flujo real de envio y seguimiento."
-                  : "Use this form for professional opportunities, collaborations, project context, or specific questions. The submission keeps the real routing and follow-up flow."}
+                  ? "Usa este formulario para oportunidades profesionales, colaboraciones, contexto de proyecto o preguntas concretas."
+                  : "Use this form for professional opportunities, collaborations, project context, or specific questions."}
               </p>
             </div>
           </div>
@@ -302,9 +287,7 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
                     </div>
                   ) : !error && !result ? (
                     <p className="text-sm text-slate-400">
-                      {locale === "es"
-                        ? "Tu mensaje se envia al backend real y, despues, se organiza automaticamente."
-                        : "Your message is sent to the real backend and then organized automatically."}
+                      {text.idleHint}
                     </p>
                   ) : null}
                 </div>
@@ -320,21 +303,7 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
                     {locale === "es" ? "Envio procesado" : "Submission processed"}
                   </span>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-slate-300">{text.summaryHint}</p>
-                <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                  <article className="card-surface-soft rounded-[1.3rem] p-4">
-                    <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">{text.priority}</p>
-                    <p className="mt-2 text-sm font-medium text-white">{result.priority}</p>
-                  </article>
-                  <article className="card-surface-soft rounded-[1.3rem] p-4">
-                    <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">{text.category}</p>
-                    <p className="mt-2 text-sm font-medium text-white">{result.category}</p>
-                  </article>
-                  <article className="card-surface-soft rounded-[1.3rem] p-4">
-                    <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">{text.language}</p>
-                    <p className="mt-2 text-sm font-medium text-white">{result.language}</p>
-                  </article>
-                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-300">{text.replyHint}</p>
                 <div className="card-surface-soft mt-4 rounded-[1.3rem] p-4">
                   <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">{text.reply}</p>
                   <p className="mt-3 text-sm leading-6 text-slate-200">{result.reply_text}</p>
