@@ -37,6 +37,7 @@ load_dotenv(BASE_DIR / ".env")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger("ai-portfolio-inbox")
+CHAT_WIDGET_SOURCE = "portfolio-chat-widget"
 
 
 LANGUAGE_STOPWORDS = {
@@ -56,6 +57,23 @@ THEME_RULES = [
     ("ux-feedback", "Portfolio UX and design feedback", {"feedback", "suggestion", "improve", "design", "ui", "ux", "layout", "experience", "sugerencia", "mejora"}),
     ("api-integration", "API and integration topics", {"api", "integration", "webhook", "backend", "database", "sqlite", "fastapi", "smtp", "integracion", "integración"}),
 ]
+
+CHAT_PROFILE_FACTS = {
+    "en": [
+        "Carlos works at the intersection of operations, data, digital workflows, and practical AI.",
+        "His profile is corporate and business-oriented, not a pure software engineering or AI engineering profile.",
+        "He has experience supporting Purchasing and Aftersales processes in a BMW-related environment, including SAP support, reporting follow-up, incident handling, and coordination.",
+        "His background also includes back-office operations, documentation validation, public procurement support, banking operations, and technical support operations.",
+        "His projects show practical uses of digital tools, dashboards, structured information, and AI for productivity.",
+    ],
+    "es": [
+        "Carlos trabaja en la interseccion entre operaciones, datos, workflows digitales e IA practica.",
+        "Su perfil es corporativo y orientado a negocio, no un perfil puro de software engineering ni de AI engineering.",
+        "Tiene experiencia dando soporte a procesos de Purchasing y Aftersales en un entorno vinculado a BMW, incluyendo soporte SAP, seguimiento de reporting, gestion de incidencias y coordinacion.",
+        "Su trayectoria tambien incluye back office, validacion documental, soporte a contratacion publica, operaciones bancarias y soporte tecnico-operativo.",
+        "Sus proyectos muestran usos practicos de herramientas digitales, dashboards, informacion estructurada e IA para productividad.",
+    ],
+}
 
 
 def utc_now() -> str:
@@ -110,6 +128,12 @@ def detect_language(text: str) -> str:
     if re.search(r"[ñáéíóú]", text.lower()):
         es_score += 2
     return "es" if es_score > en_score else "en"
+
+
+def normalize_match_text(text: str) -> str:
+    normalized = unicodedata.normalize("NFKD", text or "")
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"\s+", " ", ascii_text).strip().lower()
 
 
 @dataclass
@@ -207,6 +231,7 @@ class InboxSubmission(BaseModel):
     company: str | None = Field(default=None, max_length=120)
     message: str = Field(min_length=12, max_length=3000)
     source: str = Field(default="portfolio-widget", max_length=80)
+    messages: list[dict[str, str]] | None = None
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -471,6 +496,252 @@ def heuristic_analysis(submission: InboxSubmission) -> tuple[MessageAnalysis, st
         ),
         "heuristic",
     )
+
+
+def detect_chat_intent(normalized_text: str) -> str:
+    recruiter_terms = {
+        "recruiter", "recruiting", "hiring", "hire", "hiring manager", "talent", "talent acquisition",
+        "role", "roles", "position", "positions", "job", "opening", "opportunity", "interview", "team",
+        "fit", "candidate", "cv", "resume", "background", "profile for", "perfil", "encaje", "puesto",
+        "vacante", "reclutador", "seleccion", "seleccionador", "manager", "manager hiring",
+    }
+    client_terms = {
+        "client", "project", "collaboration", "consulting", "consultant", "consultancy", "freelance",
+        "support", "workflow", "process", "process improvement", "operations support", "dashboard",
+        "reporting", "reporting help", "operations", "automation", "ai", "partner", "proposal",
+        "quote", "scope", "need help", "help with", "improve", "improvement", "efficiency",
+        "cliente", "proyecto", "colaboracion", "consultoria", "proceso", "mejora de procesos",
+        "reporte", "reporting", "dashboard", "operaciones", "soporte operativo", "automatizacion",
+        "propuesta", "presupuesto", "colaborador",
+    }
+    if any(term in normalized_text for term in recruiter_terms):
+        return "recruiter"
+    if any(term in normalized_text for term in client_terms):
+        return "client"
+    return "general"
+
+
+def detect_summary_request(normalized_text: str) -> bool:
+    summary_patterns = [
+        "summary", "summarize", "summarise", "short version", "short overview", "quick summary",
+        "high level overview", "key points", "overview", "resumen", "resumelo", "hazme un resumen",
+        "dime lo principal", "resumen rapido", "resumen en 3 puntos", "lo mas importante",
+    ]
+    return any(pattern in normalized_text for pattern in summary_patterns)
+
+
+def detect_chat_topic(normalized_text: str) -> str:
+    if detect_summary_request(normalized_text):
+        return "summary"
+    if any(term in normalized_text for term in {"contact", "email", "reach", "connect", "linkedin", "contactar", "correo", "hablar"}):
+        return "contact"
+    if any(term in normalized_text for term in {"project", "projects", "portfolio", "case study", "proyecto", "proyectos"}):
+        return "projects"
+    if any(term in normalized_text for term in {"experience", "background", "career", "trayectoria", "experiencia"}):
+        return "experience"
+    if any(term in normalized_text for term in {"fit", "role", "roles", "encaje", "puesto", "perfil"}):
+        return "fit"
+    if any(term in normalized_text for term in {"ai", "automation", "workflow", "productivity", "ia", "automatizacion", "productividad"}):
+        return "practical-ai"
+    if any(term in normalized_text for term in {"about", "who is", "what does", "profile", "sobre", "quien es", "que hace"}):
+        return "profile"
+    return "general"
+
+
+def detect_contact_readiness(normalized_text: str) -> bool:
+    contact_terms = {
+        "contact", "reach", "email", "call", "meeting", "book", "connect", "talk", "speak", "follow up",
+        "linkedin", "correo", "contactar", "llamar", "reunion", "agendar", "hablar", "escribir",
+        "ponernos en contacto", "seguir hablando",
+    }
+    return any(term in normalized_text for term in contact_terms)
+
+
+def needs_guided_next_step(normalized_text: str, topic: str) -> bool:
+    broad_terms = {
+        "tell me about", "what does he do", "how can he help", "what kind of profile", "overview",
+        "more about", "cuentame", "hablame", "que hace", "que perfil", "como puede ayudar",
+        "mas informacion", "mas sobre", "dime sobre",
+    }
+    return topic == "general" and any(term in normalized_text for term in broad_terms)
+
+
+def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool) -> str:
+    if language == "es":
+        if contact_ready or topic == "contact":
+            if intent == "recruiter":
+                return "Si ya quieres valorar encaje o disponibilidad, el formulario de contacto del portfolio es el mejor siguiente paso."
+            if intent == "client":
+                return "Si ya tienes una necesidad concreta, el formulario de contacto del portfolio es la mejor via para aterrizar el contexto."
+            return "Si prefieres pasar a una conversacion directa, el formulario de contacto del portfolio es el mejor siguiente paso."
+        if intent == "recruiter":
+            return "Si te encaja, puedo resumir su fit para un rol, destacar la experiencia mas relevante o indicar el mejor siguiente paso de contacto."
+        if intent == "client":
+            return "Si te sirve, puedo enfocarlo a procesos, reporting, workflows digitales o uso practico de IA y despues orientarte a contacto."
+        return "Si quieres, puedo resumirlo en corto, enfocarlo a experiencia o senalar los proyectos mas relevantes."
+
+    if contact_ready or topic == "contact":
+        if intent == "recruiter":
+            return "If you already want to assess fit or availability, the portfolio contact form is the best next step."
+        if intent == "client":
+            return "If you already have a concrete need, the portfolio contact form is the best way to turn it into a practical conversation."
+        return "If you prefer to move into a direct conversation, the portfolio contact form is the best next step."
+    if intent == "recruiter":
+        return "If useful, I can summarize his fit for a role, highlight the most relevant experience, or point you to the best next contact step."
+    if intent == "client":
+        return "If helpful, I can frame his value around processes, reporting, digital workflows, or practical AI and then point you to contact."
+    return "If you want, I can keep it short, focus on experience, or point you to the most relevant projects."
+
+
+def build_guided_options(language: str, intent: str) -> str:
+    if language == "es":
+        if intent == "recruiter":
+            return "Puedo ayudarte de tres formas: resumen de perfil, encaje para un rol o experiencia mas relevante."
+        if intent == "client":
+            return "Puedo ayudarte de tres formas: resumen del perfil, donde puede aportar en procesos/reporting o siguiente paso de contacto."
+        return "Puedo ayudarte de tres formas: resumen del perfil, experiencia principal o proyectos mas relevantes."
+    if intent == "recruiter":
+        return "I can help in three ways: a profile summary, fit for a role, or the most relevant experience."
+    if intent == "client":
+        return "I can help in three ways: a profile summary, where he can add value in processes/reporting, or the best next contact step."
+    return "I can help in three ways: a profile summary, key experience, or the most relevant projects."
+
+
+def build_static_chat_reply(language: str, topic: str, intent: str, contact_ready: bool, guided_mode: bool) -> str | None:
+    tail = build_chat_cta(language, intent, topic, contact_ready)
+
+    replies = {
+        "en": {
+            "summary": "Quick summary:\n- Carlos is an operations, data, and digital support professional with a clear corporate profile.\n- His experience is centered on process support, reporting, SAP-related workflows, coordination, incidents, and structured follow-up.\n- He also uses digital tools and practical AI to improve productivity, information handling, and workflow efficiency.",
+            "profile": "Carlos' profile sits at the intersection of operations, data, digital workflows, and practical AI. He is best understood as a corporate, business-support profile focused on process coordination, reporting, SAP support, and operational improvement rather than as a pure developer or AI engineer.\n\n" + tail,
+            "experience": "His recent experience includes supporting Purchasing and Aftersales processes in a BMW-related environment, with SAP support, reporting follow-up, incident handling, and coordination. His broader background also includes back-office operations, documentation validation, public procurement support, banking operations, and technical support operations.\n\n" + tail,
+            "projects": "The projects in the portfolio are positioned as applied digital initiatives. They show how Carlos structures information, communicates clearly, works with dashboards and reporting, and uses practical AI to support productivity rather than as a pure engineering showcase.\n\n" + tail,
+            "fit": "Carlos is a strong fit for roles that combine operations, reporting, process support, procurement support, digital coordination, and practical AI use. He is especially relevant for teams that need structured follow-up, business support, KPI visibility, and someone comfortable working across tools, workflows, and operational contexts.\n\n" + tail,
+            "practical-ai": "His use of AI is practical and business-oriented. The focus is on writing support, information organization, summarization, and workflow efficiency, not on positioning himself as a pure AI engineer.\n\n" + tail,
+            "contact": "The best next step is to use the contact option in the portfolio if you want to discuss a role, collaboration, or project context. If helpful first, I can also summarize his experience or highlight the most relevant projects before you reach out.",
+            "general": "Carlos' portfolio presents a professional profile centered on operations, reporting, process support, digital workflows, and practical AI. The strongest themes are corporate business support, data visibility, coordination, and useful digital initiatives.\n\n" + (build_guided_options(language, intent) if guided_mode else tail),
+        },
+        "es": {
+            "summary": "Resumen rapido:\n- Carlos es un profesional de operaciones, datos y soporte digital con perfil corporativo claro.\n- Su experiencia se centra en soporte a procesos, reporting, workflows relacionados con SAP, coordinacion, incidencias y seguimiento estructurado.\n- Tambien utiliza herramientas digitales e IA practica para mejorar productividad, gestion de la informacion y eficiencia de workflows.",
+            "profile": "El perfil de Carlos se situa en la interseccion entre operaciones, datos, workflows digitales e IA practica. Se entiende mejor como un perfil corporativo y de soporte a negocio enfocado en coordinacion de procesos, reporting, soporte SAP y mejora operativa, no como un developer puro ni como un AI engineer.\n\n" + tail,
+            "experience": "Su experiencia reciente incluye soporte a procesos de Purchasing y Aftersales en un entorno vinculado a BMW, con soporte SAP, seguimiento de reporting, gestion de incidencias y coordinacion. Su trayectoria tambien incluye back office, validacion documental, contratacion publica, operaciones bancarias y soporte tecnico-operativo.\n\n" + tail,
+            "projects": "Los proyectos del portfolio estan planteados como iniciativas digitales aplicadas. Muestran como Carlos estructura informacion, comunica con claridad, trabaja con dashboards y reporting, y utiliza IA practica para apoyar productividad, no como una muestra de ingenieria pura.\n\n" + tail,
+            "fit": "Carlos encaja bien en roles que combinan operaciones, reporting, soporte a procesos, soporte a compras, coordinacion digital y uso practico de IA. Es especialmente relevante para equipos que necesitan seguimiento estructurado, soporte de negocio, visibilidad KPI y alguien comodo trabajando entre herramientas, workflows y contextos operativos.\n\n" + tail,
+            "practical-ai": "Su uso de IA es practico y orientado a negocio. El foco esta en apoyo a redaccion, organizacion de informacion, resumenes y eficiencia de workflows, no en presentarse como un AI engineer puro.\n\n" + tail,
+            "contact": "El mejor siguiente paso es usar la opcion de contacto del portfolio si quieres hablar sobre un rol, una colaboracion o un contexto de proyecto. Si te ayuda antes, tambien puedo resumir su experiencia o destacar los proyectos mas relevantes.",
+            "general": "El portfolio de Carlos presenta un perfil profesional centrado en operaciones, reporting, soporte a procesos, workflows digitales e IA practica. Los temas mas fuertes son soporte corporativo a negocio, visibilidad de datos, coordinacion e iniciativas digitales utiles.\n\n" + (build_guided_options(language, intent) if guided_mode else tail),
+        },
+    }
+    return replies.get(language, replies["en"]).get(topic)
+
+
+def fallback_chat_reply(language: str, intent: str, contact_ready: bool) -> str:
+    if language == "es":
+        return (
+            "Puedo ayudarte con un resumen del perfil, experiencia, proyectos o encaje profesional. "
+            + build_chat_cta(language, intent, "general", contact_ready)
+        )
+    return (
+        "I can help with a profile summary, experience overview, projects, or role fit. "
+        + build_chat_cta(language, intent, "general", contact_ready)
+    )
+
+
+def openai_chat_reply(
+    submission: InboxSubmission,
+    analysis: MessageAnalysis,
+    intent: str,
+    topic: str,
+    contact_ready: bool,
+    guided_mode: bool,
+) -> tuple[str | None, str]:
+    client = get_openai_client()
+    if client is None:
+        return None, "chat-heuristic"
+
+    language = analysis.language or detect_language(submission.message)
+    history = submission.messages or []
+    filtered_history = [
+        {
+            "role": item.get("role", "user") if item.get("role") in {"assistant", "user"} else "user",
+            "content": item.get("content", "").strip(),
+        }
+        for item in history[-6:]
+        if item.get("content")
+    ]
+
+    if not filtered_history:
+        filtered_history = [{"role": "user", "content": submission.message}]
+
+    facts = "\n".join(f"- {fact}" for fact in CHAT_PROFILE_FACTS.get(language, CHAT_PROFILE_FACTS["en"]))
+    history_text = "\n".join(f"{item['role']}: {item['content']}" for item in filtered_history)
+    brevity_rule = (
+        "If the user is asking for a summary, answer in 3 short bullet points maximum."
+        if topic == "summary"
+        else "Keep the reply concise, high-signal, and easy to scan."
+    )
+
+    prompt = f"""
+You are the portfolio assistant for Carlos San Miguel.
+
+Rules:
+- Reply in {language}.
+- Sound professional, clear, and recruiter-friendly.
+- Position Carlos around operations, data, digital workflows, and practical AI.
+- Do not present him as a pure AI engineer, full developer, or pure software engineer.
+- Do not invent experience or exaggerate seniority.
+- Adapt to intent: {intent}.
+- {brevity_rule}
+- Think like a professional portfolio assistant, not a sales bot.
+- For recruiter or hiring intent, connect the answer to role fit, relevant experience, and a sensible contact path.
+- For client or collaboration intent, connect the answer to process support, reporting, digital workflows, and practical AI use.
+- If the question is broad ({guided_mode}), synthesize first and then offer 2 or 3 clear directions.
+- If contact intent is explicit ({contact_ready}), make the next step practical and low-pressure.
+- End with one brief, natural next step when it genuinely helps. Avoid empty closers.
+
+Facts:
+{facts}
+
+Conversation:
+{history_text}
+"""
+    try:
+        response = client.responses.create(
+            model=settings.openai_model,
+            input=[
+                {"role": "system", "content": [{"type": "input_text", "text": "You answer questions about a professional portfolio with grounded, concise, non-invented replies."}]},
+                {"role": "user", "content": [{"type": "input_text", "text": prompt}]},
+            ],
+            max_output_tokens=220,
+        )
+        reply = response.output_text.strip()
+        return (reply or None), "chat-openai"
+    except Exception as exc:
+        logger.info("Chat reply fallback used after OpenAI error: %s", exc)
+        return None, "chat-heuristic"
+
+
+def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis) -> tuple[str, str]:
+    language = analysis.language or detect_language(submission.message)
+    normalized = normalize_match_text(submission.message)
+    intent = detect_chat_intent(normalized)
+    topic = detect_chat_topic(normalized)
+    contact_ready = detect_contact_readiness(normalized)
+    guided_mode = needs_guided_next_step(normalized, topic)
+    word_count = len(normalized.split())
+
+    static_reply = build_static_chat_reply(language, topic, intent, contact_ready, guided_mode)
+    if static_reply and (topic != "general" or word_count <= 8):
+        return static_reply, "chat-heuristic"
+
+    if guided_mode and static_reply:
+        return static_reply, "chat-heuristic"
+
+    model_reply, engine = openai_chat_reply(submission, analysis, intent, topic, contact_ready, guided_mode)
+    if model_reply:
+        return model_reply, engine
+
+    return fallback_chat_reply(language, intent, contact_ready), "chat-fallback"
 
 
 def openai_analysis(submission: InboxSubmission) -> tuple[MessageAnalysis, str]:
@@ -1353,8 +1624,14 @@ async def get_thread(thread_id: int) -> JSONResponse:
 @app.post("/api/inbox")
 async def create_message(payload: InboxSubmission) -> JSONResponse:
     # 🔥 FIX: soportar payload tipo chat (messages[])
-    if hasattr(payload, "messages") and payload.messages:
-        payload.message = payload.messages[-1].get("content", "")    
+    is_chat_request = payload.source == CHAT_WIDGET_SOURCE
+    if payload.messages:
+        last_user_message = next(
+            (item.get("content", "").strip() for item in reversed(payload.messages) if item.get("role") == "user" and item.get("content")),
+            "",
+        )
+        if last_user_message:
+            payload.message = last_user_message
     logger.info(
         "Inbox request received | source=%s | name=%s | email_provided=%s | company_provided=%s | message_length=%s",
         payload.source,
@@ -1373,7 +1650,12 @@ async def create_message(payload: InboxSubmission) -> JSONResponse:
             "message_preview": payload.message[:160],
         },
     )
-    analysis, engine = openai_analysis(payload)
+    if is_chat_request:
+        analysis, _ = heuristic_analysis(payload)
+        reply_text, engine = generate_chat_reply(payload, analysis)
+        analysis = analysis.model_copy(update={"reply_text": reply_text})
+    else:
+        analysis, engine = openai_analysis(payload)
     logger.info(
         "Inbox analysis completed | source=%s | engine=%s | theme_slug=%s | category=%s | priority=%s",
         payload.source,
