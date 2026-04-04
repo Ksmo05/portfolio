@@ -13,7 +13,7 @@ from typing import Any
 from urllib.parse import quote
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -367,6 +367,7 @@ DEFAULT_CORS_ORIGINS = [
     "http://127.0.0.1:3000",
     "https://portfolio-khaki-zeta-3frz86na3s.vercel.app",
 ]
+DEFAULT_CORS_ORIGIN_REGEX = r"^https:\/\/[a-z0-9-]+\.vercel\.app$"
 CORS_ALLOW_HEADERS = [
     "Accept",
     "Authorization",
@@ -376,6 +377,10 @@ CORS_ALLOW_HEADERS = [
     "x-chat-locale",
     "x-chat-source",
 ]
+
+
+def normalize_origin(value: str) -> str:
+    return value.strip().rstrip("/")
 
 
 class InboxSubmission(BaseModel):
@@ -408,9 +413,10 @@ app = FastAPI(title="AI Portfolio Inbox & Insights", version="2.0.0")
 # --- CORS CONFIG FROM ENV ---
 allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "")
 cors_debug_all_origins = os.getenv("CORS_DEBUG_ALL_ORIGINS", "").strip().lower() in {"1", "true", "yes", "on"}
+allowed_origin_regex = os.getenv("ALLOWED_ORIGIN_REGEX", "").strip() or DEFAULT_CORS_ORIGIN_REGEX
 
 configured_origins = [
-    origin.strip()
+    normalize_origin(origin)
     for origin in allowed_origins_raw.split(",")
     if origin.strip()
 ]
@@ -418,13 +424,24 @@ configured_origins = [
 if cors_debug_all_origins:
     cors_allow_origins = ["*"]
     cors_allow_credentials = False
+    cors_allow_origin_regex = None
 else:
-    cors_allow_origins = list(dict.fromkeys([*DEFAULT_CORS_ORIGINS, *configured_origins]))
+    cors_allow_origins = list(dict.fromkeys([*(normalize_origin(origin) for origin in DEFAULT_CORS_ORIGINS), *configured_origins]))
     cors_allow_credentials = True
+    cors_allow_origin_regex = allowed_origin_regex
+
+logger.info(
+    "CORS configured | origins=%s | origin_regex=%s | credentials=%s | headers=%s",
+    cors_allow_origins,
+    cors_allow_origin_regex or "none",
+    cors_allow_credentials,
+    CORS_ALLOW_HEADERS,
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_allow_origins,
+    allow_origin_regex=cors_allow_origin_regex,
     allow_credentials=cors_allow_credentials,
     allow_methods=["*"],
     allow_headers=CORS_ALLOW_HEADERS,
@@ -2091,6 +2108,11 @@ async def get_thread(thread_id: int) -> JSONResponse:
             raise HTTPException(status_code=404, detail="Thread not found.")
         messages = get_thread_messages(connection, thread_id, limit=20)
     return JSONResponse({"thread": dict(thread), "messages": messages})
+
+
+@app.options("/api/inbox")
+async def inbox_preflight() -> Response:
+    return Response(status_code=204)
 
 
 @app.post("/api/inbox")
