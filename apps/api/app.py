@@ -384,15 +384,16 @@ def normalize_origin(value: str) -> str:
 
 
 class InboxSubmission(BaseModel):
-    name: str = Field(min_length=2, max_length=80)
-    email: EmailStr | None = None
+    name: str | None = Field(default=None, max_length=80)
+    email: str | None = Field(default=None, max_length=320)
     company: str | None = Field(default=None, max_length=120)
-    message: str = Field(min_length=12, max_length=3000)
-    source: str = Field(default="portfolio-widget", max_length=80)
-    messages: list[dict[str, str]] | None = None
-    locale: str | None = Field(default=None, pattern="^(es|en)$")
+    message: str | None = Field(default=None, max_length=3000)
+    source: str | None = Field(default=None, max_length=80)
+    messages: list[dict[str, Any]] | None = None
+    history: list[dict[str, Any]] | None = None
+    locale: str | None = Field(default=None, max_length=16)
 
-    model_config = ConfigDict(str_strip_whitespace=True)
+    model_config = ConfigDict(str_strip_whitespace=True, extra="allow")
 
 
 class MessageAnalysis(BaseModel):
@@ -407,6 +408,472 @@ class MessageAnalysis(BaseModel):
     reply_text: str
     lead_score: int = Field(ge=1, le=5)
     sentiment: str
+
+
+EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def clean_text(value: Any, limit: int, default: str = "") -> str:
+    if value is None:
+        return default
+    text = re.sub(r"\s+", " ", str(value)).strip()
+    if not text:
+        return default
+    return text[:limit]
+
+
+def clean_optional_text(value: Any, limit: int) -> str | None:
+    text = clean_text(value, limit)
+    return text or None
+
+
+def clean_email(value: Any) -> str | None:
+    candidate = clean_text(value, 320)
+    if not candidate:
+        return None
+    if EMAIL_REGEX.match(candidate):
+        return candidate
+    logger.warning("Ignoring invalid email value in inbox payload")
+    return None
+
+
+def normalize_locale_value(value: Any) -> str | None:
+    candidate = clean_text(value, 16).lower()
+    if candidate.startswith("es"):
+        return "es"
+    if candidate.startswith("en"):
+        return "en"
+    return None
+
+
+def normalize_history_messages(value: Any) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+
+    normalized_items: list[dict[str, str]] = []
+    for item in value[:12]:
+        if not isinstance(item, dict):
+            continue
+        role = clean_text(item.get("role"), 20).lower()
+        content = clean_text(item.get("content") or item.get("message") or item.get("text"), 1200)
+        if role not in {"user", "assistant", "system"} or not content:
+            continue
+        normalized_items.append({"role": role, "content": content})
+    return normalized_items
+
+
+def safe_payload_dict(raw_payload: Any) -> dict[str, Any]:
+    return raw_payload if isinstance(raw_payload, dict) else {}
+
+
+def build_default_analysis(message: str, language: str, source: str) -> MessageAnalysis:
+    preview = message[:120] if message else ("Mensaje recibido" if language == "es" else "Message received")
+    source_label = source or "portfolio-chat-widget"
+    summary = (
+        "Consulta recibida correctamente. El sistema ha usado una respuesta de respaldo para mantener la conversacion activa."
+        if language == "es"
+        else "Message received successfully. The system used a fallback reply to keep the conversation moving."
+    )
+    return MessageAnalysis(
+        language=language,
+        category="general feedback",
+        priority="medium" if source_label == CHAT_WIDGET_SOURCE else "low",
+        summary=summary,
+        key_points=[preview] if preview else [],
+        theme_label="General inbound inquiries",
+        theme_slug="general-inquiries",
+        thread_title=preview or ("Consulta general" if language == "es" else "General inquiry"),
+        reply_text="",
+        lead_score=2,
+        sentiment="neutral",
+    )
+
+
+def build_locale_fallback_reply(language: str) -> str:
+    if language == "es":
+        return "Lo siento, ha ocurrido un problema. Puedes contactar directamente con Carlos por WhatsApp."
+    return "Sorry, something went wrong. You can contact Carlos directly via WhatsApp."
+
+
+def normalize_inbox_submission(raw_payload: Any, request: Request) -> tuple[InboxSubmission, str]:
+    payload = safe_payload_dict(raw_payload)
+    history = normalize_history_messages(payload.get("messages"))
+    if not history:
+        history = normalize_history_messages(payload.get("history"))
+
+    message = clean_text(payload.get("message"), 3000)
+    if not message and history:
+        last_user_message = next(
+            (item["content"] for item in reversed(history) if item.get("role") == "user" and item.get("content")),
+            "",
+        )
+        message = clean_text(last_user_message, 3000)
+
+    body_locale = normalize_locale_value(payload.get("locale"))
+    header_locale = normalize_locale_value(request.headers.get("x-chat-locale"))
+    locale = body_locale or header_locale
+
+    normalized_payload = InboxSubmission.model_validate(
+        {
+            "name": clean_optional_text(payload.get("name"), 80) or "Website Visitor",
+            "email": clean_email(payload.get("email")),
+            "company": clean_optional_text(payload.get("company"), 120),
+            "message": message or "",
+            "source": clean_optional_text(payload.get("source"), 80) or CHAT_WIDGET_SOURCE,
+            "messages": history,
+            "locale": locale,
+        }
+    )
+    return normalized_payload, header_locale or ""
+
+
+def build_message_payload(
+    submission: InboxSubmission,
+    analysis: MessageAnalysis,
+    engine: str,
+    reply_text: str,
+    email_status: str,
+    saved: bool,
+    message_id: int | None = None,
+    thread_id: int | None = None,
+    thread_title: str | None = None,
+    chat_meta: dict[str, Any] | None = None,
+    created_at: str | None = None,
+) -> dict[str, Any]:
+    meta = chat_meta or {}
+    return {
+        "id": message_id,
+        "thread_id": thread_id,
+        "thread_title": thread_title or analysis.thread_title,
+        "theme_slug": analysis.theme_slug,
+        "theme_label": analysis.theme_label,
+        "user_name": submission.name,
+        "user_email": submission.email,
+        "company": submission.company,
+        "source": submission.source or CHAT_WIDGET_SOURCE,
+        "language": analysis.language,
+        "category": analysis.category,
+        "priority": analysis.priority,
+        "lead_score": analysis.lead_score,
+        "sentiment": analysis.sentiment,
+        "summary": analysis.summary,
+        "key_points": analysis.key_points,
+        "raw_message": submission.message or "",
+        "reply_text": reply_text,
+        "thread_summary": "",
+        "email_status": allowed_email_status(email_status),
+        "analysis_engine": engine,
+        "feedback_signal": meta.get("feedback_signal", "none"),
+        "feedback_reason": meta.get("feedback_reason") or "",
+        "chat_intent": meta.get("intent") or "",
+        "whatsapp_handoff": bool(meta.get("whatsapp_handoff", False)),
+        "created_at": created_at or utc_now(),
+        "saved": saved,
+    }
+
+
+async def handle_inbox_submission(request: Request) -> JSONResponse:
+    raw_payload: dict[str, Any] = {}
+    submission: InboxSubmission | None = None
+    final_language = "en"
+    language_source = "default"
+    is_chat_request = False
+    engine = "fallback"
+    email_status = "skipped"
+    chat_meta: dict[str, Any] = {
+        "feedback_signal": "none",
+        "feedback_reason": None,
+        "intent": "",
+        "whatsapp_handoff": False,
+    }
+    thread: dict[str, Any] | None = None
+    related_messages: list[dict[str, Any]] = []
+    saved = False
+    message_id: int | None = None
+    thread_id: int | None = None
+    thread_title: str | None = None
+    created_at = utc_now()
+
+    try:
+        raw_payload = await request.json()
+    except Exception:
+        logger.warning("Inbox request body could not be parsed as JSON; continuing with empty payload")
+        raw_payload = {}
+
+    try:
+        submission, header_locale = normalize_inbox_submission(raw_payload, request)
+        is_chat_request = submission.source == CHAT_WIDGET_SOURCE or bool(submission.messages)
+        if is_chat_request:
+            final_language, language_source = resolve_chat_language_details(submission)
+        else:
+            final_language = submission.locale or header_locale or detect_language(submission.message or "")
+            language_source = "body_header_or_message"
+        submission = submission.model_copy(update={"locale": final_language})
+    except Exception:
+        logger.exception("Inbox input normalization failed; using emergency defaults")
+        emergency_locale = normalize_locale_value(request.headers.get("x-chat-locale")) or "en"
+        submission = InboxSubmission(
+            name="Website Visitor",
+            email=None,
+            company=None,
+            message="",
+            source=CHAT_WIDGET_SOURCE,
+            messages=[],
+            locale=emergency_locale,
+        )
+        final_language = emergency_locale
+        language_source = "emergency_default"
+        is_chat_request = True
+
+    assert submission is not None
+    logger.info(
+        "Inbox submission received | source=%s | locale=%s | language=%s | language_source=%s | has_history=%s | email_present=%s | message_length=%s",
+        submission.source,
+        submission.locale or "auto",
+        final_language,
+        language_source,
+        bool(submission.messages),
+        bool(submission.email),
+        len(submission.message or ""),
+        extra={
+            "email": submission.email,
+            "company": submission.company,
+            "source": submission.source,
+            "message_preview": (submission.message or "")[:160],
+        },
+    )
+
+    reply_text = build_locale_fallback_reply(final_language)
+    analysis = build_default_analysis(submission.message or "", final_language, submission.source or CHAT_WIDGET_SOURCE)
+
+    if not submission.message:
+        reply_text = (
+            "Puedo ayudarte con perfil, experiencia, proyectos o contacto. Si quieres, escribe tu pregunta en una frase y sigo desde ahi."
+            if final_language == "es"
+            else "I can help with profile, experience, projects, or contact. If you want, send your question in one sentence and I will take it from there."
+        )
+        analysis = analysis.model_copy(
+            update={
+                "summary": "Empty or partial payload received; a safe reply was returned.",
+                "reply_text": reply_text,
+            }
+        )
+        engine = "input-fallback"
+    else:
+        try:
+            if is_chat_request:
+                logger.info(
+                    "Chat request trace | endpoint=/api/inbox | source=%s | chat_locale=%s | chat_language=%s | chat_language_source=%s | history_items=%s",
+                    submission.source,
+                    submission.locale or "none",
+                    final_language,
+                    language_source,
+                    len(submission.messages or []),
+                )
+                analysis, _ = heuristic_analysis(submission)
+                reply_text, engine, chat_meta = generate_chat_reply(submission, analysis, final_language)
+                analysis = analysis.model_copy(update={"language": final_language, "reply_text": reply_text})
+                logger.info(
+                    "Chat response trace | chat_response_path=%s | chat_language=%s | feedback_signal=%s | feedback_reason=%s | chat_intent=%s | whatsapp_handoff=%s",
+                    engine,
+                    final_language,
+                    chat_meta["feedback_signal"],
+                    chat_meta["feedback_reason"] or "none",
+                    chat_meta["intent"],
+                    chat_meta["whatsapp_handoff"],
+                )
+            else:
+                analysis, engine = openai_analysis(submission)
+                final_language = analysis.language
+                reply_text = analysis.reply_text or build_locale_fallback_reply(final_language)
+                analysis = analysis.model_copy(update={"reply_text": reply_text})
+        except Exception:
+            logger.exception("Inbox AI processing failed; using fallback reply")
+            engine = "fallback"
+            reply_text = build_locale_fallback_reply(final_language)
+            analysis = build_default_analysis(submission.message or "", final_language, submission.source or CHAT_WIDGET_SOURCE).model_copy(
+                update={"reply_text": reply_text}
+            )
+
+    logger.info(
+        "Inbox analysis completed | source=%s | engine=%s | theme_slug=%s | category=%s | priority=%s",
+        submission.source,
+        engine,
+        analysis.theme_slug,
+        analysis.category,
+        analysis.priority,
+    )
+
+    if analysis.reply_text != reply_text:
+        analysis = analysis.model_copy(update={"reply_text": reply_text})
+
+    try:
+        with closing(get_connection()) as connection:
+            thread_id = get_or_create_thread(connection, analysis)
+            logger.info("Inbox SQLite save starting | thread_id=%s | database_path=%s", thread_id, settings.database_path)
+            cursor = connection.execute(
+                """
+                INSERT INTO messages (
+                    thread_id, user_name, user_email, company, source, language, category, priority, lead_score,
+                    sentiment, summary, key_points_json, raw_message, reply_text, theme_label, theme_slug,
+                    thread_summary, email_status, analysis_engine, created_at, sender_name, sender_email,
+                    message_text, message_summary, suggested_reply, urgency_score, themes, needs_follow_up,
+                    feedback_signal, feedback_reason, chat_intent, whatsapp_handoff
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    thread_id,
+                    submission.name,
+                    submission.email,
+                    submission.company,
+                    submission.source,
+                    analysis.language,
+                    analysis.category,
+                    analysis.priority,
+                    analysis.lead_score,
+                    analysis.sentiment,
+                    analysis.summary,
+                    json.dumps(analysis.key_points),
+                    submission.message,
+                    reply_text,
+                    analysis.theme_label,
+                    analysis.theme_slug,
+                    "",
+                    "pending",
+                    engine,
+                    created_at,
+                    submission.name,
+                    submission.email,
+                    submission.message,
+                    analysis.summary,
+                    reply_text,
+                    PRIORITY_RANK.get(analysis.priority, 1) * 25,
+                    json.dumps([analysis.theme_label]),
+                    1 if analysis.priority != "low" or analysis.lead_score >= 4 else 0,
+                    chat_meta["feedback_signal"],
+                    chat_meta["feedback_reason"],
+                    chat_meta["intent"],
+                    1 if chat_meta["whatsapp_handoff"] else 0,
+                ),
+            )
+            message_id = int(cursor.lastrowid)
+            saved = True
+            logger.info("Inbox SQLite save completed | message_id=%s | thread_id=%s", message_id, thread_id)
+
+            try:
+                thread = refresh_thread_rollup(connection, thread_id, analysis)
+                thread_title = thread.get("thread_title")
+                logger.info(
+                    "Inbox thread rollup refreshed | thread_id=%s | message_count=%s | priority=%s",
+                    thread_id,
+                    thread.get("message_count"),
+                    thread.get("priority"),
+                )
+            except Exception:
+                logger.exception("Thread rollup refresh failed; continuing with minimal thread payload")
+                thread = {
+                    "id": thread_id,
+                    "thread_title": analysis.thread_title,
+                    "theme_slug": analysis.theme_slug,
+                    "theme_label": analysis.theme_label,
+                    "priority": analysis.priority,
+                    "summary": analysis.summary,
+                    "message_count": 1,
+                    "lead_score": analysis.lead_score,
+                    "updated_at": created_at,
+                }
+                thread_title = analysis.thread_title
+
+            try:
+                related_messages = get_thread_messages(connection, thread_id, limit=4)
+            except Exception:
+                logger.exception("Loading related thread messages failed; continuing with empty related_messages")
+                related_messages = []
+
+            try:
+                logger.info("Inbox email trigger starting | message_id=%s | thread_id=%s", message_id, thread_id)
+                email_status = allowed_email_status(
+                    send_email_notification(message_id, submission, analysis, thread or {}, related_messages)
+                )
+                logger.info("Inbox email trigger finished | message_id=%s | email_status=%s", message_id, email_status)
+            except Exception:
+                logger.exception("Email failed but continuing flow")
+                email_status = "failed"
+
+            try:
+                connection.execute("UPDATE messages SET email_status = ? WHERE id = ?", (email_status, message_id))
+                connection.commit()
+                logger.info("Inbox email status updated | message_id=%s | email_status=%s", message_id, email_status)
+            except Exception:
+                logger.exception("Updating email status in SQLite failed; response will continue")
+    except Exception:
+        logger.exception("Inbox persistence failed; returning unsaved response payload")
+        saved = False
+        email_status = "skipped" if email_status == "pending" else allowed_email_status(email_status)
+        related_messages = []
+        thread = {
+            "id": None,
+            "thread_title": analysis.thread_title,
+            "theme_slug": analysis.theme_slug,
+            "theme_label": analysis.theme_label,
+            "priority": analysis.priority,
+            "summary": analysis.summary,
+            "message_count": 1 if submission.message else 0,
+            "lead_score": analysis.lead_score,
+            "updated_at": created_at,
+        }
+        thread_title = analysis.thread_title
+
+    try:
+        message_payload = build_message_payload(
+            submission=submission,
+            analysis=analysis,
+            engine=engine,
+            reply_text=reply_text,
+            email_status=email_status,
+            saved=saved,
+            message_id=message_id,
+            thread_id=thread_id,
+            thread_title=thread_title,
+            chat_meta=chat_meta,
+            created_at=created_at,
+        )
+        response_payload = {
+            "ok": True,
+            "analysis_engine": engine,
+            "reply": reply_text,
+            "message": message_payload,
+            "thread": thread,
+            "related_messages": related_messages,
+        }
+    except Exception:
+        logger.exception("Inbox response construction failed; returning emergency minimal payload")
+        emergency_reply = build_locale_fallback_reply(final_language)
+        response_payload = {
+            "ok": True,
+            "analysis_engine": "fallback",
+            "reply": emergency_reply,
+            "message": {
+                "reply_text": emergency_reply,
+                "source": submission.source,
+                "language": final_language,
+                "email_status": "skipped",
+                "saved": False,
+            },
+            "thread": thread,
+            "related_messages": [],
+        }
+
+    logger.info(
+        "Inbox submission completed | saved=%s | message_id=%s | thread_id=%s | response_keys=%s | message_keys=%s",
+        saved,
+        response_payload["message"].get("id"),
+        (response_payload.get("thread") or {}).get("id") if isinstance(response_payload.get("thread"), dict) else None,
+        list(response_payload.keys()),
+        list(response_payload["message"].keys()),
+    )
+    return JSONResponse(response_payload, status_code=200)
 
 
 app = FastAPI(title="AI Portfolio Inbox & Insights", version="2.0.0")
@@ -2116,7 +2583,9 @@ async def inbox_preflight() -> Response:
 
 
 @app.post("/api/inbox")
-async def create_message(payload: InboxSubmission) -> JSONResponse:
+async def create_message(request: Request) -> JSONResponse:
+    return await handle_inbox_submission(request)
+
     # 🔥 FIX: soportar payload tipo chat (messages[])
     is_chat_request = payload.source == CHAT_WIDGET_SOURCE
     if payload.messages:
