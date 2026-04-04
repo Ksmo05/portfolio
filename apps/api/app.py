@@ -1132,9 +1132,9 @@ def heuristic_analysis(submission: InboxSubmission) -> tuple[MessageAnalysis, st
     key_points = normalize_list(sentence_parts[:3] or [summary], limit=5)
 
     if language == "es":
-        reply_text = "Gracias por escribir. He registrado tu mensaje y lo revisaré en breve con el contexto del hilo relacionado."
+        reply_text = "Gracias por escribir. Tu mensaje se ha registrado correctamente. Si hace falta, puedo ampliar experiencia, proyectos o encaje profesional desde un perfil centrado en operaciones, reporting, soporte a procesos y uso practico de IA."
     else:
-        reply_text = "Thanks for reaching out. I have logged your message and will review it shortly with the related thread context."
+        reply_text = "Thanks for reaching out. Your message has been logged successfully. If helpful, I can expand on experience, projects, or professional fit from a profile centered on operations, reporting, process support, and practical AI use."
 
     return (
         MessageAnalysis(
@@ -1735,7 +1735,7 @@ def openai_analysis(submission: InboxSubmission) -> tuple[MessageAnalysis, str]:
     }
 
     prompt = f"""
-Analyze this inbound portfolio message for an AI product engineer.
+Analyze this inbound portfolio message for a corporate professional focused on operations, reporting, process support, digital workflows, and practical AI. Carlos currently works at The Retail Performance Company (RPC) since November 2025.
 
 Rules:
 - Detect whether the message language is Spanish or English.
@@ -1747,6 +1747,9 @@ Rules:
 - Urgent bugs or time-sensitive project opportunities should often be high priority.
 - Do not invent facts.
 - Keep summary concise and useful.
+- Position Carlos around operations, reporting, process support, dashboards, data visibility, digital workflows, and practical AI.
+- Do not describe Carlos as an AI engineer, AI product engineer, or software engineer unless the user explicitly asks about technical implementation details.
+- Keep reply_text professional, brief, recruiter-friendly, and realistic.
 
 Metadata:
 - sender_name: {submission.name}
@@ -2978,3 +2981,4 @@ async def healthcheck() -> JSONResponse:
             "database_path": str(settings.database_path),
         }
     )
+

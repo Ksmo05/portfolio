@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { startTransition, useState, type FormEvent } from "react";
 import SectionHeader from "@/components/sections/SectionHeader";
 import type { Locale } from "@/lib/i18n";
 import { CONTACT_FORM_SOURCE, postInboxPayload, type InboxSuccessResponse } from "@/lib/aiInbox";
@@ -47,10 +47,12 @@ const copy: Record<
     optional: string;
     submit: string;
     submitting: string;
+    submittingHint: string;
     success: string;
     error: string;
     networkError: string;
     analysis: string;
+    summaryHint: string;
     priority: string;
     category: string;
     language: string;
@@ -60,7 +62,7 @@ const copy: Record<
   en: {
     eyebrow: "Contact Form",
     title: "Contact form",
-    description: "Share a professional inquiry, project context, collaboration request or question. Your message is sent through the live backend and organized automatically.",
+    description: "Share a professional inquiry, project context, collaboration request or question. Your message is reviewed and routed automatically after submission.",
     name: "Name",
     email: "Email",
     company: "Company",
@@ -69,10 +71,12 @@ const copy: Record<
     optional: "Optional",
     submit: "Send message",
     submitting: "Sending...",
+    submittingHint: "Submitting your message and preparing the routing summary...",
     success: "Your message was sent successfully.",
     error: "The contact form could not process your message right now. Please try again in a moment.",
     networkError: "The contact service is not reachable right now. Please try again in a moment.",
-    analysis: "Automatic routing summary",
+    analysis: "Submission summary",
+    summaryHint: "This response is generated from the real backend workflow used by the dashboard and contact routing.",
     priority: "Priority",
     category: "Category",
     language: "Language",
@@ -81,7 +85,7 @@ const copy: Record<
   es: {
     eyebrow: "Formulario de contacto",
     title: "Formulario de contacto",
-    description: "Comparte una consulta profesional, contexto de proyecto, propuesta de colaboracion o pregunta. Tu mensaje se envia a traves del backend activo y se organiza automaticamente.",
+    description: "Comparte una consulta profesional, contexto de proyecto, propuesta de colaboracion o pregunta. Tu mensaje se revisa y enruta automaticamente tras el envio.",
     name: "Nombre",
     email: "Email",
     company: "Empresa",
@@ -90,10 +94,12 @@ const copy: Record<
     optional: "Opcional",
     submit: "Enviar mensaje",
     submitting: "Enviando...",
+    submittingHint: "Enviando tu mensaje y preparando el resumen de enrutado...",
     success: "Tu mensaje se ha enviado correctamente.",
     error: "El formulario no ha podido procesar tu mensaje ahora mismo. Intentalo de nuevo en unos minutos.",
     networkError: "El servicio de contacto no esta disponible ahora mismo. Intentalo de nuevo en unos minutos.",
-    analysis: "Resumen del enrutado automatico",
+    analysis: "Resumen del envio",
+    summaryHint: "Esta respuesta se genera desde el flujo real del backend usado por el dashboard y el enrutado de contacto.",
     priority: "Prioridad",
     category: "Categoria",
     language: "Idioma",
@@ -171,13 +177,15 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
         throw new Error(text.error);
       }
 
-      setResult({
-        priority: responseMessage.priority,
-        category: responseMessage.category,
-        language: responseMessage.language,
-        reply_text: responseMessage.reply_text,
+      startTransition(() => {
+        setResult({
+          priority: responseMessage.priority,
+          category: responseMessage.category,
+          language: responseMessage.language,
+          reply_text: responseMessage.reply_text,
+        });
+        setForm(initialForm);
       });
-      setForm(initialForm);
     } catch (submissionError) {
       console.error("[AIInboxSection] submission failed", {
         error: submissionError,
@@ -212,34 +220,16 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
         <div className="grid gap-10 lg:grid-cols-[0.88fr_1.12fr]">
           <div>
             <SectionHeader eyebrow={text.eyebrow} title={text.title} description={text.description} />
-            <div className="mt-8 grid gap-4">
-              <article className="card-surface-soft rounded-[1.6rem] p-5">
-                <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">Live routing</p>
-                <p className="text-muted mt-3 text-sm leading-6">
-                  Messages go to the same production inbox flow used by the chatbot, dashboard and email alerts.
-                </p>
-              </article>
-              <article className="card-surface-soft rounded-[1.6rem] p-5">
-                <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">Message review</p>
-                <p className="text-muted mt-3 text-sm leading-6">
-                  Priority, category, language and reply guidance are generated automatically after submission.
-                </p>
-              </article>
+            <div className="section-shell-muted mt-8 rounded-[1.7rem] p-5">
+              <p className="text-muted text-sm leading-6">
+                {locale === "es"
+                  ? "Usa este formulario para oportunidades profesionales, colaboraciones, contexto de proyecto o preguntas concretas. El sistema mantiene el flujo real de envio y seguimiento."
+                  : "Use this form for professional opportunities, collaborations, project context, or specific questions. The submission keeps the real routing and follow-up flow."}
+              </p>
             </div>
           </div>
 
           <div className="card-surface rounded-[2rem] p-6 md:p-8">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[1.4rem] border border-white/10 bg-white/[0.04] px-4 py-3">
-              <div>
-                <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">Inbox channel</p>
-                <p className="text-muted mt-1 text-sm">Professional inquiries, role discussions, project opportunities and collaboration requests.</p>
-              </div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                Live backend
-              </span>
-            </div>
-
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div className="grid gap-5 md:grid-cols-2">
                 <label className="block">
@@ -305,8 +295,17 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
                 <div className="min-h-[1.5rem] flex-1">
                   {error ? <p className="text-sm text-rose-300">{error}</p> : null}
                   {!error && result ? <p className="text-sm text-emerald-300">{text.success}</p> : null}
-                  {!error && !result ? (
-                    <p className="text-sm text-slate-400">Your message is organized and routed after submission.</p>
+                  {isSubmitting ? (
+                    <div className="flex items-center gap-2 text-sm text-sky-200" role="status" aria-live="polite">
+                      <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-sky-300" />
+                      <span>{text.submittingHint}</span>
+                    </div>
+                  ) : !error && !result ? (
+                    <p className="text-sm text-slate-400">
+                      {locale === "es"
+                        ? "Tu mensaje se envia al backend real y, despues, se organiza automaticamente."
+                        : "Your message is sent to the real backend and then organized automatically."}
+                    </p>
                   ) : null}
                 </div>
               </div>
@@ -318,9 +317,10 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
                   <p className="text-sm font-semibold text-white">{text.analysis}</p>
                   <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
                     <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                    Submission processed
+                    {locale === "es" ? "Envio procesado" : "Submission processed"}
                   </span>
                 </div>
+                <p className="mt-3 text-sm leading-6 text-slate-300">{text.summaryHint}</p>
                 <div className="mt-4 grid gap-4 sm:grid-cols-3">
                   <article className="card-surface-soft rounded-[1.3rem] p-4">
                     <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">{text.priority}</p>
