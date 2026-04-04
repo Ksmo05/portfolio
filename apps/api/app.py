@@ -136,6 +136,104 @@ def normalize_match_text(text: str) -> str:
     return re.sub(r"\s+", " ", ascii_text).strip().lower()
 
 
+def language_scores(text: str) -> tuple[int, int]:
+    normalized = normalize_match_text(text)
+    if not normalized:
+        return 0, 0
+
+    tokens = set(re.findall(r"[a-z0-9]{2,}", normalized))
+    es_terms = {
+        "hola", "gracias", "quiero", "necesito", "puedes", "podrias", "perfil", "resumen", "proyectos",
+        "experiencia", "contacto", "contactar", "encaje", "operaciones", "proceso", "procesos",
+        "datos", "mostrar", "muestrame", "como", "por", "que", "hablame", "cuentame", "espanol",
+        "ahora", "sigue", "seguimos", "mas", "relevantes", "rol", "roles",
+    }
+    en_terms = {
+        "hello", "thanks", "want", "need", "can", "could", "profile", "summary", "projects",
+        "experience", "contact", "fit", "operations", "process", "processes", "data", "show",
+        "about", "why", "how", "english", "continue", "relevant", "role", "roles", "please",
+    }
+    es_score = len(tokens & es_terms)
+    en_score = len(tokens & en_terms)
+
+    if any(marker in normalized for marker in {" que ", " como ", " para ", " con ", " el ", " la ", " los ", " las "}):
+        es_score += 1
+    if any(marker in normalized for marker in {" the ", " and ", " with ", " for ", " his ", " her ", " role ", " roles "}):
+        en_score += 1
+    if re.search(r"[¿¡]", text):
+        es_score += 2
+    if re.search(r"[áéíóúñÁÉÍÓÚÑ]", text):
+        es_score += 2
+
+    return es_score, en_score
+
+
+def explicit_chat_language(normalized_text: str) -> str | None:
+    english_switches = {
+        "answer in english", "respond in english", "reply in english", "continue in english",
+        "can you continue in english", "speak in english", "english please", "en ingles",
+        "puedes seguir en ingles", "ahora en ingles", "respondeme en ingles",
+    }
+    spanish_switches = {
+        "answer in spanish", "respond in spanish", "reply in spanish", "continue in spanish",
+        "can you continue in spanish", "speak in spanish", "spanish please", "en espanol",
+        "respondeme en espanol", "ahora en espanol", "puedes seguir en espanol",
+    }
+    if any(term in normalized_text for term in english_switches):
+        return "en"
+    if any(term in normalized_text for term in spanish_switches):
+        return "es"
+    return None
+
+
+def detect_language_from_history(messages: list[dict[str, str]] | None) -> str | None:
+    if not messages:
+        return None
+
+    recent_user_messages = [
+        item.get("content", "").strip()
+        for item in reversed(messages[-6:])
+        if item.get("role") == "user" and item.get("content")
+    ]
+    if not recent_user_messages:
+        return None
+
+    es_total = 0
+    en_total = 0
+    for content in recent_user_messages[:3]:
+        normalized = normalize_match_text(content)
+        explicit = explicit_chat_language(normalized)
+        if explicit:
+            return explicit
+        es_score, en_score = language_scores(content)
+        es_total += es_score
+        en_total += en_score
+
+    if es_total == en_total:
+        return None
+    return "es" if es_total > en_total else "en"
+
+
+def resolve_chat_language(submission: InboxSubmission) -> str:
+    normalized_message = normalize_match_text(submission.message)
+    explicit = explicit_chat_language(normalized_message)
+    if explicit:
+        return explicit
+
+    current_es, current_en = language_scores(submission.message)
+    if current_es != current_en and max(current_es, current_en) >= 1:
+        return "es" if current_es > current_en else "en"
+
+    history_language = detect_language_from_history(submission.messages)
+    if history_language:
+        return history_language
+
+    if submission.locale in {"es", "en"}:
+        return submission.locale
+
+    return detect_language(submission.message)
+
+
 @dataclass
 class Settings:
     database_path: Path
@@ -232,6 +330,7 @@ class InboxSubmission(BaseModel):
     message: str = Field(min_length=12, max_length=3000)
     source: str = Field(default="portfolio-widget", max_length=80)
     messages: list[dict[str, str]] | None = None
+    locale: str | None = Field(default=None, pattern="^(es|en)$")
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -659,7 +758,7 @@ def openai_chat_reply(
     if client is None:
         return None, "chat-heuristic"
 
-    language = analysis.language or detect_language(submission.message)
+    language = analysis.language or resolve_chat_language(submission)
     history = submission.messages or []
     filtered_history = [
         {
@@ -686,6 +785,10 @@ You are the portfolio assistant for Carlos San Miguel.
 
 Rules:
 - Reply in {language}.
+- Answer in the same language as the user.
+- Maintain the conversation language unless the user clearly changes it.
+- Summaries, CTAs, and follow-up suggestions must stay in {language}.
+- Never force English when the user is speaking Spanish.
 - Sound professional, clear, and recruiter-friendly.
 - Position Carlos around operations, data, digital workflows, and practical AI.
 - Do not present him as a pure AI engineer, full developer, or pure software engineer.
@@ -722,7 +825,7 @@ Conversation:
 
 
 def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis) -> tuple[str, str]:
-    language = analysis.language or detect_language(submission.message)
+    language = analysis.language or resolve_chat_language(submission)
     normalized = normalize_match_text(submission.message)
     intent = detect_chat_intent(normalized)
     topic = detect_chat_topic(normalized)
@@ -1652,8 +1755,9 @@ async def create_message(payload: InboxSubmission) -> JSONResponse:
     )
     if is_chat_request:
         analysis, _ = heuristic_analysis(payload)
+        chat_language = resolve_chat_language(payload)
         reply_text, engine = generate_chat_reply(payload, analysis)
-        analysis = analysis.model_copy(update={"reply_text": reply_text})
+        analysis = analysis.model_copy(update={"language": chat_language, "reply_text": reply_text})
     else:
         analysis, engine = openai_analysis(payload)
     logger.info(
