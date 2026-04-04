@@ -362,19 +362,20 @@ settings = load_settings()
 # RESEND_FROM_EMAIL=Portfolio Inbox <onboarding@resend.dev>
 # OWNER_EMAIL=mi_correo_personal_destino
 
-cors_debug_all_origins = os.getenv("CORS_DEBUG_ALL_ORIGINS", "").strip().lower() in {"1", "true", "yes", "on"}
-
-if cors_debug_all_origins:
-    # Temporary debug mode only. This disables credentials so wildcard origins are valid.
-    cors_allow_origins = ["*"]
-    cors_allow_credentials = False
-else:
-    cors_allow_origins = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://portfolio-khaki-zeta-3frz86na3s.vercel.app",
-    ]
-    cors_allow_credentials = True
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://portfolio-khaki-zeta-3frz86na3s.vercel.app",
+]
+CORS_ALLOW_HEADERS = [
+    "Accept",
+    "Authorization",
+    "Content-Type",
+    "Origin",
+    "X-Requested-With",
+    "x-chat-locale",
+    "x-chat-source",
+]
 
 
 class InboxSubmission(BaseModel):
@@ -406,27 +407,27 @@ class MessageAnalysis(BaseModel):
 app = FastAPI(title="AI Portfolio Inbox & Insights", version="2.0.0")
 # --- CORS CONFIG FROM ENV ---
 allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "")
+cors_debug_all_origins = os.getenv("CORS_DEBUG_ALL_ORIGINS", "").strip().lower() in {"1", "true", "yes", "on"}
 
-cors_allow_origins = [
+configured_origins = [
     origin.strip()
     for origin in allowed_origins_raw.split(",")
     if origin.strip()
 ]
 
-# fallback para desarrollo
-if not cors_allow_origins:
-    cors_allow_origins = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ]
+if cors_debug_all_origins:
+    cors_allow_origins = ["*"]
+    cors_allow_credentials = False
+else:
+    cors_allow_origins = list(dict.fromkeys([*DEFAULT_CORS_ORIGINS, *configured_origins]))
+    cors_allow_credentials = True
 
-cors_allow_credentials = True
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_allow_origins,
     allow_credentials=cors_allow_credentials,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=CORS_ALLOW_HEADERS,
 )
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
