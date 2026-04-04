@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { sendChatMessage } from "@/lib/aiInbox";
@@ -120,6 +121,70 @@ function makeMessage(role: ChatRole, content: string, id?: string): ChatMessage 
 
 function getInitialMessages(locale: Locale) {
   return [makeMessage("assistant", copy[locale].welcome, `assistant-welcome-${locale}`)];
+}
+
+const urlPattern = /(https?:\/\/[^\s]+)/g;
+
+function getWhatsAppCtaLabel(locale: Locale) {
+  return locale === "es" ? "Abrir conversacion en WhatsApp" : "Open WhatsApp chat";
+}
+
+function renderMessageContent(content: string, locale: Locale): ReactNode[] {
+  const lines = content.split("\n");
+
+  return lines.flatMap((line, lineIndex) => {
+    const parts = line.split(urlPattern);
+    const nodes = parts.map((part, partIndex) => {
+      if (!part) return null;
+
+      if (urlPattern.test(part)) {
+        urlPattern.lastIndex = 0;
+      }
+
+      if (part.startsWith("http://") || part.startsWith("https://")) {
+        let hostname = "";
+        try {
+          hostname = new URL(part).hostname.toLowerCase();
+        } catch {
+          hostname = "";
+        }
+
+        if (hostname === "wa.me" || hostname.endsWith(".wa.me")) {
+          return (
+            <a
+              key={`link-${lineIndex}-${partIndex}`}
+              href={part}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mt-2 inline-flex rounded-full border border-cyan-300/30 bg-cyan-400/10 px-3 py-1.5 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20 hover:text-white"
+            >
+              {getWhatsAppCtaLabel(locale)}
+            </a>
+          );
+        }
+
+        return (
+          <a
+            key={`link-${lineIndex}-${partIndex}`}
+            href={part}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="break-all text-cyan-200 underline decoration-cyan-300/50 underline-offset-4 hover:text-white"
+          >
+            {part}
+          </a>
+        );
+      }
+
+      return <span key={`text-${lineIndex}-${partIndex}`}>{part}</span>;
+    });
+
+    if (lineIndex < lines.length - 1) {
+      nodes.push(<br key={`br-${lineIndex}`} />);
+    }
+
+    return nodes;
+  }).filter(Boolean) as ReactNode[];
 }
 
 export default function ChatWidget() {
@@ -301,7 +366,9 @@ export default function ChatWidget() {
                     >
                       {message.role === "user" ? "You" : "Assistant"}
                     </div>
-                    {message.content}
+                    <span className="whitespace-pre-wrap">
+                      {renderMessageContent(message.content, locale)}
+                    </span>
                   </div>
                 </div>
               ))}

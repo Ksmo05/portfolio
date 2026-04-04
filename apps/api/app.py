@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -40,6 +41,10 @@ logger = logging.getLogger("ai-portfolio-inbox")
 CHAT_WIDGET_SOURCE = "portfolio-chat-widget"
 WHATSAPP_NUMBER = "+34 691068400"
 WHATSAPP_LINK = "https://wa.me/34691068400"
+WHATSAPP_TEXT = {
+    "es": "Hola Carlos, te contacto desde tu portfolio.",
+    "en": "Hi Carlos, I am contacting you from your portfolio.",
+}
 
 
 LANGUAGE_STOPWORDS = {
@@ -173,6 +178,11 @@ def normalize_match_text(text: str) -> str:
     normalized = unicodedata.normalize("NFKD", text or "")
     ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
     return re.sub(r"\s+", " ", ascii_text).strip().lower()
+
+
+def build_whatsapp_url(language: str) -> str:
+    message = WHATSAPP_TEXT.get(language, WHATSAPP_TEXT["en"])
+    return f"{WHATSAPP_LINK}?text={quote(message)}"
 
 
 def language_scores(text: str) -> tuple[int, int]:
@@ -821,18 +831,19 @@ def detect_stuck_conversation(messages: list[dict[str, str]] | None) -> bool:
 
 
 def build_whatsapp_cta(language: str, reason: str) -> str:
+    whatsapp_url = build_whatsapp_url(language)
     if language == "es":
         if reason == "explicit":
-            return f"Claro, puedes escribirme directamente por WhatsApp aqui: {WHATSAPP_LINK}. Si quieres, dime antes si buscas una oportunidad profesional, una colaboracion o informacion sobre un proyecto."
+            return f"Claro, puedes escribirme directamente por WhatsApp. {whatsapp_url} Si quieres, dime antes si buscas una oportunidad profesional, una colaboracion o informacion sobre un proyecto."
         if reason in {"frustration", "stuck", "direct"}:
-            return f"Si prefieres una conversacion mas directa, puedes escribirme por WhatsApp aqui: {WHATSAPP_LINK}. Si te va bien, cuentame brevemente que tipo de conversacion buscas."
-        return f"Si quieres hablar directamente sobre la oportunidad o colaboracion, puedes escribirme por WhatsApp aqui: {WHATSAPP_LINK}. Si quieres, dime antes si esto es por un rol, una colaboracion o un proyecto."
+            return f"Si prefieres una conversacion mas directa, puedes escribirme por WhatsApp. {whatsapp_url} Si te va bien, cuentame brevemente que tipo de conversacion buscas."
+        return f"Si quieres hablar directamente sobre la oportunidad o colaboracion, puedes escribirme por WhatsApp. {whatsapp_url} Si quieres, dime antes si esto es por un rol, una colaboracion o un proyecto."
 
     if reason == "explicit":
-        return f"Sure, you can contact Carlos directly on WhatsApp here: {WHATSAPP_LINK}. If you want, tell me briefly whether this is about a role, a collaboration, or a project."
+        return f"Sure, you can contact Carlos directly on WhatsApp. {whatsapp_url} If you want, tell me briefly whether this is about a role, a collaboration, or a project."
     if reason in {"frustration", "stuck", "direct"}:
-        return f"If you prefer a more direct conversation, you can reach Carlos on WhatsApp here: {WHATSAPP_LINK}. If helpful, let me know what kind of conversation you're looking for."
-    return f"If you want to discuss the opportunity or collaboration directly, you can contact Carlos on WhatsApp here: {WHATSAPP_LINK}. If helpful, tell me whether this is about a role, a collaboration, or a project."
+        return f"If you prefer a more direct conversation, you can reach Carlos on WhatsApp. {whatsapp_url} If helpful, let me know what kind of conversation you're looking for."
+    return f"If you want to discuss the opportunity or collaboration directly, you can contact Carlos on WhatsApp. {whatsapp_url} If helpful, tell me whether this is about a role, a collaboration, or a project."
 
 
 def resolve_whatsapp_offer(
