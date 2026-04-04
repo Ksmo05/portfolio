@@ -15,6 +15,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{{ url_for('static', path='widget.css') }}" />
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
   </head>
   <body class="dashboard-page">
@@ -91,7 +92,7 @@
       </section>
 
       <section class="dashboard-grid dashboard-grid-executive">
-        <article class="surface-card span-8 executive-summary-card">
+        <article class="surface-card span-7 executive-summary-card compact-summary-card">
           <div class="section-head section-head-tight">
             <div>
               <span class="section-kicker">Executive summary</span>
@@ -103,7 +104,7 @@
           <p id="executiveSummary" class="executive-copy">Loading summary...</p>
         </article>
 
-        <article class="surface-card span-4 executive-side-card">
+        <article class="surface-card span-5 executive-side-card live-visibility-card">
           <div class="section-head section-head-tight">
             <div>
               <span class="section-kicker">Live visibility</span>
@@ -123,7 +124,30 @@
           </div>
         </article>
 
-        <article class="surface-card span-6 module-card">
+        <article class="surface-card span-12 module-card ga4-analytics-card">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker">Google Analytics 4</span>
+              <h2>Audience geography</h2>
+            </div>
+            <span class="status-chip soft-status" id="gaCountriesPeriod">Last 7 days</span>
+          </div>
+          <p class="section-helper">A compact GA4 view inspired by analytics products: active geography, live traffic mix, and a clean regional breakdown.</p>
+          <div class="ga4-module-grid">
+            <div class="ga4-map-panel">
+              <div class="ga4-metric-strip" id="gaTopMetrics"></div>
+              <div id="gaCountriesMap" class="ga4-map-surface">
+                <div class="empty-state">Loading GA4 geography...</div>
+              </div>
+            </div>
+            <div class="ga4-side-panel">
+              <div class="subsection-label">Countries and active users</div>
+              <div id="gaCountriesTable" class="list-stack"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="surface-card span-7 module-card breakdown-card">
           <div class="section-head section-head-tight">
             <div>
               <span class="section-kicker">Breakdowns</span>
@@ -135,7 +159,7 @@
           <div id="sentimentChart" class="chart-stack compact-top"></div>
         </article>
 
-        <article class="surface-card span-6 module-card">
+        <article class="surface-card span-5 module-card breakdown-card">
           <div class="section-head section-head-tight">
             <div>
               <span class="section-kicker">Audience mix</span>

@@ -1,5 +1,6 @@
 (function () {
   const chartRegistry = [];
+  let geoChartLoadedPromise = null;
 
   function $(id) {
     return document.getElementById(id);
@@ -241,6 +242,103 @@
     container.appendChild(gaSnapshotRow("Page views", String(totals.page_views || 0)));
     const topPage = analytics.top_pages && analytics.top_pages[0] ? analytics.top_pages[0].page : "/";
     container.appendChild(gaSnapshotRow("Top page", topPage));
+  }
+
+  function renderGaMetricStrip(container, analytics) {
+    if (!container) return;
+    container.innerHTML = "";
+    if (!analytics || analytics.status !== "configured") {
+      container.appendChild(createElement("div", "empty-state small-empty", "GA4 metrics are not available right now."));
+      return;
+    }
+
+    const totals = analytics.totals || {};
+    [
+      { label: "Active users", value: String(totals.users || 0) },
+      { label: "Sessions", value: String(totals.sessions || 0) },
+      { label: "Views", value: String(totals.page_views || 0) },
+      { label: "Engaged", value: String(totals.engaged_sessions || 0) },
+    ].forEach(function (item) {
+      const card = createElement("div", "ga4-metric-card");
+      card.append(createElement("span", "section-kicker", item.label), createElement("strong", "", item.value));
+      container.appendChild(card);
+    });
+  }
+
+  function renderGaCountriesTable(container, analytics) {
+    if (!container) return;
+    container.innerHTML = "";
+    if (!analytics || analytics.status !== "configured" || !Array.isArray(analytics.countries) || analytics.countries.length === 0) {
+      container.appendChild(createElement("div", "empty-state small-empty", "No country-level GA4 data available yet."));
+      return;
+    }
+
+    analytics.countries.forEach(function (item, index) {
+      const row = createElement("div", "ga4-country-row");
+      const meta = createElement("div", "ga4-country-meta");
+      meta.append(
+        createElement("span", "ga4-country-rank", `#${index + 1}`),
+        createElement("strong", "", item.country || "Unknown")
+      );
+      row.append(meta, createElement("span", "tag", `${item.active_users || 0} active users`));
+      container.appendChild(row);
+    });
+  }
+
+  function loadGeoChartLibrary() {
+    if (geoChartLoadedPromise) {
+      return geoChartLoadedPromise;
+    }
+
+    geoChartLoadedPromise = new Promise(function (resolve, reject) {
+      if (!window.google || !window.google.charts) {
+        reject(new Error("google charts loader unavailable"));
+        return;
+      }
+      window.google.charts.load("current", {
+        packages: ["geochart"],
+      });
+      window.google.charts.setOnLoadCallback(resolve);
+    });
+
+    return geoChartLoadedPromise;
+  }
+
+  async function renderGaCountriesMap(container, analytics) {
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (!analytics || analytics.status !== "configured" || !Array.isArray(analytics.countries) || analytics.countries.length === 0) {
+      container.appendChild(createElement("div", "empty-state", "No GA4 geography data available yet."));
+      return;
+    }
+
+    const chartRoot = createElement("div", "ga4-map-chart");
+    container.appendChild(chartRoot);
+
+    try {
+      await loadGeoChartLibrary();
+      const dataTable = window.google.visualization.arrayToDataTable([
+        ["Country", "Active users"],
+        ...analytics.countries.map(function (item) {
+          return [item.country || "Unknown", Number(item.active_users) || 0];
+        }),
+      ]);
+      const chart = new window.google.visualization.GeoChart(chartRoot);
+      chart.draw(dataTable, {
+        backgroundColor: "transparent",
+        datalessRegionColor: "#e6eef8",
+        defaultColor: "#cfe0ff",
+        colorAxis: {
+          colors: ["#9fd7ff", "#2b70ff"],
+        },
+        legend: "none",
+      });
+    } catch (error) {
+      console.warn("[dashboard] geo chart unavailable", error);
+      container.innerHTML = "";
+      container.appendChild(createElement("div", "empty-state", "Geography view is not available right now."));
+    }
   }
 
   function renderBarChart(container, title, dataObject) {
@@ -589,6 +687,16 @@
       sourceActivityRow
     );
     renderGaSnapshot($("gaTrafficList"), analytics);
+    renderGaMetricStrip($("gaTopMetrics"), analytics);
+    renderGaCountriesTable($("gaCountriesTable"), analytics);
+    await renderGaCountriesMap($("gaCountriesMap"), analytics);
+    const gaCountriesPeriod = $("gaCountriesPeriod");
+    if (gaCountriesPeriod) {
+      gaCountriesPeriod.textContent =
+        analytics && analytics.status === "configured" && analytics.countries_period_label
+          ? analytics.countries_period_label
+          : "Last 7 days";
+    }
 
     renderMetricList($("topOpportunitiesList"), dashboardMessages.top_opportunities || [], messageCard);
     renderMetricList($("recentHighPriorityList"), dashboardMessages.recent_high_priority || [], messageCard);

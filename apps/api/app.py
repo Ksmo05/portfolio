@@ -2842,6 +2842,15 @@ def fetch_ga4_analytics() -> dict[str, Any]:
                 limit=6,
             )
         )
+        countries_report = client.run_report(
+            RunReportRequest(
+                property=property_name,
+                date_ranges=[DateRange(start_date="7daysAgo", end_date="today")],
+                dimensions=[Dimension(name="country")],
+                metrics=[Metric(name="activeUsers")],
+                limit=8,
+            )
+        )
         logger.info(
             "GA4 read success | property=%s | users=%s | sessions=%s | page_views=%s",
             property_name,
@@ -2861,6 +2870,14 @@ def fetch_ga4_analytics() -> dict[str, Any]:
             "top_pages": [{"page": row.dimension_values[0].value or "/", "page_views": int(row.metric_values[0].value)} for row in top_pages_report.rows],
             "time_series": [{"day": row.dimension_values[0].value, "users": int(row.metric_values[0].value), "sessions": int(row.metric_values[1].value)} for row in trend_report.rows],
             "traffic_sources": [{"channel": row.dimension_values[0].value or "Unknown", "sessions": int(row.metric_values[0].value)} for row in channels_report.rows],
+            "countries_period_label": "Last 7 days",
+            "countries": [
+                {
+                    "country": row.dimension_values[0].value or "Unknown",
+                    "active_users": int(row.metric_values[0].value),
+                }
+                for row in countries_report.rows
+            ],
         }
     except Exception as exc:
         logger.exception("Failed to fetch GA4 analytics: %s", exc)
