@@ -68,14 +68,18 @@ THEME_RULES = [
 CHAT_PROFILE_FACTS = {
     "en": [
         "Carlos works at the intersection of operations, data, digital workflows, and practical AI.",
+        "Carlos currently works at The Retail Performance Company (RPC) since November 2025.",
         "His profile is corporate, business-oriented, and grounded in operations, reporting, process coordination, and digital support.",
+        "At RPC, his work is focused on operations, reporting, process support, digital workflows, and practical AI in a corporate environment linked to BMW-related processes.",
         "He has experience supporting Purchasing and Aftersales processes in a BMW-related environment, including SAP support, reporting follow-up, incident handling, and coordination.",
         "His background also includes back-office operations, documentation validation, public procurement support, banking operations, and technical support operations.",
         "His projects show practical uses of digital tools, dashboards, structured information, and AI for productivity.",
     ],
     "es": [
         "Carlos trabaja en la interseccion entre operaciones, datos, workflows digitales e IA practica.",
+        "Carlos trabaja actualmente en The Retail Performance Company (RPC) desde noviembre de 2025.",
         "Su perfil es corporativo, orientado a negocio y centrado en operaciones, reporting, coordinacion de procesos y soporte digital.",
+        "En RPC, su trabajo se centra en operaciones, reporting, soporte a procesos, workflows digitales e IA practica en un entorno corporativo relacionado con procesos vinculados a BMW.",
         "Tiene experiencia dando soporte a procesos de Purchasing y Aftersales en un entorno vinculado a BMW, incluyendo soporte SAP, seguimiento de reporting, gestion de incidencias y coordinacion.",
         "Su trayectoria tambien incluye back office, validacion documental, soporte a contratacion publica, operaciones bancarias y soporte tecnico-operativo.",
         "Sus proyectos muestran usos practicos de herramientas digitales, dashboards, informacion estructurada e IA para productividad.",
@@ -1017,6 +1021,12 @@ def init_db() -> None:
                 "updated_at": "TEXT",
                 "message_count": "INTEGER DEFAULT 0",
                 "lead_score": "INTEGER DEFAULT 1",
+                "slug": "TEXT",
+                "title": "TEXT",
+                "category": "TEXT",
+                "theme_tags": "TEXT DEFAULT '[]'",
+                "representative_summary": "TEXT",
+                "urgency_score": "INTEGER DEFAULT 0",
             },
         )
         ensure_columns(
@@ -1181,6 +1191,8 @@ def detect_chat_topic(normalized_text: str) -> str:
         return "summary"
     if any(term in normalized_text for term in {"whatsapp", "whats app", "wa.me"}):
         return "whatsapp"
+    if any(term in normalized_text for term in {"where does", "works at", "work at", "current company", "current employer", "employer", "empresa actual", "donde trabaja", "dónde trabaja", "trabaja actualmente", "en que empresa", "en qué empresa", "rpc", "retail performance company"}):
+        return "current-role"
     if any(term in normalized_text for term in {"contact", "email", "reach", "connect", "linkedin", "contactar", "correo", "hablar"}):
         return "contact"
     if any(term in normalized_text for term in {"project", "projects", "portfolio", "case study", "proyecto", "proyectos", "examples of his work", "best work", "main projects", "principales proyectos", "mejores proyectos"}):
@@ -1449,8 +1461,9 @@ def build_static_chat_reply(
         "en": {
             "whatsapp": build_whatsapp_cta("en", whatsapp_reason or "explicit"),
             "summary": "Quick summary:\n- Carlos is an operations, data, and digital support professional with a clear corporate profile.\n- His experience is centered on process support, reporting, SAP-related workflows, coordination, incidents, and structured follow-up.\n- He also uses digital tools and practical AI to improve productivity, information handling, and workflow efficiency.",
-            "profile": "Carlos' profile combines operations, data visibility, digital workflows, and practical AI use. His strongest areas are process coordination, reporting, SAP-related support, and helping teams work with more structure and clarity.\n\n" + tail,
-            "experience": "His recent experience includes supporting Purchasing and Aftersales processes in a BMW-related environment, with SAP support, reporting follow-up, incident handling, and coordination. His broader background also includes back-office operations, documentation validation, public procurement support, banking operations, and technical support operations.\n\n" + tail,
+            "current-role": "Carlos currently works at The Retail Performance Company (RPC) since November 2025. His role is aligned with operations, reporting, process support, digital workflows, and practical AI in a corporate environment connected to BMW-related processes.\n\n" + tail,
+            "profile": "Carlos' profile combines operations, data visibility, digital workflows, and practical AI use. He currently works at The Retail Performance Company (RPC), where his focus is on process coordination, reporting, SAP-related support, and helping teams work with more structure and clarity.\n\n" + tail,
+            "experience": "Carlos currently works at The Retail Performance Company (RPC) since November 2025. His recent experience is centered on operations, Purchasing and Aftersales support, SAP-related workflows, reporting follow-up, incident handling, and coordination in a BMW-related corporate environment. His broader background also includes back-office operations, documentation validation, public procurement support, banking operations, and technical support operations.\n\n" + tail,
             "projects": build_projects_reply("en"),
             "fit": "Carlos is a strong fit for roles that combine operations, reporting, process support, procurement support, digital coordination, and practical AI use. He is especially relevant for teams that need structured follow-up, business support, KPI visibility, and someone comfortable working across tools, workflows, and operational contexts.\n\n" + tail,
             "practical-ai": "His use of AI is practical and business-oriented. The focus is on writing support, information organization, summarization, and workflow efficiency in everyday workflows.\n\n" + tail,
@@ -1460,8 +1473,9 @@ def build_static_chat_reply(
         "es": {
             "whatsapp": build_whatsapp_cta("es", whatsapp_reason or "explicit"),
             "summary": "Resumen rapido:\n- Carlos es un profesional de operaciones, datos y soporte digital con perfil corporativo claro.\n- Su experiencia se centra en soporte a procesos, reporting, workflows relacionados con SAP, coordinacion, incidencias y seguimiento estructurado.\n- Tambien utiliza herramientas digitales e IA practica para mejorar productividad, gestion de la informacion y eficiencia de workflows.",
-            "profile": "El perfil de Carlos combina operaciones, visibilidad de datos, workflows digitales e IA practica. Sus puntos mas fuertes estan en coordinacion de procesos, reporting, soporte relacionado con SAP y apoyo a equipos con mas estructura y claridad.\n\n" + tail,
-            "experience": "Su experiencia reciente incluye soporte a procesos de Purchasing y Aftersales en un entorno vinculado a BMW, con soporte SAP, seguimiento de reporting, gestion de incidencias y coordinacion. Su trayectoria tambien incluye back office, validacion documental, contratacion publica, operaciones bancarias y soporte tecnico-operativo.\n\n" + tail,
+            "current-role": "Carlos trabaja actualmente en The Retail Performance Company (RPC) desde noviembre de 2025. Su trabajo esta alineado con operaciones, reporting, soporte a procesos, workflows digitales e IA practica en un entorno corporativo relacionado con procesos vinculados a BMW.\n\n" + tail,
+            "profile": "El perfil de Carlos combina operaciones, visibilidad de datos, workflows digitales e IA practica. Actualmente trabaja en The Retail Performance Company (RPC), donde sus puntos mas fuertes estan en coordinacion de procesos, reporting, soporte relacionado con SAP y apoyo a equipos con mas estructura y claridad.\n\n" + tail,
+            "experience": "Carlos trabaja actualmente en The Retail Performance Company (RPC) desde noviembre de 2025. Su experiencia reciente se centra en operaciones, soporte a Purchasing y Aftersales, workflows relacionados con SAP, seguimiento de reporting, gestion de incidencias y coordinacion en un entorno corporativo vinculado a BMW. Su trayectoria tambien incluye back office, validacion documental, contratacion publica, operaciones bancarias y soporte tecnico-operativo.\n\n" + tail,
             "projects": build_projects_reply("es"),
             "fit": "Carlos encaja bien en roles que combinan operaciones, reporting, soporte a procesos, soporte a compras, coordinacion digital y uso practico de IA. Es especialmente relevante para equipos que necesitan seguimiento estructurado, soporte de negocio, visibilidad KPI y alguien comodo trabajando entre herramientas, workflows y contextos operativos.\n\n" + tail,
             "practical-ai": "Su uso de IA es practico y orientado a negocio. El foco esta en apoyo a redaccion, organizacion de informacion, resumenes y eficiencia de workflows del dia a dia.\n\n" + tail,
@@ -2140,7 +2154,7 @@ def recent_messages(limit: int = 12) -> list[dict[str, Any]]:
                 m.company,
                 m.source,
                 m.language,
-                COALESCE(m.category, t.category) AS category,
+                COALESCE(NULLIF(TRIM(m.category), ''), 'general feedback') AS category,
                 m.priority,
                 m.lead_score,
                 m.sentiment,
@@ -2159,6 +2173,14 @@ def recent_messages(limit: int = 12) -> list[dict[str, Any]]:
             (limit,),
         ).fetchall()
     return [serialize_message(row) for row in rows]
+
+
+def safe_recent_messages(limit: int = 12) -> list[dict[str, Any]]:
+    try:
+        return recent_messages(limit)
+    except Exception:
+        logger.exception("Recent messages feed failed; returning empty list")
+        return []
 
 
 def thread_rows(limit: int = 20) -> list[dict[str, Any]]:
@@ -2513,31 +2535,42 @@ def build_combined_insights(metrics: dict[str, Any], analytics: dict[str, Any]) 
     }
 
 
+def build_shell_context(request: Request) -> dict[str, Any]:
+    return {
+        "request": request,
+        "has_openai": bool(settings.openai_api_key),
+        "has_smtp": bool(settings.smtp_host and settings.smtp_username and settings.smtp_password),
+        "ga4_enabled": ga4_configured(),
+    }
+
+
+def safe_dashboard_state() -> dict[str, Any]:
+    return {
+        "sample_threads": safe_recent_messages(6),
+        "dashboard_status": "No data available yet",
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "sample_threads": recent_messages(6),
-            "has_openai": bool(settings.openai_api_key),
-            "has_smtp": bool(settings.smtp_host and settings.smtp_username and settings.smtp_password),
-            "ga4_enabled": ga4_configured(),
-        },
-    )
+    context = build_shell_context(request)
+    try:
+        context.update(safe_dashboard_state())
+        return templates.TemplateResponse("index.html", context)
+    except Exception:
+        logger.exception("Index route failed to render full context; serving minimal fallback context")
+        context.update({"sample_threads": [], "dashboard_status": "No data available yet"})
+        return templates.TemplateResponse("index.html", context)
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {
-            "request": request,
-            "has_openai": bool(settings.openai_api_key),
-            "has_smtp": bool(settings.smtp_host and settings.smtp_username and settings.smtp_password),
-            "ga4_enabled": ga4_configured(),
-        },
-    )
+    context = build_shell_context(request)
+    try:
+        return templates.TemplateResponse("dashboard.html", context)
+    except Exception:
+        logger.exception("Dashboard route failed to render full context; serving minimal fallback context")
+        return templates.TemplateResponse("dashboard.html", context)
 
 
 @app.get("/api/messages")
