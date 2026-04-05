@@ -270,6 +270,10 @@ def normalize_match_text(text: str) -> str:
     return re.sub(r"\s+", " ", ascii_text).strip().lower()
 
 
+def contains_standalone_term(text: str, term: str) -> bool:
+    return re.search(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])", text) is not None
+
+
 def build_whatsapp_url(language: str) -> str:
     message = WHATSAPP_TEXT.get(language, WHATSAPP_TEXT["en"])
     return f"{WHATSAPP_LINK}?text={quote(message)}"
@@ -1437,11 +1441,19 @@ def detect_tooling_key(normalized_text: str) -> str | None:
         "tools in previous experience",
     }
 
+    if detect_whatsapp_request(normalized_text) or detect_direct_contact_request(normalized_text):
+        return None
     if "salesforce" in normalized_text:
         return "salesforce"
     if "qlik sense" in normalized_text:
         return "qlik-sense"
-    if "sap" in normalized_text:
+    sap_context_terms = {
+        "usas sap", "trabajas con sap", "experiencia con sap", "herramienta sap", "software sap",
+        "sap en tu trabajo", "sap en rpc", "use sap", "work with sap", "experience with sap", "sap tool",
+    }
+    if contains_standalone_term(normalized_text, "sap") and (
+        any(term in normalized_text for term in sap_context_terms) or "sap?" in normalized_text or normalized_text == "sap"
+    ):
         return "sap"
     if "excel" in normalized_text:
         return "excel"
@@ -1460,7 +1472,7 @@ def detect_chat_topic(normalized_text: str) -> str:
     grounding_topic = detect_profile_grounding_topic(normalized_text)
     if grounding_topic:
         return grounding_topic
-    if any(term in normalized_text for term in {"whatsapp", "whats app", "wa.me"}):
+    if detect_whatsapp_request(normalized_text):
         return "whatsapp"
     if any(term in normalized_text for term in {"contact", "email", "reach", "connect", "linkedin", "contactar", "correo", "hablar"}):
         return "contact"
@@ -1483,7 +1495,7 @@ def detect_contact_readiness(normalized_text: str) -> bool:
         "linkedin", "whatsapp", "correo", "contactar", "llamar", "reunion", "agendar", "hablar", "escribir",
         "ponernos en contacto", "seguir hablando",
     }
-    return any(term in normalized_text for term in contact_terms)
+    return detect_whatsapp_request(normalized_text) or any(term in normalized_text for term in contact_terms)
 
 
 def needs_guided_next_step(normalized_text: str, topic: str) -> bool:
@@ -1500,7 +1512,11 @@ def detect_whatsapp_request(normalized_text: str) -> bool:
         "whatsapp", "whats app", "wa.me", "escribirte por whatsapp", "hablar por whatsapp",
         "contact on whatsapp", "talk on whatsapp", "message on whatsapp", "pasame tu whatsapp",
         "pasa tu whatsapp", "quiero escribirte por whatsapp", "quiero hablar por whatsapp",
-        "quiero contactar por whatsapp", "prefiero whatsapp", "do you have whatsapp",
+        "quiero contactar por whatsapp", "prefiero whatsapp", "do you have whatsapp", "wasap",
+        "guasap", "watsapp", "whatsap", "hablar por wasap", "conectar por wasap",
+        "contactar por wasap", "contacto por whatsapp", "abrir whatsapp", "escribeme por wasap",
+        "escribirme por wasap", "hablar directamente por whatsapp", "conversacion por wasap",
+        "quiero una conversacion por wasap", "quiero conectarme por wasap", "quiero hablar con el por wasap",
     }
     return any(term in normalized_text for term in whatsapp_terms)
 
