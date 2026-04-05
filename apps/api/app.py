@@ -151,6 +151,27 @@ EXPERIENCE_DETAIL_FACTS = {
     },
 }
 
+TOOLING_FACTS = {
+    "en": {
+        "current_tools": "In his current role at The Retail Performance Company (RPC), Carlos mainly works with SAP, Excel, and Qlik Sense.",
+        "previous_tools": "In previous experience, the clearest tool explicitly reflected in the portfolio is Salesforce, especially in Endesa.",
+        "sap": "Yes. Carlos works with SAP in his current role at The Retail Performance Company (RPC).",
+        "excel": "Yes. Carlos uses Excel in his current role at The Retail Performance Company (RPC).",
+        "qlik-sense": "Yes. Carlos uses Qlik Sense in his current role at The Retail Performance Company (RPC).",
+        "salesforce": "Yes. Carlos used Salesforce especially in his experience at Endesa.",
+        "endesa_tools": "At Endesa, the most relevant tool reflected in the portfolio is Salesforce.",
+    },
+    "es": {
+        "current_tools": "En su trabajo actual en The Retail Performance Company (RPC), Carlos utiliza principalmente SAP, Excel y Qlik Sense.",
+        "previous_tools": "En experiencia previa, la herramienta mas clara que aparece reflejada en el portfolio es Salesforce, especialmente en Endesa.",
+        "sap": "Si. Carlos trabaja con SAP en su rol actual en The Retail Performance Company (RPC).",
+        "excel": "Si. Carlos utiliza Excel en su rol actual en The Retail Performance Company (RPC).",
+        "qlik-sense": "Si. Carlos utiliza Qlik Sense en su rol actual en The Retail Performance Company (RPC).",
+        "salesforce": "Si. Carlos ha usado Salesforce especialmente en su experiencia en Endesa.",
+        "endesa_tools": "En Endesa, la herramienta mas relevante que aparece reflejada en el portfolio es Salesforce.",
+    },
+}
+
 PROJECT_SPOTLIGHTS = {
     "en": [
         {
@@ -1194,6 +1215,34 @@ def maybe_build_profile_grounded_analysis(submission: InboxSubmission) -> Messag
             sentiment="neutral",
         )
 
+    tooling_key = detect_tooling_key(normalized_text)
+    if tooling_key:
+        reply_text = TOOLING_FACTS.get(language, TOOLING_FACTS["en"]).get(tooling_key)
+        if reply_text:
+            thread_title = {
+                "current_tools": "Current tools question",
+                "previous_tools": "Previous tools question",
+                "sap": "SAP question",
+                "excel": "Excel question",
+                "qlik-sense": "Qlik Sense question",
+                "salesforce": "Salesforce question",
+                "endesa_tools": "Endesa tools question",
+            }.get(tooling_key, "Tools question")
+            summary = clean_text(submission.message or thread_title, 220, thread_title)
+            return MessageAnalysis(
+                language=language,
+                category="question",
+                priority="medium",
+                summary=summary,
+                key_points=[summary],
+                theme_label="Tools",
+                theme_slug="tools",
+                thread_title=thread_title,
+                reply_text=reply_text,
+                lead_score=2,
+                sentiment="neutral",
+            )
+
     specific_experience_key = detect_specific_experience_key(normalized_text)
     if not specific_experience_key:
         return None
@@ -1375,6 +1424,36 @@ def detect_specific_experience_key(normalized_text: str) -> str | None:
     return None
 
 
+def detect_tooling_key(normalized_text: str) -> str | None:
+    current_markers = {
+        "herramientas utilizas", "herramientas usas", "con que herramientas trabajas", "con que herramientas usas",
+        "software utilizas", "herramientas utilizas actualmente", "herramientas usas actualmente",
+        "herramientas usas en tu trabajo actual", "que herramientas utilizas", "que herramientas usas",
+        "what tools do you use", "which tools do you use", "what software do you use", "current tools",
+    }
+    previous_markers = {
+        "herramientas has utilizado", "herramientas usabas", "otros proyectos", "experiencias previas",
+        "herramientas de experiencias anteriores", "what tools have you used", "previous tools",
+        "tools in previous experience",
+    }
+
+    if "salesforce" in normalized_text:
+        return "salesforce"
+    if "qlik sense" in normalized_text:
+        return "qlik-sense"
+    if "sap" in normalized_text:
+        return "sap"
+    if "excel" in normalized_text:
+        return "excel"
+    if "endesa" in normalized_text and ("herramient" in normalized_text or "tool" in normalized_text or "software" in normalized_text):
+        return "endesa_tools"
+    if any(term in normalized_text for term in previous_markers):
+        return "previous_tools"
+    if any(term in normalized_text for term in current_markers):
+        return "current_tools"
+    return None
+
+
 def detect_chat_topic(normalized_text: str) -> str:
     if detect_summary_request(normalized_text):
         return "summary"
@@ -1543,6 +1622,37 @@ def detect_stuck_conversation(messages: list[dict[str, str]] | None) -> bool:
         if len(current_tokens & previous_tokens) >= 2:
             overlaps += 1
     return overlaps >= 2
+
+
+def normalize_reply_signature(text: str) -> str:
+    cleaned = normalize_match_text(re.sub(r"https?://\S+", "", text or ""))
+    return cleaned.strip()
+
+
+def should_use_repetition_fallback(candidate_reply: str, messages: list[dict[str, str]] | None, topic: str) -> bool:
+    if not candidate_reply or not messages:
+        return False
+    if topic in {"current-role", "education", "previous-experience", "specific-experience", "tools", "name"}:
+        return False
+
+    candidate_signature = normalize_reply_signature(candidate_reply)
+    if not candidate_signature:
+        return False
+
+    recent_assistant_messages = [
+        normalize_reply_signature(item.get("content", ""))
+        for item in reversed(messages[-6:])
+        if item.get("role") == "assistant" and item.get("content")
+    ]
+    recent_assistant_messages = [item for item in recent_assistant_messages if item]
+    if not recent_assistant_messages:
+        return False
+
+    if candidate_signature == recent_assistant_messages[0]:
+        return True
+
+    repeated_count = sum(1 for item in recent_assistant_messages[:2] if item == candidate_signature)
+    return repeated_count >= 2
 
 
 def build_whatsapp_cta(language: str, reason: str) -> str:
@@ -1961,7 +2071,7 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
         "whatsapp_handoff": whatsapp_offer,
     }
 
-    if analysis.theme_slug in {"name", "current-role", "education", "previous-experience", "specific-experience"} and analysis.reply_text:
+    if analysis.theme_slug in {"name", "current-role", "education", "previous-experience", "specific-experience", "tools"} and analysis.reply_text:
         grounded_path = f"chat-grounded-{analysis.theme_slug}"
         return analysis.reply_text, grounded_path, meta
 
@@ -1982,6 +2092,10 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
         return build_scope_gap_reply(language, True, whatsapp_reason), scope_path, scope_meta
 
     static_reply = build_static_chat_reply(language, topic, intent, contact_ready, guided_mode, whatsapp_offer, whatsapp_reason)
+    if static_reply and should_use_repetition_fallback(static_reply, submission.messages, topic):
+        repetition_meta = dict(meta)
+        repetition_meta["whatsapp_handoff"] = True
+        return build_scope_gap_reply(language, True, whatsapp_reason), "chat-repetition-fallback", repetition_meta
     if static_reply and (topic != "general" or word_count <= 8):
         path = f"chat-static-{topic}" if topic != "general" else "chat-static-short"
         if whatsapp_offer and whatsapp_reason:
@@ -2008,6 +2122,10 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
         feedback_reason,
     )
     if model_reply:
+        if should_use_repetition_fallback(model_reply, submission.messages, topic):
+            repetition_meta = dict(meta)
+            repetition_meta["whatsapp_handoff"] = True
+            return build_scope_gap_reply(language, True, whatsapp_reason), "chat-repetition-fallback", repetition_meta
         return model_reply, engine, meta
 
     fallback_path = "chat-fallback"
