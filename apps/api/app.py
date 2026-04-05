@@ -862,28 +862,39 @@ async def handle_inbox_submission(request: Request) -> JSONResponse:
                 }
                 thread_title = analysis.thread_title
 
-            try:
-                related_messages = get_thread_messages(connection, thread_id, limit=4)
-            except Exception:
-                logger.exception("Loading related thread messages failed; continuing with empty related_messages")
+            if is_chat_request:
                 related_messages = []
-
-            try:
-                logger.info("Inbox email trigger starting | message_id=%s | thread_id=%s", message_id, thread_id)
-                email_status = allowed_email_status(
-                    send_email_notification(message_id, submission, analysis, thread or {}, related_messages)
+                email_status = "skipped"
+                logger.info(
+                    "Inbox chat fast-path | message_id=%s | thread_id=%s | skipped_related_messages=%s | skipped_email=%s",
+                    message_id,
+                    thread_id,
+                    True,
+                    True,
                 )
-                logger.info("Inbox email trigger finished | message_id=%s | email_status=%s", message_id, email_status)
-            except Exception:
-                logger.exception("Email failed but continuing flow")
-                email_status = "failed"
+            else:
+                try:
+                    related_messages = get_thread_messages(connection, thread_id, limit=4)
+                except Exception:
+                    logger.exception("Loading related thread messages failed; continuing with empty related_messages")
+                    related_messages = []
 
-            try:
-                connection.execute("UPDATE messages SET email_status = ? WHERE id = ?", (email_status, message_id))
-                connection.commit()
-                logger.info("Inbox email status updated | message_id=%s | email_status=%s", message_id, email_status)
-            except Exception:
-                logger.exception("Updating email status in SQLite failed; response will continue")
+                try:
+                    logger.info("Inbox email trigger starting | message_id=%s | thread_id=%s", message_id, thread_id)
+                    email_status = allowed_email_status(
+                        send_email_notification(message_id, submission, analysis, thread or {}, related_messages)
+                    )
+                    logger.info("Inbox email trigger finished | message_id=%s | email_status=%s", message_id, email_status)
+                except Exception:
+                    logger.exception("Email failed but continuing flow")
+                    email_status = "failed"
+
+                try:
+                    connection.execute("UPDATE messages SET email_status = ? WHERE id = ?", (email_status, message_id))
+                    connection.commit()
+                    logger.info("Inbox email status updated | message_id=%s | email_status=%s", message_id, email_status)
+                except Exception:
+                    logger.exception("Updating email status in SQLite failed; response will continue")
     except Exception:
         logger.exception("Inbox persistence failed; returning unsaved response payload")
         saved = False
@@ -1409,7 +1420,8 @@ def detect_whatsapp_request(normalized_text: str) -> bool:
     whatsapp_terms = {
         "whatsapp", "whats app", "wa.me", "escribirte por whatsapp", "hablar por whatsapp",
         "contact on whatsapp", "talk on whatsapp", "message on whatsapp", "pasame tu whatsapp",
-        "pasa tu whatsapp", "quiero escribirte por whatsapp", "do you have whatsapp",
+        "pasa tu whatsapp", "quiero escribirte por whatsapp", "quiero hablar por whatsapp",
+        "quiero contactar por whatsapp", "prefiero whatsapp", "do you have whatsapp",
     }
     return any(term in normalized_text for term in whatsapp_terms)
 
@@ -1420,7 +1432,10 @@ def detect_direct_contact_request(normalized_text: str) -> bool:
         "talk to carlos", "speak to a person", "real person", "persona", "humano", "directamente",
         "hablar contigo", "hablar con carlos", "hablar con una persona", "contacto directo",
         "message directly", "write directly", "escribirte directamente", "quiero escribirte directamente",
-        "via mas directa", "vía mas directa", "una persona",
+        "via mas directa", "vía mas directa", "una persona", "quiero contactar", "quiero hablar",
+        "quiero contactar con carlos", "quiero hablar con carlos", "quiero una conversacion directa",
+        "quiero una conversación directa", "quiero escribirle", "quiero hablar sobre un proyecto",
+        "quiero colaborar", "quiero contactar por whatsapp",
     }
     return any(term in normalized_text for term in direct_terms)
 
@@ -1596,16 +1611,11 @@ def build_conversation_close_reply(language: str) -> str:
 
 
 def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
-    if whatsapp_offer and whatsapp_reason:
-        return build_whatsapp_cta(language, whatsapp_reason)
-
     if language == "es":
         if contact_ready or topic == "contact":
-            if intent == "recruiter":
-                return "Si quieres, puedo resumir su encaje para el rol o indicarte como contactar con el."
-            if intent == "client":
-                return "Si ya tienes una necesidad concreta, puedo ayudarte a enfocarla y luego indicarte como contactar."
-            return "Si prefieres una conversacion directa, tambien puedo indicarte como contactar."
+            return f"Puedes escribirme a traves del formulario del portfolio o, si prefieres una conversacion mas directa, abrir conversacion por WhatsApp. {build_whatsapp_url(language)}"
+        if whatsapp_offer and whatsapp_reason:
+            return build_whatsapp_cta(language, whatsapp_reason)
         if intent == "recruiter":
             return "Si quieres, puedo resumir su encaje para un rol, destacar la experiencia mas relevante o centrarme en proyectos."
         if intent == "client":
@@ -1613,11 +1623,9 @@ def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, 
         return "Si quieres, puedo resumirlo en corto, enfocarlo a experiencia o senalar los proyectos mas relevantes."
 
     if contact_ready or topic == "contact":
-        if intent == "recruiter":
-            return "If you want, I can summarise his fit for the role or point you to contact."
-        if intent == "client":
-            return "If you already have a concrete need, I can help frame it and then point you to contact."
-        return "If you prefer a direct conversation, I can point you to contact."
+        return f"You can write through the portfolio contact form or, if you prefer a more direct conversation, open a WhatsApp chat. {build_whatsapp_url(language)}"
+    if whatsapp_offer and whatsapp_reason:
+        return build_whatsapp_cta(language, whatsapp_reason)
     if intent == "recruiter":
         return "If useful, I can summarise his fit for a role, highlight the most relevant experience, or focus on projects."
     if intent == "client":
@@ -1938,6 +1946,9 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
     contact_ready = detect_contact_readiness(normalized)
     guided_mode = needs_guided_next_step(normalized, topic)
     whatsapp_offer, whatsapp_reason = resolve_whatsapp_offer(language, intent, topic, normalized, submission.messages)
+    if contact_ready or topic == "contact":
+        whatsapp_offer = True
+        whatsapp_reason = whatsapp_reason or "direct"
     feedback_signal, feedback_reason = detect_feedback_signal(normalized)
     if feedback_signal == "none":
         feedback_signal, feedback_reason = detect_recent_feedback(submission.messages)
@@ -3028,7 +3039,7 @@ async def inbox_preflight() -> Response:
 async def create_message(request: Request) -> JSONResponse:
     return await handle_inbox_submission(request)
 
-    # 🔥 FIX: soportar payload tipo chat (messages[])
+    # ?? FIX: soportar payload tipo chat (messages[])
     is_chat_request = payload.source == CHAT_WIDGET_SOURCE
     if payload.messages:
         last_user_message = next(
@@ -3412,5 +3423,6 @@ async def healthcheck() -> JSONResponse:
             "database_path": str(settings.database_path),
         }
     )
+
 
 

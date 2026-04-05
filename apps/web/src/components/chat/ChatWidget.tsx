@@ -129,6 +129,86 @@ function getInitialMessages(locale: Locale) {
 }
 
 const urlPattern = /(https?:\/\/[^\s]+)/g;
+const WHATSAPP_URL = "https://wa.me/34691068400";
+
+function normalizeChatText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[?¿!¡.,;:()]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function includesAny(text: string, terms: string[]) {
+  return terms.some((term) => text.includes(term));
+}
+
+function getInstantReply(message: string, locale: Locale): { reply: string; whatsappUrl: string | null } | null {
+  const normalized = normalizeChatText(message);
+
+  const contactTerms = [
+    "quiero contactar",
+    "quiero hablar",
+    "quiero hablar con carlos",
+    "quiero hablar por whatsapp",
+    "quiero contactar por whatsapp",
+    "prefiero whatsapp",
+    "quiero una conversacion directa",
+    "quiero una conversación directa",
+    "quiero escribirle",
+    "quiero hablar sobre un proyecto",
+    "quiero colaborar",
+    "i want to contact",
+    "i want to talk",
+    "i want to talk to carlos",
+    "i prefer whatsapp",
+    "whatsapp",
+    "direct conversation",
+    "contact form",
+  ];
+  if (includesAny(normalized, contactTerms)) {
+    return {
+      reply:
+        locale === "es"
+          ? `Puedes escribirme a traves del formulario del portfolio o, si prefieres una conversacion mas directa, abrir conversacion por WhatsApp.\n${WHATSAPP_URL}`
+          : `You can write through the portfolio contact form or, if you prefer a more direct conversation, open a WhatsApp chat.\n${WHATSAPP_URL}`,
+      whatsappUrl: WHATSAPP_URL,
+    };
+  }
+
+  const nameTerms = ["como te llamas", "como se llama", "cual es tu nombre", "quien eres", "what is your name", "whats your name", "who are you"];
+  if (includesAny(normalized, nameTerms)) {
+    return {
+      reply: locale === "es" ? "Mi nombre es Carlos San Miguel." : "My name is Carlos San Miguel.",
+      whatsappUrl: null,
+    };
+  }
+
+  const currentRoleTerms = [
+    "en que trabajas",
+    "en que trabaja",
+    "y en que trabaja",
+    "a que te dedicas",
+    "a que se dedica",
+    "donde trabajas ahora",
+    "current company",
+    "current role",
+    "where does carlos work",
+  ];
+  if (includesAny(normalized, currentRoleTerms)) {
+    return {
+      reply:
+        locale === "es"
+          ? "Actualmente Carlos trabaja en The Retail Performance Company (RPC)."
+          : "Carlos currently works at The Retail Performance Company (RPC).",
+      whatsappUrl: null,
+    };
+  }
+
+  return null;
+}
 
 function getWhatsAppCtaLabel(locale: Locale) {
   return locale === "es" ? "Abrir conversacion en WhatsApp" : "Open WhatsApp chat";
@@ -226,9 +306,13 @@ export default function ChatWidget() {
   async function handleSend(message: string) {
     const trimmed = message.trim();
     if (!trimmed || isLoading) return;
-    const history = [...messages, { id: "pending-user", role: "user" as const, content: trimmed }]
-      .slice(-6)
-      .map(({ role, content }) => ({ role, content }));
+    const instantReply = getInstantReply(trimmed, locale);
+    const history =
+      messages.length <= 1
+        ? []
+        : [...messages, { id: "pending-user", role: "user" as const, content: trimmed }]
+            .slice(-4)
+            .map(({ role, content }) => ({ role, content }));
 
     setMessages((current) => [...current, makeMessage("user", trimmed)]);
     setInputValue("");
@@ -236,6 +320,11 @@ export default function ChatWidget() {
     setIsOpen(true);
 
     try {
+      if (instantReply) {
+        const assistantMessage = withWhatsAppCta(instantReply.reply, instantReply.whatsappUrl);
+        setMessages((current) => [...current, makeMessage("assistant", assistantMessage)]);
+        return;
+      }
       const result = await sendChatMessage(trimmed, history, locale);
       const assistantMessage = withWhatsAppCta(result.reply, result.whatsappUrl);
       if (result.whatsappHandoff && result.whatsappUrl) {
@@ -265,8 +354,15 @@ export default function ChatWidget() {
 
   return (
     <div className="fixed bottom-4 right-4 z-[9999] sm:bottom-6 sm:right-6">
-      {isOpen ? (
-        <section className="mb-3 flex h-[min(78vh,42rem)] w-[min(calc(100vw-1rem),26rem)] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,8,23,0.98))] shadow-[0_34px_120px_-28px_rgba(2,8,23,0.72)] backdrop-blur-xl">
+      <div className="relative">
+        <section
+          aria-hidden={!isOpen}
+          className={`absolute bottom-[calc(100%+0.75rem)] right-0 flex h-[min(78vh,42rem)] w-[min(calc(100vw-1rem),26rem)] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,8,23,0.98))] shadow-[0_34px_120px_-28px_rgba(2,8,23,0.72)] backdrop-blur-xl transition duration-150 ease-out ${
+            isOpen
+              ? "pointer-events-auto translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-2 opacity-0"
+          }`}
+        >
           <header className="border-b border-white/10 bg-white/[0.03] px-4 py-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -420,39 +516,38 @@ export default function ChatWidget() {
             </div>
           </div>
         </section>
-      ) : null}
 
-      <button
-        type="button"
-        onClick={() => {
-          if (isOpen) {
-            handleCloseChat();
-            return;
-          }
-          handleReset();
-          setIsOpen(true);
-        }}
-        aria-expanded={isOpen}
-        aria-label={text.openLabel}
-        className="ml-auto flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-[1.4rem] border border-white/10 bg-[linear-gradient(135deg,rgba(34,211,238,0.95),rgba(15,23,42,0.95))] text-white shadow-[0_24px_80px_-24px_rgba(8,145,178,0.9)] transition hover:scale-[1.02] hover:brightness-110"
-      >
-        {isOpen ? (
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-            <path d="M7 7l10 10M17 7L7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-            <path
-              d="M7 16.5L4 19V6.75C4 5.784 4.784 5 5.75 5h12.5C19.216 5 20 5.784 20 6.75v8.5c0 .966-.784 1.75-1.75 1.75H7Z"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path d="M8 10h8M8 13h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-          </svg>
-        )}
-      </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (isOpen) {
+              handleCloseChat();
+              return;
+            }
+            setIsOpen(true);
+          }}
+          aria-expanded={isOpen}
+          aria-label={text.openLabel}
+          className="ml-auto flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-[1.4rem] border border-white/10 bg-[linear-gradient(135deg,rgba(34,211,238,0.95),rgba(15,23,42,0.95))] text-white shadow-[0_24px_80px_-24px_rgba(8,145,178,0.9)] transition hover:scale-[1.02] hover:brightness-110"
+        >
+          {isOpen ? (
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+              <path d="M7 7l10 10M17 7L7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+              <path
+                d="M7 16.5L4 19V6.75C4 5.784 4.784 5 5.75 5h12.5C19.216 5 20 5.784 20 6.75v8.5c0 .966-.784 1.75-1.75 1.75H7Z"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path d="M8 10h8M8 13h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
