@@ -13,7 +13,7 @@ from typing import Any
 from urllib.parse import quote
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -419,13 +419,26 @@ def parse_int_env(name: str, default: int) -> int:
         return default
 
 
+def resolve_database_path() -> Path:
+    configured = os.getenv("DATABASE_PATH", "").strip()
+    if configured:
+        candidate = Path(configured)
+        return candidate if candidate.is_absolute() else BASE_DIR / candidate
+
+    render_disk_root = os.getenv("RENDER_DISK_ROOT", "").strip()
+    if render_disk_root:
+        return Path(render_disk_root) / "ai_portfolio_inbox.db"
+
+    return BASE_DIR / "ai_portfolio_inbox.db"
+
+
 def load_settings() -> Settings:
     owner_email = os.getenv("OWNER_EMAIL", "c.sanmiguelortega@gmail.com").strip()
     smtp_username = os.getenv("SMTP_USERNAME", "").strip()
     email_from = os.getenv("EMAIL_FROM", "").strip() or smtp_username
     resend_from_email = os.getenv("RESEND_FROM_EMAIL", "").strip() or email_from
     return Settings(
-        database_path=BASE_DIR / os.getenv("DATABASE_PATH", "ai_portfolio_inbox.db"),
+        database_path=resolve_database_path(),
         openai_api_key=os.getenv("OPENAI_API_KEY", "").strip(),
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini").strip(),
         resend_api_key=os.getenv("RESEND_API_KEY", "").strip(),
@@ -674,7 +687,46 @@ def build_message_payload(
     }
 
 
-async def handle_inbox_submission(request: Request) -> JSONResponse:
+def finalize_message_notification(
+    message_id: int,
+    submission: "InboxSubmission",
+    analysis: "MessageAnalysis",
+    thread: dict[str, Any],
+    thread_id: int | None,
+    is_chat_request: bool,
+) -> None:
+    related_messages: list[dict[str, Any]] = []
+    email_status = "skipped"
+
+    try:
+        with closing(get_connection()) as connection:
+            if thread_id is not None:
+                try:
+                    related_messages = get_thread_messages(connection, thread_id, limit=4)
+                except Exception:
+                    logger.exception("Loading related thread messages failed inside notification task")
+                    related_messages = []
+
+            logger.info(
+                "Inbox email trigger starting | message_id=%s | thread_id=%s | source=%s | chat_request=%s",
+                message_id,
+                thread_id,
+                submission.source,
+                is_chat_request,
+            )
+            email_status = allowed_email_status(
+                send_email_notification(message_id, submission, analysis, thread or {}, related_messages)
+            )
+            logger.info("Inbox email trigger finished | message_id=%s | email_status=%s", message_id, email_status)
+
+            connection.execute("UPDATE messages SET email_status = ? WHERE id = ?", (email_status, message_id))
+            connection.commit()
+            logger.info("Inbox email status updated | message_id=%s | email_status=%s", message_id, email_status)
+    except Exception:
+        logger.exception("Notification task failed | message_id=%s | source=%s", message_id, submission.source)
+
+
+async def handle_inbox_submission(request: Request, background_tasks: BackgroundTasks | None = None) -> JSONResponse:
     raw_payload: dict[str, Any] = {}
     submission: InboxSubmission | None = None
     final_language = "en"
@@ -887,14 +939,22 @@ async def handle_inbox_submission(request: Request) -> JSONResponse:
                 }
                 thread_title = analysis.thread_title
 
-            if is_chat_request:
+            if is_chat_request and background_tasks is not None:
                 related_messages = []
-                email_status = "skipped"
-                logger.info(
-                    "Inbox chat fast-path | message_id=%s | thread_id=%s | skipped_related_messages=%s | skipped_email=%s",
+                email_status = "pending"
+                background_tasks.add_task(
+                    finalize_message_notification,
                     message_id,
+                    submission,
+                    analysis,
+                    thread or {},
                     thread_id,
                     True,
+                )
+                logger.info(
+                    "Inbox chat fast-path | message_id=%s | thread_id=%s | background_email=%s",
+                    message_id,
+                    thread_id,
                     True,
                 )
             else:
@@ -1177,6 +1237,12 @@ def init_db() -> None:
 
 @app.on_event("startup")
 def on_startup() -> None:
+    settings.database_path.parent.mkdir(parents=True, exist_ok=True)
+    logger.info(
+        "SQLite startup path resolved | database_path=%s | render_disk_root=%s",
+        settings.database_path,
+        os.getenv("RENDER_DISK_ROOT", "").strip() or "none",
+    )
     init_db()
 
 
@@ -3170,8 +3236,8 @@ async def inbox_preflight() -> Response:
 
 
 @app.post("/api/inbox")
-async def create_message(request: Request) -> JSONResponse:
-    return await handle_inbox_submission(request)
+async def create_message(request: Request, background_tasks: BackgroundTasks) -> JSONResponse:
+    return await handle_inbox_submission(request, background_tasks)
 
     # ?? FIX: soportar payload tipo chat (messages[])
     is_chat_request = payload.source == CHAT_WIDGET_SOURCE
