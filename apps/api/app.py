@@ -939,7 +939,7 @@ async def handle_inbox_submission(request: Request, background_tasks: Background
                 }
                 thread_title = analysis.thread_title
 
-            if is_chat_request and background_tasks is not None:
+            if background_tasks is not None:
                 related_messages = []
                 email_status = "pending"
                 background_tasks.add_task(
@@ -949,12 +949,14 @@ async def handle_inbox_submission(request: Request, background_tasks: Background
                     analysis,
                     thread or {},
                     thread_id,
-                    True,
+                    is_chat_request,
                 )
                 logger.info(
-                    "Inbox chat fast-path | message_id=%s | thread_id=%s | background_email=%s",
+                    "Inbox async notification scheduled | message_id=%s | thread_id=%s | source=%s | chat_request=%s | background_email=%s",
                     message_id,
                     thread_id,
+                    submission.source,
+                    is_chat_request,
                     True,
                 )
             else:
@@ -1441,6 +1443,24 @@ def detect_chat_intent(normalized_text: str) -> str:
     return "general"
 
 
+def detect_opportunity_contact_request(normalized_text: str) -> bool:
+    opportunity_terms = {
+        "can you help", "could you help", "help with", "help my company", "are you available",
+        "are you open to", "open to new projects", "freelance", "new projects", "collaboration",
+        "collaborate", "short term collaboration", "short term collaborations", "small teams",
+        "professional opportunity", "interested in your profile", "direct contact", "direct conversation",
+        "available for freelance", "open to freelance", "dashboard help", "reporting help",
+        "automate reports", "applied ai", "practical ai", "puedes ayudar", "podrias ayudar",
+        "podrias ayudarme", "puedes ayudarme", "estas disponible", "esta disponible",
+        "abierto a nuevos proyectos", "abierto a colaboraciones", "colaboraciones puntuales",
+        "proyectos freelance", "quiero hablar de una oportunidad profesional", "oportunidad profesional",
+        "interesado en tu perfil", "quiero saber si podrias ayudar", "ayudar a mi empresa",
+        "equipos pequenos", "equipos pequenos", "equipos pequenos", "automatizacion de reportes",
+        "ia aplicada", "organizar procesos internos", "hablar de un proyecto", "hablar de una colaboracion",
+    }
+    return any(term in normalized_text for term in opportunity_terms)
+
+
 def detect_summary_request(normalized_text: str) -> bool:
     summary_patterns = [
         "summary", "summarize", "summarise", "short version", "short overview", "quick summary",
@@ -1540,8 +1560,16 @@ def detect_chat_topic(normalized_text: str) -> str:
         return grounding_topic
     if detect_whatsapp_request(normalized_text):
         return "whatsapp"
+    if detect_opportunity_contact_request(normalized_text):
+        return "contact"
     if any(term in normalized_text for term in {"contact", "email", "reach", "connect", "linkedin", "contactar", "correo", "hablar"}):
         return "contact"
+    if any(term in normalized_text for term in {"reporting", "dashboard", "dashboards", "kpi", "kpis", "power bi", "excel avanzado", "automation of reports", "automatizacion de reportes"}):
+        return "reporting"
+    if any(term in normalized_text for term in {"business or data", "business oriented", "data oriented", "datos o negocio", "perfil mas de datos", "perfil mas de negocio", "perfil tecnico", "technical profile", "is your profile technical", "tu perfil es tecnico"}):
+        return "profile-balance"
+    if any(term in normalized_text for term in {"automotive", "automocion", "automocion", "bmw"}):
+        return "automotive"
     if any(term in normalized_text for term in {"project", "projects", "portfolio", "case study", "proyecto", "proyectos", "examples of his work", "best work", "main projects", "principales proyectos", "mejores proyectos"}):
         return "projects"
     if any(term in normalized_text for term in {"experience", "background", "career", "trayectoria", "experiencia"}):
@@ -1561,7 +1589,11 @@ def detect_contact_readiness(normalized_text: str) -> bool:
         "linkedin", "whatsapp", "correo", "contactar", "llamar", "reunion", "agendar", "hablar", "escribir",
         "ponernos en contacto", "seguir hablando",
     }
-    return detect_whatsapp_request(normalized_text) or any(term in normalized_text for term in contact_terms)
+    return (
+        detect_whatsapp_request(normalized_text)
+        or detect_opportunity_contact_request(normalized_text)
+        or any(term in normalized_text for term in contact_terms)
+    )
 
 
 def needs_guided_next_step(normalized_text: str, topic: str) -> bool:
@@ -1825,6 +1857,46 @@ def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, 
     return "If you want, I can keep it short, focus on experience, or point you to the most relevant projects."
 
 
+def build_contact_reply(language: str, normalized_text: str, tail: str) -> str:
+    has_dashboard_terms = any(
+        term in normalized_text
+        for term in {"dashboard", "dashboards", "reporting", "kpi", "kpis", "power bi", "excel"}
+    )
+    has_automation_terms = any(
+        term in normalized_text
+        for term in {"automate reports", "automation", "automatizacion", "automatizacion de reportes", "applied ai", "ia aplicada"}
+    )
+    has_collaboration_terms = any(
+        term in normalized_text
+        for term in {"freelance", "new project", "new projects", "collaboration", "collaborate", "short term", "colaboracion", "colaboraciones", "proyectos freelance", "proyecto"}
+    )
+    has_process_terms = any(
+        term in normalized_text
+        for term in {"help my company", "small teams", "internal processes", "processes", "process support", "ayudar a mi empresa", "equipos pequenos", "procesos internos", "mejora de procesos"}
+    )
+
+    if language == "es":
+        if has_dashboard_terms:
+            return f"Si, Carlos tiene experiencia en reporting y dashboards orientados a negocio, con foco en KPIs, visibilidad de procesos y soporte a decision. {tail}"
+        if has_automation_terms:
+            return f"Si, puede aportar en automatizacion de reporting, organizacion de informacion e IA aplicada de forma practica. {tail}"
+        if has_collaboration_terms:
+            return f"Si, esta abierto a colaboraciones, proyectos freelance y nuevas oportunidades cuando encajan con su perfil. {tail}"
+        if has_process_terms:
+            return f"Posiblemente si. Carlos suele aportar valor en reporting, procesos, soporte digital y estructuracion de informacion. {tail}"
+        return f"Puedes escribirme a traves del formulario del portfolio o, si prefieres una conversacion mas directa, abrir conversacion por WhatsApp. {build_whatsapp_url(language)}"
+
+    if has_dashboard_terms:
+        return f"Yes, Carlos has experience with business-oriented reporting and dashboards, especially around KPI visibility, process monitoring, and decision support. {tail}"
+    if has_automation_terms:
+        return f"Yes, he can contribute to reporting automation, information workflows, and practical AI use. {tail}"
+    if has_collaboration_terms:
+        return f"Yes, he is open to collaborations, freelance work, and new projects when they are aligned with his profile. {tail}"
+    if has_process_terms:
+        return f"Possibly yes. Carlos usually adds value in reporting, processes, digital support, and information structuring. {tail}"
+    return f"You can write through the portfolio contact form or, if you prefer a more direct conversation, open a WhatsApp chat. {build_whatsapp_url(language)}"
+
+
 def build_guided_options(language: str, intent: str) -> str:
     if language == "es":
         if intent == "recruiter":
@@ -1936,6 +2008,7 @@ def build_static_chat_reply(
     guided_mode: bool,
     whatsapp_offer: bool,
     whatsapp_reason: str | None,
+    normalized_text: str,
 ) -> str | None:
     tail = build_chat_cta(language, intent, topic, contact_ready, whatsapp_offer, whatsapp_reason)
 
@@ -1948,10 +2021,13 @@ def build_static_chat_reply(
             "previous-experience": build_previous_experience_reply("en") + "\n\n" + tail,
             "profile": "Carlos' profile combines operations, data visibility, digital workflows, and practical AI use. He currently works at The Retail Performance Company (RPC), where his focus is on process coordination, reporting, SAP-related support, and helping teams work with more structure and clarity.\n\n" + tail,
             "experience": "Carlos currently works at The Retail Performance Company (RPC) since November 2025. His recent experience is centered on operations, Purchasing and Aftersales support, SAP-related workflows, reporting follow-up, incident handling, and coordination in a BMW-related corporate environment. His broader background also includes back-office operations, documentation validation, public procurement support, banking operations, and technical support operations.\n\n" + tail,
+            "reporting": "Carlos has experience with reporting focused on KPI tracking, process visibility, dashboard support, and business decision support in corporate environments.\n\n" + tail,
+            "profile-balance": "Carlos' profile combines both business and data. He works with reporting, KPIs, dashboards, and operational workflows, while also bringing a practical digital foundation that connects the operational, analytical, and business sides.\n\n" + tail,
+            "automotive": "Yes, his recent experience is linked to the automotive environment through The Retail Performance Company (RPC), in a corporate context associated with BMW.\n\n" + tail,
             "projects": build_projects_reply("en"),
-            "fit": "Carlos is a strong fit for roles that combine operations, reporting, process support, procurement support, digital coordination, and practical AI use. He is especially relevant for teams that need structured follow-up, business support, KPI visibility, and someone comfortable working across tools, workflows, and operational contexts.\n\n" + tail,
+            "fit": "Carlos' profile combines business, operations, and data. He works with reporting, KPIs, dashboards, process support, and digital coordination, with a practical foundation in tools and workflows rather than a purely technical-specialist profile.\n\n" + tail,
             "practical-ai": "His use of AI is practical and business-oriented. The focus is on writing support, information organization, summarization, and workflow efficiency in everyday workflows.\n\n" + tail,
-            "contact": ("You can use the contact option in the portfolio if you want to discuss a role, collaboration, or project context. " + tail) if whatsapp_offer else "You can use the contact option in the portfolio if you want to discuss a role, collaboration, or project context. If helpful first, I can also summarise his experience or highlight the most relevant projects before you reach out.",
+            "contact": build_contact_reply("en", normalized_text, tail),
             "general": "Carlos' portfolio presents a professional profile centered on operations, reporting, process support, digital workflows, and practical AI. The strongest themes are corporate business support, data visibility, coordination, and useful digital initiatives.\n\n" + (build_guided_options(language, intent) if guided_mode else tail),
         },
         "es": {
@@ -1962,10 +2038,13 @@ def build_static_chat_reply(
             "previous-experience": build_previous_experience_reply("es") + "\n\n" + tail,
             "profile": "El perfil de Carlos combina operaciones, visibilidad de datos, workflows digitales e IA practica. Actualmente trabaja en The Retail Performance Company (RPC), donde sus puntos mas fuertes estan en coordinacion de procesos, reporting, soporte relacionado con SAP y apoyo a equipos con mas estructura y claridad.\n\n" + tail,
             "experience": "Carlos trabaja actualmente en The Retail Performance Company (RPC) desde noviembre de 2025. Su experiencia reciente se centra en operaciones, soporte a Purchasing y Aftersales, workflows relacionados con SAP, seguimiento de reporting, gestion de incidencias y coordinacion en un entorno corporativo vinculado a BMW. Su trayectoria tambien incluye back office, validacion documental, contratacion publica, operaciones bancarias y soporte tecnico-operativo.\n\n" + tail,
+            "reporting": "Carlos tiene experiencia con reporting orientado a seguimiento de KPIs, visibilidad de procesos, dashboards y apoyo a la toma de decisiones en entornos corporativos.\n\n" + tail,
+            "profile-balance": "Su perfil combina negocio y datos. Trabaja con reporting, KPIs, dashboards y procesos operativos, pero tambien conecta la parte analitica con la operativa y la de negocio.\n\n" + tail,
+            "automotive": "Si, su experiencia reciente esta vinculada al entorno de automocion a traves de The Retail Performance Company (RPC), en un contexto corporativo asociado a BMW.\n\n" + tail,
             "projects": build_projects_reply("es"),
-            "fit": "Carlos encaja bien en roles que combinan operaciones, reporting, soporte a procesos, soporte a compras, coordinacion digital y uso practico de IA. Es especialmente relevante para equipos que necesitan seguimiento estructurado, soporte de negocio, visibilidad KPI y alguien comodo trabajando entre herramientas, workflows y contextos operativos.\n\n" + tail,
+            "fit": "Su perfil combina negocio, operaciones y datos. Trabaja con reporting, KPIs, dashboards, soporte a procesos y coordinacion digital, con una base practica en herramientas y workflows mas que un enfoque puramente tecnico-especialista.\n\n" + tail,
             "practical-ai": "Su uso de IA es practico y orientado a negocio. El foco esta en apoyo a redaccion, organizacion de informacion, resumenes y eficiencia de workflows del dia a dia.\n\n" + tail,
-            "contact": ("Puedes usar la opcion de contacto del portfolio si quieres hablar sobre un rol, una colaboracion o un contexto de proyecto. " + tail) if whatsapp_offer else "Puedes usar la opcion de contacto del portfolio si quieres hablar sobre un rol, una colaboracion o un contexto de proyecto. Si te ayuda antes, tambien puedo resumir su experiencia o destacar los proyectos mas relevantes.",
+            "contact": build_contact_reply("es", normalized_text, tail),
             "general": "El portfolio de Carlos presenta un perfil profesional centrado en operaciones, reporting, soporte a procesos, workflows digitales e IA practica. Los temas mas fuertes son soporte corporativo a negocio, visibilidad de datos, coordinacion e iniciativas digitales utiles.\n\n" + (build_guided_options(language, intent) if guided_mode else tail),
         },
     }
@@ -2024,6 +2103,8 @@ Adapta la respuesta a esta intencion: {intent}.
 Piensa como un asistente profesional de portfolio, no como un bot comercial.
 Si la intencion es recruiter o hiring, conecta la respuesta con encaje, experiencia relevante y un siguiente paso de contacto razonable.
 Si la intencion es cliente o colaboracion, conecta la respuesta con procesos, reporting, workflows digitales e IA practica.
+Si preguntan si puede ayudar, si esta disponible, si acepta freelance, colaboraciones, nuevos proyectos o contacto directo, responde de forma natural y remite a formulario o WhatsApp sin sonar agresivo.
+Si preguntan por reporting, dashboards, automocion, perfil tecnico o si su perfil es mas de negocio o de datos, responde de forma directa usando solo el grounding disponible en el portfolio.
 Si la pregunta es amplia ({guided_mode}), sintetiza primero y luego ofrece 2 o 3 caminos claros.
 Si la intencion de contacto es explicita ({contact_ready}), orienta el siguiente paso de forma practica y sin presion.
  {whatsapp_rule}
@@ -2047,6 +2128,8 @@ Adapt to this intent: {intent}.
 Think like a professional portfolio assistant, not a sales bot.
 For recruiter or hiring intent, connect the answer to role fit, relevant experience, and a sensible contact path.
 For client or collaboration intent, connect the answer to process support, reporting, digital workflows, and practical AI use.
+If the user asks whether Carlos can help, is available, accepts freelance work, collaborations, new projects, or direct contact, answer naturally and guide them to the contact form or WhatsApp without sounding pushy.
+If the user asks about reporting, dashboards, automotive experience, technical profile, or whether the profile is more business or data oriented, answer directly using only the grounded portfolio information.
 If the question is broad ({guided_mode}), synthesize first and then offer 2 or 3 clear directions.
 If contact intent is explicit ({contact_ready}), make the next step practical and low-pressure.
 {whatsapp_rule}
@@ -2173,7 +2256,7 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
             scope_path = f"{scope_path}-whatsapp-{whatsapp_reason}"
         return build_scope_gap_reply(language, True, whatsapp_reason), scope_path, scope_meta
 
-    static_reply = build_static_chat_reply(language, topic, intent, contact_ready, guided_mode, whatsapp_offer, whatsapp_reason)
+    static_reply = build_static_chat_reply(language, topic, intent, contact_ready, guided_mode, whatsapp_offer, whatsapp_reason, normalized)
     if static_reply and should_use_repetition_fallback(static_reply, submission.messages, topic):
         repetition_meta = dict(meta)
         repetition_meta["whatsapp_handoff"] = True
