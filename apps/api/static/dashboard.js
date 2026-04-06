@@ -212,6 +212,28 @@
     });
   }
 
+  function renderCountMapList(container, counts, formatter) {
+    const items = Object.entries(counts || {})
+      .map(function ([label, total]) {
+        return { label, total };
+      })
+      .sort(function (a, b) {
+        if (b.total !== a.total) {
+          return b.total - a.total;
+        }
+        return String(a.label).localeCompare(String(b.label));
+      });
+
+    renderMetricList(container, items, function (item) {
+      const row = createElement("div", "list-row");
+      row.append(
+        createElement("strong", "", formatter ? formatter(item.label) : humanizeLabel(item.label)),
+        createElement("span", "tag", `${item.total}`)
+      );
+      return row;
+    });
+  }
+
   function sourceActivityRow(item) {
     const row = createElement("div", "list-row");
     row.append(
@@ -700,6 +722,23 @@
 
     renderMetricList($("topOpportunitiesList"), dashboardMessages.top_opportunities || [], messageCard);
     renderMetricList($("recentHighPriorityList"), dashboardMessages.recent_high_priority || [], messageCard);
+
+    const chatAnalytics = messages && messages.chat_analytics ? messages.chat_analytics : null;
+    const chatAnalyticsCount = $("chatAnalyticsCount");
+    if (chatAnalyticsCount) {
+      chatAnalyticsCount.textContent = chatAnalytics ? `${chatAnalytics.total_messages || 0} chat messages` : "No chat data";
+    }
+    renderCountMapList($("chatLanguageList"), chatAnalytics && chatAnalytics.by_language ? chatAnalytics.by_language : {}, function (value) {
+      return String(value || "unknown").toUpperCase();
+    });
+    renderCountMapList($("chatResolutionList"), chatAnalytics && chatAnalytics.resolution ? chatAnalytics.resolution : {});
+    renderCountMapList($("chatSatisfactionList"), chatAnalytics && chatAnalytics.satisfaction ? chatAnalytics.satisfaction : {});
+    renderMetricList($("chatTopicList"), chatAnalytics && Array.isArray(chatAnalytics.top_themes) ? chatAnalytics.top_themes : [], function (item) {
+      const row = createElement("div", "list-row");
+      row.append(createElement("strong", "", item.label || "-"), createElement("span", "tag", `${item.total || 0}`));
+      return row;
+    });
+    renderSparkline($("chatTrendChart"), chatAnalytics && Array.isArray(chatAnalytics.message_volume) ? chatAnalytics.message_volume : []);
 
     const priorityFilter = $("filterPriority");
     const sourceFilter = $("filterSource");

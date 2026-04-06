@@ -213,6 +213,39 @@
           <div id="recentHighPriorityList" class="list-stack"></div>
         </article>
 
+        <article class="surface-card span-12 module-card chat-analytics-card">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker">Chat analytics</span>
+              <h2>Portfolio chat signals</h2>
+            </div>
+            <span class="status-chip soft-status" id="chatAnalyticsCount">Loading</span>
+          </div>
+          <p class="section-helper">Chat-specific analytics built from real widget interactions stored in the same SQLite inbox flow.</p>
+          <div class="chat-analytics-grid">
+            <div>
+              <div class="subsection-label">Chat language split</div>
+              <div id="chatLanguageList" class="list-stack"></div>
+            </div>
+            <div>
+              <div class="subsection-label">Chat resolution signal</div>
+              <div id="chatResolutionList" class="list-stack"></div>
+            </div>
+            <div>
+              <div class="subsection-label">Chat satisfaction signal</div>
+              <div id="chatSatisfactionList" class="list-stack"></div>
+            </div>
+            <div>
+              <div class="subsection-label">Chat topic interest</div>
+              <div id="chatTopicList" class="list-stack"></div>
+            </div>
+          </div>
+          <div class="compact-top">
+            <div class="subsection-label">Chat interaction trend</div>
+            <div id="chatTrendChart" class="sparkline-bars"></div>
+          </div>
+        </article>
+
         <article class="surface-card span-5 module-card trend-card">
           <div class="section-head section-head-tight">
             <div>

@@ -2749,6 +2749,25 @@ def aggregate_counts(connection: sqlite3.Connection, column_name: str, fallback:
     return {row["label"]: row["total"] for row in rows}
 
 
+def aggregate_counts_for_source(
+    connection: sqlite3.Connection,
+    column_name: str,
+    source: str,
+    fallback: str = "unknown",
+) -> dict[str, int]:
+    rows = connection.execute(
+        f"""
+        SELECT COALESCE(NULLIF(TRIM({column_name}), ''), ?) AS label, COUNT(*) AS total
+        FROM messages
+        WHERE source = ?
+        GROUP BY COALESCE(NULLIF(TRIM({column_name}), ''), ?)
+        ORDER BY total DESC
+        """,
+        (fallback, source, fallback),
+    ).fetchall()
+    return {row["label"]: row["total"] for row in rows}
+
+
 def all_messages_for_export(connection: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = connection.execute(
         """
@@ -2972,6 +2991,107 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
         metrics["by_language"],
     )
     return metrics
+
+
+def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
+    total_messages = connection.execute(
+        "SELECT COUNT(*) AS total FROM messages WHERE source = ?",
+        (CHAT_WIDGET_SOURCE,),
+    ).fetchone()["total"]
+
+    by_language = aggregate_counts_for_source(connection, "language", CHAT_WIDGET_SOURCE, fallback="unknown")
+    by_theme = [
+        dict(row)
+        for row in connection.execute(
+            """
+            SELECT
+                COALESCE(NULLIF(TRIM(theme_label), ''), 'General inbound inquiries') AS label,
+                COALESCE(NULLIF(TRIM(theme_slug), ''), 'general-inquiries') AS slug,
+                COUNT(*) AS total
+            FROM messages
+            WHERE source = ?
+            GROUP BY COALESCE(NULLIF(TRIM(theme_slug), ''), 'general-inquiries'),
+                     COALESCE(NULLIF(TRIM(theme_label), ''), 'General inbound inquiries')
+            ORDER BY total DESC
+            LIMIT 6
+            """,
+            (CHAT_WIDGET_SOURCE,),
+        ).fetchall()
+    ]
+    by_intent = aggregate_counts_for_source(connection, "chat_intent", CHAT_WIDGET_SOURCE, fallback="general")
+    message_volume = [
+        dict(row)
+        for row in connection.execute(
+            """
+            SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total
+            FROM messages
+            WHERE source = ? AND created_at >= ?
+            GROUP BY substr(created_at, 1, 10)
+            ORDER BY day ASC
+            """,
+            (CHAT_WIDGET_SOURCE, iso_days_ago(30)),
+        ).fetchall()
+    ]
+    resolution = {
+        "resolved": 0,
+        "handoff": 0,
+        "needs_follow_up": 0,
+    }
+    satisfaction = {
+        "positive": 0,
+        "neutral": 0,
+        "negative": 0,
+    }
+
+    rows = connection.execute(
+        """
+        SELECT
+            COALESCE(feedback_signal, 'none') AS feedback_signal,
+            COALESCE(whatsapp_handoff, 0) AS whatsapp_handoff,
+            COALESCE(needs_follow_up, 0) AS needs_follow_up,
+            COALESCE(reply_text, '') AS reply_text
+        FROM messages
+        WHERE source = ?
+        """,
+        (CHAT_WIDGET_SOURCE,),
+    ).fetchall()
+
+    for row in rows:
+        feedback_signal = row["feedback_signal"] or "none"
+        if feedback_signal == "positive":
+            satisfaction["positive"] += 1
+            resolution["resolved"] += 1
+            continue
+        if feedback_signal == "negative":
+            satisfaction["negative"] += 1
+            resolution["needs_follow_up"] += 1
+            continue
+
+        satisfaction["neutral"] += 1
+        if bool(row["whatsapp_handoff"]):
+            resolution["handoff"] += 1
+        elif not bool(row["needs_follow_up"]) and (row["reply_text"] or "").strip():
+            resolution["resolved"] += 1
+        else:
+            resolution["needs_follow_up"] += 1
+
+    analytics = {
+        "total_messages": total_messages,
+        "by_language": by_language,
+        "message_volume": message_volume,
+        "top_themes": by_theme,
+        "by_intent": by_intent,
+        "resolution": resolution,
+        "satisfaction": satisfaction,
+    }
+    logger.info(
+        "Dashboard chat analytics read | total_messages=%s | by_language=%s | resolution=%s | satisfaction=%s",
+        total_messages,
+        by_language,
+        resolution,
+        satisfaction,
+    )
+    return analytics
 
 
 def fallback_executive_summary(metrics: dict[str, Any]) -> str:
@@ -3480,6 +3600,7 @@ async def dashboard_summary() -> JSONResponse:
 async def dashboard_messages() -> JSONResponse:
     with closing(get_connection()) as connection:
         metrics = dashboard_message_metrics(connection)
+        chat_analytics = dashboard_chat_analytics(connection)
     logger.info(
         "Dashboard messages served | database_path=%s | recent_high_priority=%s | top_opportunities=%s | message_volume_days=%s | sources=%s",
         settings.database_path,
@@ -3496,6 +3617,7 @@ async def dashboard_messages() -> JSONResponse:
             "top_opportunities": metrics["top_opportunities"],
             "most_requested_topics": metrics["recurring_interests"],
             "by_source": metrics["by_source"],
+            "chat_analytics": chat_analytics,
         }
     )
 
