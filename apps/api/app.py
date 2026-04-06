@@ -2915,6 +2915,41 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
             """
         ).fetchall()
     ]
+    recent_priority_activity = recent_high_priority or [
+        serialize_message(row)
+        for row in connection.execute(
+            """
+            SELECT
+                m.id,
+                m.thread_id,
+                COALESCE(t.thread_title, t.title) AS thread_title,
+                COALESCE(t.theme_slug, m.theme_slug) AS theme_slug,
+                COALESCE(t.theme_label, m.theme_label) AS theme_label,
+                COALESCE(m.user_name, m.sender_name) AS user_name,
+                COALESCE(m.user_email, m.sender_email) AS user_email,
+                m.company,
+                m.source,
+                m.language,
+                m.category,
+                m.priority,
+                m.lead_score,
+                m.sentiment,
+                COALESCE(m.summary, m.message_summary) AS summary,
+                m.key_points_json,
+                COALESCE(m.raw_message, m.message_text) AS raw_message,
+                m.reply_text,
+                m.thread_summary,
+                m.email_status,
+                m.created_at
+            FROM messages m
+            JOIN threads t ON t.id = m.thread_id
+            WHERE m.priority IN ('high', 'medium')
+            ORDER BY CASE m.priority WHEN 'high' THEN 2 WHEN 'medium' THEN 1 ELSE 0 END DESC, m.created_at DESC
+            LIMIT 6
+            """
+        ).fetchall()
+    ]
+    top_opportunities = [item for item in highest_leads if item["lead_score"] >= 4][:4] or highest_leads[:4]
     metrics = {
         "total_messages": total_messages,
         "by_priority": aggregate_counts(connection, "priority"),
@@ -2925,8 +2960,8 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
         "top_themes": top_themes,
         "message_volume": message_volume,
         "highest_leads": highest_leads,
-        "recent_high_priority": recent_high_priority,
-        "top_opportunities": [item for item in highest_leads if item["lead_score"] >= 4][:4],
+        "recent_high_priority": recent_priority_activity,
+        "top_opportunities": top_opportunities,
         "recurring_interests": top_themes[:4],
     }
     logger.info(

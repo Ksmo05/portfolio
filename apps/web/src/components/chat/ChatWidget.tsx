@@ -323,6 +323,16 @@ export default function ChatWidget() {
       if (instantReply) {
         const assistantMessage = withWhatsAppCta(instantReply.reply, instantReply.whatsappUrl);
         setMessages((current) => [...current, makeMessage("assistant", assistantMessage)]);
+        void sendChatMessage(trimmed, history, locale).then(function (result) {
+          if (result.whatsappHandoff && result.whatsappUrl) {
+            console.debug("[ChatWidget] instant reply persisted with CTA", {
+              whatsappHandoff: result.whatsappHandoff,
+              whatsappUrl: result.whatsappUrl,
+            });
+          }
+        }).catch(function (error) {
+          console.warn("[ChatWidget] instant reply persistence failed", error);
+        });
         return;
       }
       const result = await sendChatMessage(trimmed, history, locale);
