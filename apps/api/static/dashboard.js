@@ -236,26 +236,16 @@
     });
   }
 
-  function renderChatStatCard(container, title, value, helper) {
-    if (!container) return;
-    container.innerHTML = "";
-    const card = createElement("div", "list-row");
-    card.append(createElement("strong", "", title), createElement("span", "tag", value));
-    container.appendChild(card);
-    if (helper) {
-      container.appendChild(createElement("div", "empty-state small-empty", helper));
+  function formatShortDayLabel(value) {
+    if (!value) return "-";
+    const parsed = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) {
+      return String(value).slice(5);
     }
-  }
-
-  function formatLatency(value) {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric) || numeric < 0) {
-      return "No data yet";
-    }
-    if (numeric < 1000) {
-      return `${Math.round(numeric)} ms`;
-    }
-    return `${(numeric / 1000).toFixed(2)} s`;
+    return new Intl.DateTimeFormat("en", {
+      month: "short",
+      day: "numeric",
+    }).format(parsed);
   }
 
   function sourceActivityRow(item) {
@@ -752,26 +742,29 @@
     if (chatAnalyticsCount) {
       chatAnalyticsCount.textContent = chatAnalytics ? `${chatAnalytics.total_interactions || 0} chat interactions` : "No chat data";
     }
-    renderCountMapList($("chatLanguageList"), chatAnalytics && chatAnalytics.by_language ? chatAnalytics.by_language : {}, function (value) {
-      return String(value || "unknown").toUpperCase();
-    });
-    renderChatStatCard(
-      $("chatAverageInteractions"),
-      "Messages per conversation",
-      chatAnalytics && Number.isFinite(Number(chatAnalytics.avg_interactions_per_conversation))
-        ? `${Number(chatAnalytics.avg_interactions_per_conversation).toFixed(2)} avg`
-        : "No data yet",
-      chatAnalytics && Number(chatAnalytics.conversation_count) > 0
-        ? `${chatAnalytics.conversation_count} conversations detected using the current chat-session heuristic.`
-        : "A conversation is approximated by grouping chat interactions separated by no more than 30 minutes."
-    );
-    renderChatStatCard(
-      $("chatAverageResponseTime"),
-      "Bot response latency",
-      chatAnalytics ? formatLatency(chatAnalytics.avg_response_latency_ms) : "No data yet",
-      chatAnalytics && Number(chatAnalytics.response_latency_samples) > 0
-        ? `${chatAnalytics.response_latency_samples} persisted chat interactions include response latency samples.`
-        : "This metric appears once new chat interactions persist response latency."
+    const chatTotal = $("chatTotalInteractions");
+    if (chatTotal) {
+      chatTotal.textContent = String(chatAnalytics && chatAnalytics.total_interactions ? chatAnalytics.total_interactions : 0);
+    }
+    const chatSpanish = $("chatSpanishInteractions");
+    if (chatSpanish) {
+      chatSpanish.textContent = String(chatAnalytics && chatAnalytics.spanish_interactions ? chatAnalytics.spanish_interactions : 0);
+    }
+    const chatEnglish = $("chatEnglishInteractions");
+    if (chatEnglish) {
+      chatEnglish.textContent = String(chatAnalytics && chatAnalytics.english_interactions ? chatAnalytics.english_interactions : 0);
+    }
+    createBarChart(
+      "chatDailyBarChart",
+      chatAnalytics && Array.isArray(chatAnalytics.daily_interactions)
+        ? chatAnalytics.daily_interactions.map(function (item) {
+            return {
+              label: formatShortDayLabel(item.day),
+              value: item.total || 0,
+            };
+          })
+        : [],
+      "#5da8ff"
     );
 
     const priorityFilter = $("filterPriority");

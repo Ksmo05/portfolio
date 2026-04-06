@@ -1179,8 +1179,19 @@ body.dashboard-page {
 
 .dashboard-page .chat-analytics-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+}
+
+.dashboard-page .chat-kpi-card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: clamp(1.7rem, 2vw, 2.2rem);
+  line-height: 1;
+}
+
+.dashboard-page .chat-kpi-card p {
+  margin-top: 10px;
 }
 
 .dashboard-page .live-visibility-card .split-list-grid {

@@ -216,24 +216,40 @@
         <article class="surface-card span-12 module-card chat-analytics-card">
           <div class="section-head">
             <div>
-              <span class="section-kicker">Chat analytics</span>
-              <h2>Portfolio chat signals</h2>
+              <span class="section-kicker">Chat overview</span>
+              <h2>Chat activity overview</h2>
             </div>
             <span class="status-chip soft-status" id="chatAnalyticsCount">Loading</span>
           </div>
-          <p class="section-helper">Simple chat metrics built from real widget interactions persisted in the same SQLite inbox flow.</p>
+          <p class="section-helper">A stable view of real widget activity based on persisted chat interactions in the same SQLite inbox flow.</p>
           <div class="chat-analytics-grid">
-            <div>
-              <div class="subsection-label">Chat language split</div>
-              <div id="chatLanguageList" class="list-stack"></div>
+            <article class="chart-surface chat-kpi-card">
+              <span class="section-kicker">Chat KPI</span>
+              <h3>Total chat interactions</h3>
+              <strong id="chatTotalInteractions">0</strong>
+              <p>All persisted interactions coming from the portfolio chat widget.</p>
+            </article>
+            <article class="chart-surface chat-kpi-card">
+              <span class="section-kicker">Language</span>
+              <h3>Spanish chat interactions</h3>
+              <strong id="chatSpanishInteractions">0</strong>
+              <p>Messages detected with `language = es` inside the chat flow.</p>
+            </article>
+            <article class="chart-surface chat-kpi-card">
+              <span class="section-kicker">Language</span>
+              <h3>English chat interactions</h3>
+              <strong id="chatEnglishInteractions">0</strong>
+              <p>Messages detected with `language = en` inside the chat flow.</p>
+            </article>
+          </div>
+          <div class="chart-surface compact-top">
+            <div class="chart-surface-head">
+              <span class="section-kicker">Volume</span>
+              <h3>Daily chat interactions</h3>
+              <p>Bar chart of chat widget interactions per day across the most recent 14-day window with available data.</p>
             </div>
-            <div>
-              <div class="subsection-label">Average interactions per conversation</div>
-              <div id="chatAverageInteractions" class="list-stack"></div>
-            </div>
-            <div>
-              <div class="subsection-label">Average chat response time</div>
-              <div id="chatAverageResponseTime" class="list-stack"></div>
+            <div class="chart-canvas-wrap chart-canvas-tall">
+              <canvas id="chatDailyBarChart"></canvas>
             </div>
           </div>
         </article>

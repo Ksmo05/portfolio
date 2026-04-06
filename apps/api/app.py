@@ -3106,8 +3106,7 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
             SELECT
                 id,
                 created_at,
-                COALESCE(language, 'unknown') AS language,
-                response_latency_ms
+                COALESCE(language, 'unknown') AS language
             FROM messages
             WHERE source = ?
             ORDER BY created_at ASC, id ASC
@@ -3118,10 +3117,7 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
 
     total_interactions = len(rows)
     by_language = {"es": 0, "en": 0, "unknown": 0}
-    latencies: list[float] = []
-    conversations: list[list[dict[str, Any]]] = []
-    current_conversation: list[dict[str, Any]] = []
-    previous_timestamp: datetime | None = None
+    daily_totals: dict[str, int] = {}
 
     for row in rows:
         language = (row.get("language") or "unknown").strip().lower() or "unknown"
@@ -3129,63 +3125,29 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
             by_language[language] = 0
         by_language[language] += 1
 
-        latency = parse_response_latency_ms(row.get("response_latency_ms"))
-        if latency is not None:
-            latencies.append(latency)
-
         created_at_raw = row.get("created_at") or ""
-        created_at = None
-        try:
-            created_at = datetime.fromisoformat(str(created_at_raw).replace("Z", "+00:00"))
-        except ValueError:
-            created_at = None
+        day = str(created_at_raw)[:10]
+        if day:
+            daily_totals[day] = daily_totals.get(day, 0) + 1
 
-        if not current_conversation:
-            current_conversation = [row]
-            previous_timestamp = created_at
-            continue
-
-        gap_seconds = None
-        if previous_timestamp is not None and created_at is not None:
-            gap_seconds = (created_at - previous_timestamp).total_seconds()
-
-        if gap_seconds is not None and gap_seconds <= 30 * 60:
-            current_conversation.append(row)
-        else:
-            conversations.append(current_conversation)
-            current_conversation = [row]
-
-        previous_timestamp = created_at or previous_timestamp
-
-    if current_conversation:
-        conversations.append(current_conversation)
-
-    conversation_count = len(conversations)
-    avg_interactions_per_conversation = round(
-        total_interactions / conversation_count,
-        2,
-    ) if conversation_count else 0.0
-    avg_response_latency_ms = round(sum(latencies) / len(latencies), 2) if latencies else None
+    daily_interactions = [
+        {"day": day, "total": total}
+        for day, total in sorted(daily_totals.items())
+    ][-14:]
 
     analytics = {
         "total_interactions": total_interactions,
         "by_language": by_language,
-        "conversation_count": conversation_count,
-        "avg_interactions_per_conversation": avg_interactions_per_conversation,
-        "avg_response_latency_ms": avg_response_latency_ms,
-        "avg_response_latency_seconds": round(avg_response_latency_ms / 1000, 2) if avg_response_latency_ms is not None else None,
-        "response_latency_samples": len(latencies),
-        "conversation_definition": "A conversation is approximated as a sequence of chat interactions separated by no more than 30 minutes.",
+        "spanish_interactions": by_language.get("es", 0),
+        "english_interactions": by_language.get("en", 0),
+        "daily_interactions": daily_interactions,
         "interaction_definition": "One interaction equals one persisted chat message row with source portfolio-chat-widget.",
     }
     logger.info(
-        "Dashboard chat analytics read | total_interactions=%s | by_language=%s | conversations=%s | avg_interactions=%s | avg_response_latency_ms=%s | latency_samples=%s",
+        "Dashboard chat analytics read | total_interactions=%s | by_language=%s | trend_days=%s",
         total_interactions,
         by_language,
-        conversation_count,
-        avg_interactions_per_conversation,
-        avg_response_latency_ms,
-        len(latencies),
+        len(daily_interactions),
     )
     return analytics
 
