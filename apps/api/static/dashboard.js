@@ -202,6 +202,7 @@
   }
 
   function renderMetricList(container, items, formatter) {
+    if (!container) return;
     container.innerHTML = "";
     if (!items || items.length === 0) {
       container.appendChild(createElement("div", "empty-state small-empty", "No data available yet."));
@@ -213,6 +214,7 @@
   }
 
   function renderCountMapList(container, counts, formatter) {
+    if (!container) return;
     const items = Object.entries(counts || {})
       .map(function ([label, total]) {
         return { label, total };
@@ -232,6 +234,28 @@
       );
       return row;
     });
+  }
+
+  function renderChatStatCard(container, title, value, helper) {
+    if (!container) return;
+    container.innerHTML = "";
+    const card = createElement("div", "list-row");
+    card.append(createElement("strong", "", title), createElement("span", "tag", value));
+    container.appendChild(card);
+    if (helper) {
+      container.appendChild(createElement("div", "empty-state small-empty", helper));
+    }
+  }
+
+  function formatLatency(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < 0) {
+      return "No data yet";
+    }
+    if (numeric < 1000) {
+      return `${Math.round(numeric)} ms`;
+    }
+    return `${(numeric / 1000).toFixed(2)} s`;
   }
 
   function sourceActivityRow(item) {
@@ -726,19 +750,29 @@
     const chatAnalytics = messages && messages.chat_analytics ? messages.chat_analytics : null;
     const chatAnalyticsCount = $("chatAnalyticsCount");
     if (chatAnalyticsCount) {
-      chatAnalyticsCount.textContent = chatAnalytics ? `${chatAnalytics.total_messages || 0} chat messages` : "No chat data";
+      chatAnalyticsCount.textContent = chatAnalytics ? `${chatAnalytics.total_interactions || 0} chat interactions` : "No chat data";
     }
     renderCountMapList($("chatLanguageList"), chatAnalytics && chatAnalytics.by_language ? chatAnalytics.by_language : {}, function (value) {
       return String(value || "unknown").toUpperCase();
     });
-    renderCountMapList($("chatResolutionList"), chatAnalytics && chatAnalytics.resolution ? chatAnalytics.resolution : {});
-    renderCountMapList($("chatSatisfactionList"), chatAnalytics && chatAnalytics.satisfaction ? chatAnalytics.satisfaction : {});
-    renderMetricList($("chatTopicList"), chatAnalytics && Array.isArray(chatAnalytics.top_themes) ? chatAnalytics.top_themes : [], function (item) {
-      const row = createElement("div", "list-row");
-      row.append(createElement("strong", "", item.label || "-"), createElement("span", "tag", `${item.total || 0}`));
-      return row;
-    });
-    renderSparkline($("chatTrendChart"), chatAnalytics && Array.isArray(chatAnalytics.message_volume) ? chatAnalytics.message_volume : []);
+    renderChatStatCard(
+      $("chatAverageInteractions"),
+      "Messages per conversation",
+      chatAnalytics && Number.isFinite(Number(chatAnalytics.avg_interactions_per_conversation))
+        ? `${Number(chatAnalytics.avg_interactions_per_conversation).toFixed(2)} avg`
+        : "No data yet",
+      chatAnalytics && Number(chatAnalytics.conversation_count) > 0
+        ? `${chatAnalytics.conversation_count} conversations detected using the current chat-session heuristic.`
+        : "A conversation is approximated by grouping chat interactions separated by no more than 30 minutes."
+    );
+    renderChatStatCard(
+      $("chatAverageResponseTime"),
+      "Bot response latency",
+      chatAnalytics ? formatLatency(chatAnalytics.avg_response_latency_ms) : "No data yet",
+      chatAnalytics && Number(chatAnalytics.response_latency_samples) > 0
+        ? `${chatAnalytics.response_latency_samples} persisted chat interactions include response latency samples.`
+        : "This metric appears once new chat interactions persist response latency."
+    );
 
     const priorityFilter = $("filterPriority");
     const sourceFilter = $("filterSource");

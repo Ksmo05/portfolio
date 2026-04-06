@@ -9,6 +9,7 @@ from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 from urllib.parse import quote
 
@@ -508,6 +509,18 @@ class InboxSubmission(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="allow")
 
 
+def parse_response_latency_ms(value: Any) -> float | None:
+    try:
+        if value in {None, ""}:
+            return None
+        latency = float(value)
+        if latency < 0:
+            return None
+        return round(latency, 2)
+    except (TypeError, ValueError):
+        return None
+
+
 class MessageAnalysis(BaseModel):
     language: str = Field(pattern="^(es|en)$")
     category: str
@@ -727,6 +740,7 @@ def finalize_message_notification(
 
 
 async def handle_inbox_submission(request: Request, background_tasks: BackgroundTasks | None = None) -> JSONResponse:
+    started_at = perf_counter()
     raw_payload: dict[str, Any] = {}
     submission: InboxSubmission | None = None
     final_language = "en"
@@ -747,6 +761,7 @@ async def handle_inbox_submission(request: Request, background_tasks: Background
     thread_id: int | None = None
     thread_title: str | None = None
     created_at = utc_now()
+    response_latency_ms: float | None = None
 
     try:
         raw_payload = await request.json()
@@ -757,6 +772,7 @@ async def handle_inbox_submission(request: Request, background_tasks: Background
     try:
         submission, header_locale = normalize_inbox_submission(raw_payload, request)
         is_chat_request = submission.source == CHAT_WIDGET_SOURCE or bool(submission.messages)
+        response_latency_ms = parse_response_latency_ms(raw_payload.get("response_latency_ms"))
         if is_chat_request:
             final_language, language_source = resolve_chat_language_details(submission)
         else:
@@ -861,6 +877,9 @@ async def handle_inbox_submission(request: Request, background_tasks: Background
     if analysis.reply_text != reply_text:
         analysis = analysis.model_copy(update={"reply_text": reply_text})
 
+    if is_chat_request and response_latency_ms is None:
+        response_latency_ms = round((perf_counter() - started_at) * 1000, 2)
+
     try:
         with closing(get_connection()) as connection:
             thread_id = get_or_create_thread(connection, analysis)
@@ -873,8 +892,9 @@ async def handle_inbox_submission(request: Request, background_tasks: Background
                     thread_summary, email_status, analysis_engine, created_at, sender_name, sender_email,
                     message_text, message_summary, suggested_reply, urgency_score, themes, needs_follow_up,
                     feedback_signal, feedback_reason, chat_intent, whatsapp_handoff
+                    , response_latency_ms
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     thread_id,
@@ -909,6 +929,7 @@ async def handle_inbox_submission(request: Request, background_tasks: Background
                     chat_meta["feedback_reason"],
                     chat_meta["intent"],
                     1 if chat_meta["whatsapp_handoff"] else 0,
+                    response_latency_ms,
                 ),
             )
             message_id = int(cursor.lastrowid)
@@ -1228,6 +1249,7 @@ def init_db() -> None:
                 "feedback_reason": "TEXT",
                 "chat_intent": "TEXT",
                 "whatsapp_handoff": "INTEGER DEFAULT 0",
+                "response_latency_ms": "REAL",
             },
         )
         connection.execute("CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages(thread_id)")
@@ -3077,102 +3099,93 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
 
 
 def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
-    total_messages = connection.execute(
-        "SELECT COUNT(*) AS total FROM messages WHERE source = ?",
-        (CHAT_WIDGET_SOURCE,),
-    ).fetchone()["total"]
-
-    by_language = aggregate_counts_for_source(connection, "language", CHAT_WIDGET_SOURCE, fallback="unknown")
-    by_theme = [
+    rows = [
         dict(row)
         for row in connection.execute(
             """
             SELECT
-                COALESCE(NULLIF(TRIM(theme_label), ''), 'General inbound inquiries') AS label,
-                COALESCE(NULLIF(TRIM(theme_slug), ''), 'general-inquiries') AS slug,
-                COUNT(*) AS total
+                id,
+                created_at,
+                COALESCE(language, 'unknown') AS language,
+                response_latency_ms
             FROM messages
             WHERE source = ?
-            GROUP BY COALESCE(NULLIF(TRIM(theme_slug), ''), 'general-inquiries'),
-                     COALESCE(NULLIF(TRIM(theme_label), ''), 'General inbound inquiries')
-            ORDER BY total DESC
-            LIMIT 6
+            ORDER BY created_at ASC, id ASC
             """,
             (CHAT_WIDGET_SOURCE,),
         ).fetchall()
     ]
-    by_intent = aggregate_counts_for_source(connection, "chat_intent", CHAT_WIDGET_SOURCE, fallback="general")
-    message_volume = [
-        dict(row)
-        for row in connection.execute(
-            """
-            SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total
-            FROM messages
-            WHERE source = ? AND created_at >= ?
-            GROUP BY substr(created_at, 1, 10)
-            ORDER BY day ASC
-            """,
-            (CHAT_WIDGET_SOURCE, iso_days_ago(30)),
-        ).fetchall()
-    ]
-    resolution = {
-        "resolved": 0,
-        "handoff": 0,
-        "needs_follow_up": 0,
-    }
-    satisfaction = {
-        "positive": 0,
-        "neutral": 0,
-        "negative": 0,
-    }
 
-    rows = connection.execute(
-        """
-        SELECT
-            COALESCE(feedback_signal, 'none') AS feedback_signal,
-            COALESCE(whatsapp_handoff, 0) AS whatsapp_handoff,
-            COALESCE(needs_follow_up, 0) AS needs_follow_up,
-            COALESCE(reply_text, '') AS reply_text
-        FROM messages
-        WHERE source = ?
-        """,
-        (CHAT_WIDGET_SOURCE,),
-    ).fetchall()
+    total_interactions = len(rows)
+    by_language = {"es": 0, "en": 0, "unknown": 0}
+    latencies: list[float] = []
+    conversations: list[list[dict[str, Any]]] = []
+    current_conversation: list[dict[str, Any]] = []
+    previous_timestamp: datetime | None = None
 
     for row in rows:
-        feedback_signal = row["feedback_signal"] or "none"
-        if feedback_signal == "positive":
-            satisfaction["positive"] += 1
-            resolution["resolved"] += 1
-            continue
-        if feedback_signal == "negative":
-            satisfaction["negative"] += 1
-            resolution["needs_follow_up"] += 1
+        language = (row.get("language") or "unknown").strip().lower() or "unknown"
+        if language not in by_language:
+            by_language[language] = 0
+        by_language[language] += 1
+
+        latency = parse_response_latency_ms(row.get("response_latency_ms"))
+        if latency is not None:
+            latencies.append(latency)
+
+        created_at_raw = row.get("created_at") or ""
+        created_at = None
+        try:
+            created_at = datetime.fromisoformat(str(created_at_raw).replace("Z", "+00:00"))
+        except ValueError:
+            created_at = None
+
+        if not current_conversation:
+            current_conversation = [row]
+            previous_timestamp = created_at
             continue
 
-        satisfaction["neutral"] += 1
-        if bool(row["whatsapp_handoff"]):
-            resolution["handoff"] += 1
-        elif not bool(row["needs_follow_up"]) and (row["reply_text"] or "").strip():
-            resolution["resolved"] += 1
+        gap_seconds = None
+        if previous_timestamp is not None and created_at is not None:
+            gap_seconds = (created_at - previous_timestamp).total_seconds()
+
+        if gap_seconds is not None and gap_seconds <= 30 * 60:
+            current_conversation.append(row)
         else:
-            resolution["needs_follow_up"] += 1
+            conversations.append(current_conversation)
+            current_conversation = [row]
+
+        previous_timestamp = created_at or previous_timestamp
+
+    if current_conversation:
+        conversations.append(current_conversation)
+
+    conversation_count = len(conversations)
+    avg_interactions_per_conversation = round(
+        total_interactions / conversation_count,
+        2,
+    ) if conversation_count else 0.0
+    avg_response_latency_ms = round(sum(latencies) / len(latencies), 2) if latencies else None
 
     analytics = {
-        "total_messages": total_messages,
+        "total_interactions": total_interactions,
         "by_language": by_language,
-        "message_volume": message_volume,
-        "top_themes": by_theme,
-        "by_intent": by_intent,
-        "resolution": resolution,
-        "satisfaction": satisfaction,
+        "conversation_count": conversation_count,
+        "avg_interactions_per_conversation": avg_interactions_per_conversation,
+        "avg_response_latency_ms": avg_response_latency_ms,
+        "avg_response_latency_seconds": round(avg_response_latency_ms / 1000, 2) if avg_response_latency_ms is not None else None,
+        "response_latency_samples": len(latencies),
+        "conversation_definition": "A conversation is approximated as a sequence of chat interactions separated by no more than 30 minutes.",
+        "interaction_definition": "One interaction equals one persisted chat message row with source portfolio-chat-widget.",
     }
     logger.info(
-        "Dashboard chat analytics read | total_messages=%s | by_language=%s | resolution=%s | satisfaction=%s",
-        total_messages,
+        "Dashboard chat analytics read | total_interactions=%s | by_language=%s | conversations=%s | avg_interactions=%s | avg_response_latency_ms=%s | latency_samples=%s",
+        total_interactions,
         by_language,
-        resolution,
-        satisfaction,
+        conversation_count,
+        avg_interactions_per_conversation,
+        avg_response_latency_ms,
+        len(latencies),
     )
     return analytics
 
