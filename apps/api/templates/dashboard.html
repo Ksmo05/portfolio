@@ -41,27 +41,27 @@
       <section class="dashboard-kpi-grid">
         <article class="surface-card metric-card metric-card-executive">
           <div class="metric-card-head">
-            <span class="section-kicker">Messages</span>
+            <span class="section-kicker">Chat KPI</span>
             <span class="status-chip soft-status">Live feed</span>
           </div>
-          <h3 id="metricTotalMessages">0</h3>
-          <p>Total inbound messages captured</p>
+          <h3 id="chatTotalInteractions">0</h3>
+          <p>Total interactions persisted from portfolio chat</p>
         </article>
         <article class="surface-card metric-card metric-card-executive">
           <div class="metric-card-head">
-            <span class="section-kicker">Top priority</span>
-            <span class="status-chip soft-status">Urgency</span>
+            <span class="section-kicker">Language</span>
+            <span class="status-chip soft-status">Chat</span>
           </div>
-          <h3 id="metricTopPriority">-</h3>
-          <p>Most common current inbox urgency</p>
+          <h3 id="chatSpanishInteractions">0</h3>
+          <p>Spanish chat interactions (`language = es`)</p>
         </article>
         <article class="surface-card metric-card metric-card-executive">
           <div class="metric-card-head">
-            <span class="section-kicker">Top theme</span>
-            <span class="status-chip soft-status">Demand</span>
+            <span class="section-kicker">Language</span>
+            <span class="status-chip soft-status">Chat</span>
           </div>
-          <h3 id="metricTopTheme">-</h3>
-          <p>Most requested topic right now</p>
+          <h3 id="chatEnglishInteractions">0</h3>
+          <p>English chat interactions (`language = en`)</p>
         </article>
         <article class="surface-card metric-card metric-card-executive">
           <div class="metric-card-head">
@@ -74,38 +74,6 @@
       </section>
 
       <section class="dashboard-grid dashboard-grid-executive">
-        <article class="surface-card span-7 executive-summary-card compact-summary-card">
-          <div class="section-head section-head-tight">
-            <div>
-              <span class="section-kicker">Executive summary</span>
-              <h2>Inbox snapshot</h2>
-            </div>
-            <span class="status-chip">{{ "OpenAI on" if has_openai else "Fallback summaries" }}</span>
-          </div>
-          <p class="section-helper">A fast, decision-friendly overview of message quality, demand patterns, and current attention points.</p>
-          <p id="executiveSummary" class="executive-copy">Loading summary...</p>
-        </article>
-
-        <article class="surface-card span-5 executive-side-card live-visibility-card">
-          <div class="section-head section-head-tight">
-            <div>
-              <span class="section-kicker">Live visibility</span>
-              <h2>Source and traffic status</h2>
-            </div>
-          </div>
-          <p class="section-helper">A quick check that the dashboard is reading real inbox sources and, when configured, live GA4 traffic data.</p>
-          <div class="split-list-grid">
-            <div>
-              <div class="subsection-label">Inbox sources</div>
-              <div id="sourceActivityList" class="list-stack"></div>
-            </div>
-            <div>
-              <div class="subsection-label">GA4 snapshot</div>
-              <div id="gaTrafficList" class="list-stack"></div>
-            </div>
-          </div>
-        </article>
-
         <article class="surface-card span-12 module-card ga4-analytics-card">
           <div class="section-head">
             <div>
@@ -129,72 +97,6 @@
           </div>
         </article>
 
-        <article class="surface-card span-7 module-card breakdown-card">
-          <div class="section-head section-head-tight">
-            <div>
-              <span class="section-kicker">Breakdowns</span>
-              <h2>Priority and sentiment</h2>
-            </div>
-          </div>
-          <p class="section-helper">A quick operational read on urgency and tone across recent inbound messages.</p>
-          <div id="priorityChart" class="chart-stack"></div>
-          <div id="sentimentChart" class="chart-stack compact-top"></div>
-        </article>
-
-        <article class="surface-card span-5 module-card breakdown-card">
-          <div class="section-head section-head-tight">
-            <div>
-              <span class="section-kicker">Audience mix</span>
-              <h2>Language and category</h2>
-            </div>
-          </div>
-          <p class="section-helper">See how the inbox is distributed by language and request type.</p>
-          <div id="languageChart" class="chart-stack"></div>
-          <div id="categoryChart" class="chart-stack compact-top"></div>
-        </article>
-
-        <article class="surface-card span-6 module-card">
-          <div class="section-head section-head-tight">
-            <div>
-              <span class="section-kicker">Demand patterns</span>
-              <h2>Themes and recurring interests</h2>
-            </div>
-          </div>
-          <p class="section-helper">The most repeated topics and requests emerging from the inbox.</p>
-          <div class="split-list-grid">
-            <div>
-              <div class="subsection-label">Top themes</div>
-              <div id="topThemesList" class="list-stack"></div>
-            </div>
-            <div>
-              <div class="subsection-label">Recurring interests</div>
-              <div id="requestedTopicsList" class="list-stack"></div>
-            </div>
-          </div>
-        </article>
-
-        <article class="surface-card span-6 module-card">
-          <div class="section-head section-head-tight">
-            <div>
-              <span class="section-kicker">Opportunity radar</span>
-              <h2>Highest lead-score messages</h2>
-            </div>
-          </div>
-          <p class="section-helper">Messages most likely to deserve follow-up based on lead and priority signals.</p>
-          <div id="topOpportunitiesList" class="list-stack"></div>
-        </article>
-
-        <article class="surface-card span-7 module-card">
-          <div class="section-head section-head-tight">
-            <div>
-              <span class="section-kicker">Recent urgency</span>
-              <h2>High-priority inbox activity</h2>
-            </div>
-          </div>
-          <p class="section-helper">A compact view of the most urgent inbound items currently visible.</p>
-          <div id="recentHighPriorityList" class="list-stack"></div>
-        </article>
-
         <article class="surface-card span-12 module-card chat-analytics-card">
           <div class="section-head">
             <div>
@@ -203,27 +105,7 @@
             </div>
             <span class="status-chip soft-status" id="chatAnalyticsCount">Loading</span>
           </div>
-          <p class="section-helper">A stable view of real widget activity based on persisted chat interactions in the same SQLite inbox flow.</p>
-          <div class="chat-analytics-grid">
-            <article class="chart-surface chat-kpi-card">
-              <span class="section-kicker">Chat KPI</span>
-              <h3>Total chat interactions</h3>
-              <strong id="chatTotalInteractions">0</strong>
-              <p>All persisted interactions coming from the portfolio chat widget.</p>
-            </article>
-            <article class="chart-surface chat-kpi-card">
-              <span class="section-kicker">Language</span>
-              <h3>Spanish chat interactions</h3>
-              <strong id="chatSpanishInteractions">0</strong>
-              <p>Messages detected with `language = es` inside the chat flow.</p>
-            </article>
-            <article class="chart-surface chat-kpi-card">
-              <span class="section-kicker">Language</span>
-              <h3>English chat interactions</h3>
-              <strong id="chatEnglishInteractions">0</strong>
-              <p>Messages detected with `language = en` inside the chat flow.</p>
-            </article>
-          </div>
+          <p class="section-helper">Real daily volume from persisted chat interactions only (source = `portfolio-chat-widget`).</p>
           <div class="chart-surface compact-top">
             <div class="chart-surface-head">
               <span class="section-kicker">Volume</span>
@@ -233,100 +115,6 @@
             <div class="chart-canvas-wrap chart-canvas-tall">
               <canvas id="chatDailyBarChart"></canvas>
             </div>
-          </div>
-        </article>
-
-        <article class="surface-card span-5 module-card trend-card">
-          <div class="section-head section-head-tight">
-            <div>
-              <span class="section-kicker">Volume</span>
-              <h2>Message trend</h2>
-            </div>
-          </div>
-          <p class="section-helper">Daily message volume visualized as a quick executive trend strip.</p>
-          <div id="messageVolumeChart" class="sparkline-bars"></div>
-        </article>
-
-        <article class="surface-card span-12 analytics-lab executive-analytics-card">
-          <div class="section-head">
-            <div>
-              <span class="section-kicker">Executive analytics</span>
-              <h2>Inbox distribution and momentum</h2>
-            </div>
-            <div class="hero-actions chart-actions-inline">
-              <span class="status-chip soft-status">Charts update from the current SQLite inbox flow</span>
-            </div>
-          </div>
-          <p class="executive-copy analytics-copy">
-            Real inbox analytics based on the same SQLite message flow that powers the current portfolio chatbot and dashboard feed.
-          </p>
-
-          <div class="analytics-chart-grid compact-top">
-            <article class="chart-surface">
-              <div class="chart-surface-head">
-                <span class="section-kicker">Donut</span>
-                <h3>Priority split</h3>
-                <p>Distribution of urgency levels across captured messages.</p>
-              </div>
-              <div class="chart-canvas-wrap">
-                <canvas id="priorityDonutChart"></canvas>
-              </div>
-            </article>
-
-            <article class="chart-surface">
-              <div class="chart-surface-head">
-                <span class="section-kicker">Donut</span>
-                <h3>Language split</h3>
-                <p>How the inbox is currently divided between active languages.</p>
-              </div>
-              <div class="chart-canvas-wrap">
-                <canvas id="languageDonutChart"></canvas>
-              </div>
-            </article>
-
-            <article class="chart-surface">
-              <div class="chart-surface-head">
-                <span class="section-kicker">Donut</span>
-                <h3>Source split</h3>
-                <p>Relative contribution of contact sources to inbound volume.</p>
-              </div>
-              <div class="chart-canvas-wrap">
-                <canvas id="sourceDonutChart"></canvas>
-              </div>
-            </article>
-
-            <article class="chart-surface">
-              <div class="chart-surface-head">
-                <span class="section-kicker">Bars</span>
-                <h3>Messages per day</h3>
-                <p>Short-term momentum of message creation across recent days.</p>
-              </div>
-              <div class="chart-canvas-wrap chart-canvas-tall">
-                <canvas id="dailyVolumeBarChart"></canvas>
-              </div>
-            </article>
-
-            <article class="chart-surface">
-              <div class="chart-surface-head">
-                <span class="section-kicker">Bars</span>
-                <h3>Top themes</h3>
-                <p>Most visible demand clusters based on current inbox tagging.</p>
-              </div>
-              <div class="chart-canvas-wrap chart-canvas-tall">
-                <canvas id="themeBarChart"></canvas>
-              </div>
-            </article>
-
-            <article class="chart-surface">
-              <div class="chart-surface-head">
-                <span class="section-kicker">Bars</span>
-                <h3>Category mix</h3>
-                <p>How requests are distributed across the main inbox categories.</p>
-              </div>
-              <div class="chart-canvas-wrap chart-canvas-tall">
-                <canvas id="categoryBarChart"></canvas>
-              </div>
-            </article>
           </div>
         </article>
 

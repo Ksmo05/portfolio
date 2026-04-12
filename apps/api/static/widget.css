@@ -1498,6 +1498,59 @@ body.dashboard-page {
   background: rgba(250, 252, 255, 0.82);
 }
 
+.dashboard-page .widget-frame {
+  border: 1px solid var(--dashboard-line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(246, 250, 255, 0.92)),
+    var(--dashboard-panel);
+}
+
+.dashboard-page .widget-launcher {
+  color: var(--dashboard-muted);
+  border-color: var(--dashboard-line);
+  background: rgba(248, 251, 255, 0.9);
+}
+
+.dashboard-page .inbox-widget {
+  border-color: var(--dashboard-line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(246, 250, 255, 0.95)),
+    var(--dashboard-panel);
+  box-shadow: var(--dashboard-shadow-strong);
+}
+
+.dashboard-page .widget-topbar h3 {
+  color: var(--dashboard-heading);
+}
+
+.dashboard-page .close-button {
+  color: var(--dashboard-heading);
+  background: rgba(17, 35, 61, 0.06);
+}
+
+.dashboard-page .inbox-form span,
+.dashboard-page .form-feedback,
+.dashboard-page .bullet-list {
+  color: var(--dashboard-muted);
+}
+
+.dashboard-page .inbox-form input,
+.dashboard-page .inbox-form textarea {
+  color: var(--dashboard-heading);
+  border-color: var(--dashboard-line);
+  background: #ffffff;
+}
+
+.dashboard-page .inbox-form input:focus,
+.dashboard-page .inbox-form textarea:focus {
+  outline: 2px solid rgba(43, 112, 255, 0.24);
+}
+
+.dashboard-page .result-panel {
+  border-color: var(--dashboard-line);
+  background: rgba(248, 251, 255, 0.92);
+}
+
 @media (max-width: 1180px) {
   .dashboard-page .executive-hero,
   .dashboard-page .dashboard-kpi-grid,

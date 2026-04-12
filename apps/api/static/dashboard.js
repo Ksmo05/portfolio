@@ -645,64 +645,61 @@
     });
   }
 
+  function isChatSource(value) {
+    return String(value || "").toLowerCase().includes("chat");
+  }
+
+  function fallbackChatAnalytics(rawItems) {
+    const byLanguage = { es: 0, en: 0, unknown: 0 };
+    const dailyTotals = {};
+
+    (rawItems || []).forEach(function (item) {
+      const language = String(item && item.language ? item.language : "unknown").toLowerCase();
+      if (!byLanguage[language]) {
+        byLanguage[language] = 0;
+      }
+      byLanguage[language] += 1;
+      const day = String(item && item.created_at ? item.created_at : "").slice(0, 10);
+      if (day) {
+        dailyTotals[day] = (dailyTotals[day] || 0) + 1;
+      }
+    });
+
+    const dailyInteractions = Object.entries(dailyTotals)
+      .map(function ([day, total]) {
+        return { day: day, total: total };
+      })
+      .sort(function (a, b) {
+        return String(a.day).localeCompare(String(b.day));
+      })
+      .slice(-14);
+
+    return {
+      total_interactions: (rawItems || []).length,
+      spanish_interactions: byLanguage.es || 0,
+      english_interactions: byLanguage.en || 0,
+      daily_interactions: dailyInteractions,
+    };
+  }
+
   async function loadDashboard() {
-    const [rawMessagesData, summary, messages, metrics, analytics] = await Promise.all([
+    const [rawMessagesData, messages, analytics] = await Promise.all([
       fetchJsonOrNull("/api/messages?limit=100"),
-      fetchJsonOrNull("/api/dashboard/summary"),
       fetchJsonOrNull("/api/dashboard/messages"),
-      fetchJsonOrNull("/api/dashboard/metrics"),
       fetchJsonOrNull("/api/dashboard/analytics"),
     ]);
-    const rawItems = safeItems(rawMessagesData);
-    const summaryData = summary && summary.total_messages ? summary : fallbackSummary(rawItems);
-    const dashboardMessages =
-      messages && (
-        (Array.isArray(messages.message_volume) && messages.message_volume.length > 0) ||
-        (Array.isArray(messages.top_opportunities) && messages.top_opportunities.length > 0) ||
-        (Array.isArray(messages.recent_high_priority) && messages.recent_high_priority.length > 0) ||
-        (Array.isArray(messages.most_requested_topics) && messages.most_requested_topics.length > 0)
-      )
-        ? messages
-        : fallbackDashboardMessages(rawItems);
-    const chartMetrics =
-      metrics && metrics.distribution
-        ? metrics
-        : {
-            distribution: {
-              priority: Object.entries(summaryData.by_priority || {}).map(function ([label, value]) {
-                return { label, value };
-              }),
-              language: Object.entries(summaryData.by_language || {}).map(function ([label, value]) {
-                return { label, value };
-              }),
-              category: Object.entries(summaryData.by_category || {}).map(function ([label, value]) {
-                return { label, value };
-              }),
-              source: Object.entries(summaryData.by_source || {}).map(function ([label, value]) {
-                return { label, value };
-              }),
-            },
-            messages_per_day: (dashboardMessages.message_volume || []).map(function (item) {
-              return { label: item.day, value: item.total };
-            }),
-            top_themes: (summaryData.top_themes || []).map(function (item) {
-              return { label: item.label, value: item.total || item.value || 0 };
-            }),
-          };
 
-    console.debug("[dashboard] loaded messages", {
+    const rawItems = safeItems(rawMessagesData).filter(function (item) {
+      return isChatSource(item && item.source);
+    });
+
+    console.debug("[dashboard] loaded chat + ga4 dataset", {
       rawCount: rawItems.length,
-      summaryTotal: summaryData.total_messages || 0,
       rawSources: rawMessagesData && rawMessagesData.sources ? rawMessagesData.sources : {},
-      dashboardSources: summaryData.by_source || {},
       gaStatus: analytics && analytics.status ? analytics.status : "unknown",
       databasePath: rawMessagesData && rawMessagesData.database_path ? rawMessagesData.database_path : "unknown",
     });
 
-    setText("executiveSummary", summaryData.executive_summary || "No summary yet.");
-    setText("metricTotalMessages", String(summaryData.total_messages || rawItems.length || 0));
-    setText("metricTopPriority", humanizeLabel(topKey(summaryData.by_priority)));
-    setText("metricTopTheme", (summaryData.top_themes && summaryData.top_themes[0] && summaryData.top_themes[0].label) || "-");
     setText(
       "metricGaStatus",
       analytics && analytics.status === "configured"
@@ -721,37 +718,6 @@
             : "Traffic analytics connection status";
     }
 
-    setHtml("priorityChart", "");
-    setHtml("sentimentChart", "");
-    setHtml("languageChart", "");
-    setHtml("categoryChart", "");
-
-    renderBarChart($("priorityChart"), "Messages by priority", summaryData.by_priority);
-    renderBarChart($("sentimentChart"), "Sentiment distribution", summaryData.by_sentiment);
-    renderBarChart($("languageChart"), "Messages by language", summaryData.by_language);
-    renderBarChart($("categoryChart"), "Messages by category", summaryData.by_category);
-    renderSparkline($("messageVolumeChart"), dashboardMessages.message_volume || []);
-
-    renderMetricList($("topThemesList"), summaryData.top_themes || [], function (item) {
-      const row = createElement("div", "list-row");
-      row.append(createElement("strong", "", item.label), createElement("span", "tag", `${item.total} messages`));
-      return row;
-    });
-
-    renderMetricList($("requestedTopicsList"), dashboardMessages.most_requested_topics || [], function (item) {
-      const row = createElement("div", "list-row");
-      row.append(createElement("strong", "", item.label || item), createElement("span", "tag", `${item.total || ""}`.trim()));
-      return row;
-    });
-    renderMetricList(
-      $("sourceActivityList"),
-      (chartMetrics.distribution && chartMetrics.distribution.source) ||
-        Object.entries(summaryData.by_source || {}).map(function ([label, value]) {
-          return { label, value };
-        }),
-      sourceActivityRow
-    );
-    renderGaSnapshot($("gaTrafficList"), analytics);
     renderGaMetricStrip($("gaTopMetrics"), analytics);
     renderGaCountriesTable($("gaCountriesTable"), analytics);
     await renderGaCountriesMap($("gaCountriesMap"), analytics);
@@ -763,18 +729,20 @@
           : "Last 7 days";
     }
 
-    renderMetricList($("topOpportunitiesList"), dashboardMessages.top_opportunities || [], messageCard);
-    renderMetricList($("recentHighPriorityList"), dashboardMessages.recent_high_priority || [], messageCard);
+    const chatAnalytics =
+      messages && messages.chat_analytics
+        ? messages.chat_analytics
+        : fallbackChatAnalytics(rawItems);
 
-    const chatAnalytics = messages && messages.chat_analytics ? messages.chat_analytics : null;
-    setText("chatAnalyticsCount", chatAnalytics ? `${chatAnalytics.total_interactions || 0} chat interactions` : "No chat data");
-    setText("chatTotalInteractions", String(chatAnalytics && chatAnalytics.total_interactions ? chatAnalytics.total_interactions : 0));
-    setText("chatSpanishInteractions", String(chatAnalytics && chatAnalytics.spanish_interactions ? chatAnalytics.spanish_interactions : 0));
-    setText("chatEnglishInteractions", String(chatAnalytics && chatAnalytics.english_interactions ? chatAnalytics.english_interactions : 0));
+    setText("chatAnalyticsCount", `${chatAnalytics.total_interactions || 0} chat interactions`);
+    setText("chatTotalInteractions", String(chatAnalytics.total_interactions || 0));
+    setText("chatSpanishInteractions", String(chatAnalytics.spanish_interactions || 0));
+    setText("chatEnglishInteractions", String(chatAnalytics.english_interactions || 0));
+
     destroyCharts();
     createBarChart(
       "chatDailyBarChart",
-      chatAnalytics && Array.isArray(chatAnalytics.daily_interactions)
+      Array.isArray(chatAnalytics.daily_interactions)
         ? chatAnalytics.daily_interactions.map(function (item) {
             return {
               label: formatShortDayLabel(item.day),
@@ -792,41 +760,32 @@
     const recentMessagesTable = $("recentMessagesTable");
     const recentMessagesCount = $("recentMessagesCount");
 
-    if (!priorityFilter || !sourceFilter || !languageFilter || !searchFilter || !recentMessagesTable || !recentMessagesCount) {
-      return;
-    }
-
-    setSelectOptions(priorityFilter, buildFilterOptions(rawItems, "priority", ["high", "medium", "low"]), humanizeLabel);
-    setSelectOptions(sourceFilter, buildFilterOptions(rawItems, "source"), humanizeLabel);
-    setSelectOptions(languageFilter, buildFilterOptions(rawItems, "language", ["en", "es"]), function (value) {
-      return String(value).toUpperCase();
-    });
-
-    function applyFilters() {
-      const filteredItems = rawItems.filter((item) => {
-        const matchesPriority = !priorityFilter.value || item.priority === priorityFilter.value;
-        const matchesSource = !sourceFilter.value || item.source === sourceFilter.value;
-        const matchesLanguage = !languageFilter.value || item.language === languageFilter.value;
-        const matchesSearch = !searchFilter.value || messageSearchBlob(item).includes(searchFilter.value.trim().toLowerCase());
-        return matchesPriority && matchesSource && matchesLanguage && matchesSearch;
+    if (priorityFilter && sourceFilter && languageFilter && searchFilter && recentMessagesTable && recentMessagesCount) {
+      setSelectOptions(priorityFilter, buildFilterOptions(rawItems, "priority", ["high", "medium", "low"]), humanizeLabel);
+      setSelectOptions(sourceFilter, buildFilterOptions(rawItems, "source"), humanizeLabel);
+      setSelectOptions(languageFilter, buildFilterOptions(rawItems, "language", ["en", "es"]), function (value) {
+        return String(value).toUpperCase();
       });
 
-      recentMessagesCount.textContent = `${filteredItems.length} shown`;
-      renderRecentMessages(recentMessagesTable, filteredItems.slice(0, 24));
+      function applyFilters() {
+        const filteredItems = rawItems.filter((item) => {
+          const matchesPriority = !priorityFilter.value || item.priority === priorityFilter.value;
+          const matchesSource = !sourceFilter.value || item.source === sourceFilter.value;
+          const matchesLanguage = !languageFilter.value || item.language === languageFilter.value;
+          const matchesSearch = !searchFilter.value || messageSearchBlob(item).includes(searchFilter.value.trim().toLowerCase());
+          return matchesPriority && matchesSource && matchesLanguage && matchesSearch;
+        });
+
+        recentMessagesCount.textContent = `${filteredItems.length} shown`;
+        renderRecentMessages(recentMessagesTable, filteredItems.slice(0, 24));
+      }
+
+      [priorityFilter, sourceFilter, languageFilter].forEach((element) => {
+        element.addEventListener("change", applyFilters);
+      });
+      searchFilter.addEventListener("input", applyFilters);
+      applyFilters();
     }
-
-    [priorityFilter, sourceFilter, languageFilter].forEach((element) => {
-      element.addEventListener("change", applyFilters);
-    });
-    searchFilter.addEventListener("input", applyFilters);
-    applyFilters();
-
-    createDonutChart("priorityDonutChart", chartMetrics.distribution && chartMetrics.distribution.priority);
-    createDonutChart("languageDonutChart", chartMetrics.distribution && chartMetrics.distribution.language);
-    createDonutChart("sourceDonutChart", chartMetrics.distribution && chartMetrics.distribution.source);
-    createBarChart("dailyVolumeBarChart", chartMetrics.messages_per_day || [], "#58d4c7");
-    createBarChart("themeBarChart", chartMetrics.top_themes || [], "#7aa2ff");
-    createBarChart("categoryBarChart", chartMetrics.distribution && chartMetrics.distribution.category, "#ffd166");
 
     const exportPdfButton = $("exportPdfButton");
     if (exportPdfButton && !exportPdfButton.dataset.bound) {
@@ -838,6 +797,6 @@
   }
 
   loadDashboard().catch(function () {
-    setText("executiveSummary", "The dashboard could not be loaded right now.");
+    setText("chatAnalyticsCount", "Dashboard unavailable");
   });
 })();

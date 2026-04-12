@@ -16,39 +16,60 @@
     />
     <link rel="stylesheet" href="{{ url_for('static', path='widget.css') }}" />
   </head>
-  <body>
-    <main class="page-shell">
-      <section class="hero-panel hero-grid">
-        <div>
-          <div class="eyebrow">Portfolio-ready AI product demo</div>
-          <h1>AI Portfolio Inbox & Insights</h1>
-          <p class="hero-copy">
-            A bilingual contact widget that analyzes inbound messages, groups them into smart threads, stores them in
-            SQLite, emails structured summaries, and turns conversations into dashboard-ready product insights.
-          </p>
-          <div class="hero-actions">
-            <button class="primary-button" id="openWidgetInline" type="button">Open inbox widget</button>
-            <a class="ghost-button button-link" href="/dashboard">View dashboard</a>
+  <body class="dashboard-page">
+    <main class="page-shell dashboard-shell">
+      <section class="hero-panel dashboard-hero executive-hero dashboard-brand-hero">
+        <div class="dashboard-brand-lockup">
+          <div class="dashboard-brand-mark">
+            <img src="{{ url_for('static', path='logo-csm-brand.png') }}" alt="Carlos San Miguel portfolio logo" />
+          </div>
+          <div class="dashboard-brand-copy">
+            <div class="eyebrow">Carlos San Miguel</div>
+            <h1>AI Portfolio Inbox & Insights</h1>
+            <p class="hero-copy">
+              Unified inbox for portfolio interactions with chat-first analytics, SQLite persistence, and optional GA4 intelligence.
+            </p>
           </div>
         </div>
-
-        <div class="status-grid compact-grid">
-          <article class="status-card">
-            <span class="status-label">AI analysis</span>
-            <strong>{{ "OpenAI configured" if has_openai else "Fallback mode active" }}</strong>
-            <p>Structured bilingual classification with safe heuristics when AI is unavailable.</p>
-          </article>
-          <article class="status-card">
-            <span class="status-label">Email owner inbox</span>
-            <strong>{{ "SMTP configured" if has_smtp else "Store-only fallback" }}</strong>
-            <p>Every inbound message is targeted to your owner inbox with thread context.</p>
-          </article>
-          <article class="status-card">
-            <span class="status-label">Traffic intelligence</span>
-            <strong>{{ "GA4 ready" if ga4_enabled else "GA4 optional" }}</strong>
-            <p>Combined traffic and inquiry insights appear automatically when analytics is configured.</p>
-          </article>
+        <div class="hero-actions dashboard-top-actions">
+          <button class="primary-button" id="openWidgetInline" type="button">Open inbox widget</button>
+          <a class="ghost-button button-link" href="/dashboard">View dashboard</a>
         </div>
+      </section>
+
+      <section class="dashboard-kpi-grid">
+        <article class="surface-card metric-card metric-card-executive">
+          <div class="metric-card-head">
+            <span class="section-kicker">AI analysis</span>
+            <span class="status-chip soft-status">Pipeline</span>
+          </div>
+          <h3>{{ "Online" if has_openai else "Fallback" }}</h3>
+          <p>Structured classification stays active for every inbound message.</p>
+        </article>
+        <article class="surface-card metric-card metric-card-executive">
+          <div class="metric-card-head">
+            <span class="section-kicker">Delivery</span>
+            <span class="status-chip soft-status">Email</span>
+          </div>
+          <h3>{{ "Configured" if has_smtp else "Store-only" }}</h3>
+          <p>Owner notifications are sent when SMTP/Resend is configured.</p>
+        </article>
+        <article class="surface-card metric-card metric-card-executive">
+          <div class="metric-card-head">
+            <span class="section-kicker">Traffic</span>
+            <span class="status-chip soft-status">GA4</span>
+          </div>
+          <h3>{{ "Ready" if ga4_enabled else "Optional" }}</h3>
+          <p>GA4 enriches dashboard insights when credentials are valid.</p>
+        </article>
+        <article class="surface-card metric-card metric-card-executive">
+          <div class="metric-card-head">
+            <span class="section-kicker">Dashboard</span>
+            <span class="status-chip soft-status">Visibility</span>
+          </div>
+          <h3>{{ dashboard_status }}</h3>
+          <p>Chat and analytics data stay connected in a single operational view.</p>
+        </article>
       </section>
 
       <section class="demo-grid">
