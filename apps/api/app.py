@@ -479,6 +479,8 @@ settings = load_settings()
 DEFAULT_CORS_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://carlossm.com",
+    "https://www.carlossm.com",
     "https://portfolio-khaki-zeta-3frz86na3s.vercel.app",
 ]
 DEFAULT_CORS_ORIGIN_REGEX = r"^https:\/\/[a-z0-9-]+\.vercel\.app$"
