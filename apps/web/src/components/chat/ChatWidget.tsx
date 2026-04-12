@@ -495,7 +495,8 @@ export default function ChatWidget() {
         });
       }
       setMessages((current) => [...current, makeMessage("assistant", assistantMessage)]);
-    } catch {
+    } catch (error) {
+      console.error("[ChatWidget] send failed", error);
       setMessages((current) => [...current, makeMessage("assistant", text.fallbackError)]);
     } finally {
       setIsLoading(false);
