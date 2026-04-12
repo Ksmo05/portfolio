@@ -148,7 +148,7 @@ function normalizeChatText(value: string) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[?¿!¡.,;:()"']/g, " ")
+    .replace(/[?¿!¡.,;:()"'/]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -159,9 +159,29 @@ function includesAny(text: string, terms: string[]) {
 
 function getInstantReply(message: string, locale: Locale): { reply: string; whatsappUrl: string | null } | null {
   const normalized = normalizeChatText(message);
-  const contactPath = locale === "es" ? "/es/contact" : "/en/contact";
+  const profilePath = locale === "es" ? "/es/professional-profile" : "/en/professional-profile";
 
-  const contactTerms = [
+  const projectsTerms = [
+    "most relevant projects",
+    "main projects",
+    "best projects",
+    "show me carlos most relevant projects",
+    "proyectos mas relevantes",
+    "principales proyectos",
+    "muestrame los proyectos",
+    "muestrame los proyectos mas relevantes",
+  ];
+  if (includesAny(normalized, projectsTerms)) {
+    return {
+      reply:
+        locale === "es"
+          ? "Los proyectos mas relevantes del portfolio se centran en dashboards y analisis de KPI, herramientas de IA aplicadas a productividad y esta propia web profesional como proyecto digital estructurado. Si quieres, puedo ampliar uno en detalle."
+          : "The most relevant projects in the portfolio focus on dashboards and KPI analysis, AI tools applied to productivity, and this portfolio website itself as a structured digital project. If you want, I can expand on one of them in more detail.",
+      whatsappUrl: null,
+    };
+  }
+
+  const contactTerms = Array.from(new Set([
     "quiero contactar",
     "quiero hablar",
     "quiero hablar con carlos",
@@ -173,7 +193,6 @@ function getInstantReply(message: string, locale: Locale): { reply: string; what
     "watsapp",
     "whatsap",
     "quiero una conversacion directa",
-    "quiero una conversación directa",
     "quiero escribirle",
     "quiero hablar sobre un proyecto",
     "quiero colaborar",
@@ -191,13 +210,13 @@ function getInstantReply(message: string, locale: Locale): { reply: string; what
     "whatsapp",
     "direct conversation",
     "contact form",
-  ];
+  ]));
   if (includesAny(normalized, contactTerms)) {
     return {
       reply:
         locale === "es"
-          ? `Puedes escribirme por el formulario del portfolio (${contactPath}) o directamente por WhatsApp si quieres hablar de una oportunidad, proyecto o colaboracion.\n${WHATSAPP_URL}`
-          : `You can reach out through the portfolio form (${contactPath}) or directly on WhatsApp if you want to discuss an opportunity, project, or collaboration.\n${WHATSAPP_URL}`,
+          ? `Si quieres, puedes revisar primero mi perfil (${profilePath}) y escribirme directamente por WhatsApp para hablar de una oportunidad, proyecto o colaboracion.\n${WHATSAPP_URL}`
+          : `If you want, you can first review my profile (${profilePath}) and reach me directly on WhatsApp to discuss an opportunity, project, or collaboration.\n${WHATSAPP_URL}`,
       whatsappUrl: WHATSAPP_URL,
     };
   }
@@ -290,28 +309,6 @@ function getInstantReply(message: string, locale: Locale): { reply: string; what
         locale === "es"
           ? "En su trabajo actual en RPC, Carlos utiliza principalmente SAP, Excel y Qlik Sense."
           : "In his current role at RPC, Carlos mainly works with SAP, Excel, and Qlik Sense.",
-      whatsappUrl: null,
-    };
-  }
-
-  const projectsTerms = [
-    "most relevant projects",
-    "main projects",
-    "best projects",
-    "show me carlos most relevant projects",
-    "show me carlos' most relevant projects",
-    "proyectos mas relevantes",
-    "proyectos más relevantes",
-    "principales proyectos",
-    "muestrame los proyectos",
-    "muestrame los proyectos mas relevantes",
-  ];
-  if (includesAny(normalized, projectsTerms)) {
-    return {
-      reply:
-        locale === "es"
-          ? "Los proyectos mas relevantes del portfolio se centran en dashboards y analisis de KPI, herramientas de IA aplicadas a productividad y esta propia web profesional como proyecto digital estructurado. Si quieres, puedo ampliar uno en detalle."
-          : "The most relevant projects in the portfolio focus on dashboards and KPI analysis, AI tools applied to productivity, and this portfolio website itself as a structured digital project. If you want, I can expand on one of them in more detail.",
       whatsappUrl: null,
     };
   }
@@ -476,7 +473,8 @@ export default function ChatWidget() {
     setMessages(getInitialMessages(locale));
     setInputValue("");
     setIsLoading(false);
-  }, [locale]);
+    setIsOpen(false);
+  }, [locale, pathname]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -532,7 +530,7 @@ export default function ChatWidget() {
       setMessages((current) => [...current, makeMessage("assistant", assistantMessage)]);
     } catch (error) {
       console.error("[ChatWidget] send failed", error);
-      const fallbackContactPath = locale === "es" ? "/es/contact" : "/en/contact";
+      const fallbackProfilePath = locale === "es" ? "/es/professional-profile" : "/en/professional-profile";
       const fallbackMessage =
         error instanceof Error &&
         (
@@ -541,8 +539,8 @@ export default function ChatWidget() {
           error.message === "inbox-timeout"
         )
           ? locale === "es"
-            ? `No puedo conectar con el asistente ahora mismo. Verifica la configuracion del backend o vuelve a intentarlo en unos segundos. Tambien puedes escribirme por el formulario (${fallbackContactPath}) o por WhatsApp.\n${WHATSAPP_URL}`
-            : `I cannot connect to the assistant right now. Please verify the backend configuration or try again in a few seconds. You can also use the portfolio form (${fallbackContactPath}) or WhatsApp.\n${WHATSAPP_URL}`
+            ? `No puedo conectar con el asistente ahora mismo. Verifica la configuracion del backend o vuelve a intentarlo en unos segundos. Tambien puedes revisar mi perfil (${fallbackProfilePath}) y escribirme por WhatsApp.\n${WHATSAPP_URL}`
+            : `I cannot connect to the assistant right now. Please verify the backend configuration or try again in a few seconds. You can also review my profile (${fallbackProfilePath}) and reach out on WhatsApp.\n${WHATSAPP_URL}`
           : text.fallbackError;
       setMessages((current) => [...current, makeMessage("assistant", withWhatsAppCta(fallbackMessage, WHATSAPP_URL))]);
     } finally {
@@ -630,7 +628,7 @@ export default function ChatWidget() {
           </header>
 
           <div className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,rgba(15,23,42,0.32),rgba(15,23,42,0.18))] px-4 py-4">
-            <div className="space-y-3.5">
+            <div className="space-y-3.5" role="log" aria-live="polite" aria-label={text.title}>
               {showQuickActions ? (
                 <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/80">
@@ -707,7 +705,7 @@ export default function ChatWidget() {
                 placeholder={text.placeholder}
                 onChange={(event) => setInputValue(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
+                  if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                     event.preventDefault();
                     void handleSend(inputValue);
                   }
@@ -760,3 +758,4 @@ export default function ChatWidget() {
     </div>
   );
 }
+

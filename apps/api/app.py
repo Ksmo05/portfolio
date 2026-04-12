@@ -1483,13 +1483,13 @@ def detect_opportunity_contact_request(normalized_text: str) -> bool:
         "collaborate", "short term collaboration", "short term collaborations", "small teams",
         "professional opportunity", "interested in your profile", "direct contact", "direct conversation",
         "available for freelance", "open to freelance", "dashboard help", "reporting help",
-        "automate reports", "applied ai", "practical ai", "puedes ayudar", "podrias ayudar",
+        "automate reports", "applied ai", "puedes ayudar", "podrias ayudar",
         "podrias ayudarme", "puedes ayudarme", "estas disponible", "esta disponible",
         "abierto a nuevos proyectos", "abierto a colaboraciones", "colaboraciones puntuales",
         "proyectos freelance", "quiero hablar de una oportunidad profesional", "oportunidad profesional",
         "interesado en tu perfil", "quiero saber si podrias ayudar", "ayudar a mi empresa",
         "equipos pequenos", "equipos pequenos", "equipos pequenos", "automatizacion de reportes",
-        "ia aplicada", "organizar procesos internos", "hablar de un proyecto", "hablar de una colaboracion",
+        "organizar procesos internos", "hablar de un proyecto", "hablar de una colaboracion",
         "aceptas proyectos freelance", "estas abierto a nuevos proyectos", "te interesan colaboraciones puntuales",
         "podrias ayudar con dashboards", "podrias ayudar con reporting", "could you help my company",
         "help with dashboards", "help with reporting", "open to collaborations",
@@ -1595,6 +1595,19 @@ def detect_chat_topic(normalized_text: str) -> str:
         return "summary"
     if detect_whatsapp_request(normalized_text):
         return "whatsapp"
+    if any(
+        term in normalized_text
+        for term in {
+            "most relevant projects",
+            "main projects",
+            "best projects",
+            "show me",
+            "proyectos mas relevantes",
+            "principales proyectos",
+            "muestrame los proyectos",
+        }
+    ) and any(term in normalized_text for term in {"project", "projects", "proyecto", "proyectos"}):
+        return "projects"
     if detect_direct_contact_request(normalized_text) or detect_opportunity_contact_request(normalized_text):
         return "contact"
     grounding_topic = detect_profile_grounding_topic(normalized_text)
@@ -3438,6 +3451,14 @@ def safe_dashboard_state() -> dict[str, Any]:
     }
 
 
+def json_no_store(payload: Any, status_code: int = 200) -> JSONResponse:
+    return JSONResponse(
+        payload,
+        status_code=status_code,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     context = build_shell_context(request)
@@ -3458,10 +3479,17 @@ async def list_messages(limit: int = Query(default=12, ge=1, le=100)) -> JSONRes
     items = recent_messages(limit)
     with closing(get_connection()) as connection:
         total_messages = connection.execute("SELECT COUNT(*) AS total FROM messages WHERE source = ?", (DASHBOARD_SOURCE,)).fetchone()["total"]
-    by_source: dict[str, int] = {}
-    for item in items:
-        source = item.get("source") or "unknown"
-        by_source[source] = by_source.get(source, 0) + 1
+        source_rows = connection.execute(
+            """
+            SELECT COALESCE(source, 'unknown') AS source, COUNT(*) AS total
+            FROM messages
+            GROUP BY COALESCE(source, 'unknown')
+            """
+        ).fetchall()
+    by_source = {
+        str(row["source"] or "unknown"): int(row["total"] or 0)
+        for row in source_rows
+    }
     logger.info(
         "Dashboard raw messages served | database_path=%s | limit=%s | returned=%s | sources=%s",
         settings.database_path,
@@ -3469,7 +3497,7 @@ async def list_messages(limit: int = Query(default=12, ge=1, le=100)) -> JSONRes
         len(items),
         by_source,
     )
-    return JSONResponse(
+    return json_no_store(
         {
             "items": items,
             "sources": by_source,
@@ -3531,7 +3559,7 @@ async def dashboard_summary() -> JSONResponse:
         metrics["total_messages"],
         metrics["top_themes"][0]["label"] if metrics["top_themes"] else "none",
     )
-    return JSONResponse(metrics)
+    return json_no_store(metrics)
 
 
 @app.get("/api/dashboard/messages")
@@ -3547,7 +3575,7 @@ async def dashboard_messages() -> JSONResponse:
         len(metrics["message_volume"]),
         metrics["by_source"],
     )
-    return JSONResponse(
+    return json_no_store(
         {
             "recent_high_priority": metrics["recent_high_priority"],
             "highest_leads": metrics["highest_leads"],
@@ -3569,7 +3597,7 @@ async def dashboard_metrics() -> JSONResponse:
         metrics["total_messages"],
         len(metrics["distribution"]["source"]),
     )
-    return JSONResponse(metrics)
+    return json_no_store(metrics)
 
 
 @app.get("/api/dashboard/export.xlsx")
@@ -3577,6 +3605,8 @@ async def dashboard_export_excel() -> StreamingResponse:
     with closing(get_connection()) as connection:
         messages = all_messages_for_export(connection)
         metrics = dashboard_chart_metrics(connection)
+        chat_analytics = dashboard_chat_analytics(connection)
+    ga4_analytics = fetch_ga4_analytics()
 
     workbook = Workbook()
     summary_sheet = workbook.active
@@ -3614,6 +3644,104 @@ async def dashboard_export_excel() -> StreamingResponse:
         summary_sheet.cell(row=current_row, column=1, value=item["label"])
         summary_sheet.cell(row=current_row, column=2, value=item["value"])
         current_row += 1
+
+    chat_sheet = workbook.create_sheet("Chat Metrics")
+    chat_sheet["A1"] = "Chat Metrics (source = portfolio-chat-widget)"
+    chat_sheet["A1"].font = Font(bold=True, size=13)
+    chat_sheet["A3"] = "Total chat interactions"
+    chat_sheet["B3"] = int(chat_analytics.get("total_interactions", 0) or 0)
+    chat_sheet["A4"] = "Spanish interactions"
+    chat_sheet["B4"] = int(chat_analytics.get("spanish_interactions", 0) or 0)
+    chat_sheet["A5"] = "English interactions"
+    chat_sheet["B5"] = int(chat_analytics.get("english_interactions", 0) or 0)
+
+    high_priority_count = sum(
+        1 for item in messages
+        if str(item.get("priority") or "").strip().lower() == "high"
+    )
+    lead_scores = [
+        float(item["lead_score"])
+        for item in messages
+        if isinstance(item.get("lead_score"), (int, float)) and float(item["lead_score"]) > 0
+    ]
+    average_lead_score = round(sum(lead_scores) / len(lead_scores), 2) if lead_scores else 0.0
+
+    chat_sheet["A6"] = "High-priority interactions"
+    chat_sheet["B6"] = high_priority_count
+    chat_sheet["A7"] = "Average lead score"
+    chat_sheet["B7"] = average_lead_score
+
+    chat_sheet["A9"] = "Daily chat interactions"
+    chat_sheet["A9"].font = Font(bold=True)
+    chat_sheet["A10"] = "Day"
+    chat_sheet["B10"] = "Interactions"
+    chat_sheet["A10"].font = Font(bold=True)
+    chat_sheet["B10"].font = Font(bold=True)
+    chat_row = 11
+    for item in chat_analytics.get("daily_interactions", []):
+        chat_sheet.cell(row=chat_row, column=1, value=item.get("day"))
+        chat_sheet.cell(row=chat_row, column=2, value=int(item.get("total", 0) or 0))
+        chat_row += 1
+
+    ga4_sheet = workbook.create_sheet("GA4")
+    ga4_sheet["A1"] = "GA4 Metrics"
+    ga4_sheet["A1"].font = Font(bold=True, size=13)
+    ga4_sheet["A3"] = "Status"
+    ga4_sheet["B3"] = ga4_analytics.get("status", "unknown")
+    ga4_sheet["A4"] = "Reason"
+    ga4_sheet["B4"] = ga4_analytics.get("reason", "")
+
+    totals = ga4_analytics.get("totals", {}) if isinstance(ga4_analytics.get("totals"), dict) else {}
+    ga4_sheet["A6"] = "Totals (last 30 days)"
+    ga4_sheet["A6"].font = Font(bold=True)
+    ga4_sheet["A7"] = "Users"
+    ga4_sheet["B7"] = int(totals.get("users", 0) or 0)
+    ga4_sheet["A8"] = "Sessions"
+    ga4_sheet["B8"] = int(totals.get("sessions", 0) or 0)
+    ga4_sheet["A9"] = "Page views"
+    ga4_sheet["B9"] = int(totals.get("page_views", 0) or 0)
+    ga4_sheet["A10"] = "Engaged sessions"
+    ga4_sheet["B10"] = int(totals.get("engaged_sessions", 0) or 0)
+
+    ga4_sheet["A12"] = "Traffic sources"
+    ga4_sheet["A12"].font = Font(bold=True)
+    ga4_sheet["A13"] = "Channel"
+    ga4_sheet["B13"] = "Sessions"
+    ga4_sheet["A13"].font = Font(bold=True)
+    ga4_sheet["B13"].font = Font(bold=True)
+    ga_row = 14
+    for item in ga4_analytics.get("traffic_sources", []):
+        ga4_sheet.cell(row=ga_row, column=1, value=item.get("channel", "Unknown"))
+        ga4_sheet.cell(row=ga_row, column=2, value=int(item.get("sessions", 0) or 0))
+        ga_row += 1
+
+    ga_row += 1
+    ga4_sheet.cell(row=ga_row, column=1, value="Countries")
+    ga4_sheet.cell(row=ga_row, column=1).font = Font(bold=True)
+    ga_row += 1
+    ga4_sheet.cell(row=ga_row, column=1, value="Country")
+    ga4_sheet.cell(row=ga_row, column=2, value="Active users")
+    ga4_sheet.cell(row=ga_row, column=1).font = Font(bold=True)
+    ga4_sheet.cell(row=ga_row, column=2).font = Font(bold=True)
+    ga_row += 1
+    for item in ga4_analytics.get("countries", []):
+        ga4_sheet.cell(row=ga_row, column=1, value=item.get("country", "Unknown"))
+        ga4_sheet.cell(row=ga_row, column=2, value=int(item.get("active_users", 0) or 0))
+        ga_row += 1
+
+    ga_row += 1
+    ga4_sheet.cell(row=ga_row, column=1, value="Daily sessions trend")
+    ga4_sheet.cell(row=ga_row, column=1).font = Font(bold=True)
+    ga_row += 1
+    ga4_sheet.cell(row=ga_row, column=1, value="Day")
+    ga4_sheet.cell(row=ga_row, column=2, value="Sessions")
+    ga4_sheet.cell(row=ga_row, column=1).font = Font(bold=True)
+    ga4_sheet.cell(row=ga_row, column=2).font = Font(bold=True)
+    ga_row += 1
+    for item in ga4_analytics.get("time_series", []):
+        ga4_sheet.cell(row=ga_row, column=1, value=item.get("day"))
+        ga4_sheet.cell(row=ga_row, column=2, value=int(item.get("sessions", 0) or 0))
+        ga_row += 1
 
     messages_sheet = workbook.create_sheet("Messages")
     headers = [
@@ -3678,7 +3806,7 @@ async def dashboard_analytics() -> JSONResponse:
         analytics.get("status"),
         analytics.get("reason", "none"),
     )
-    return JSONResponse(analytics)
+    return json_no_store(analytics)
 
 
 @app.get("/api/dashboard/combined-insights")
@@ -3686,7 +3814,7 @@ async def dashboard_combined_insights() -> JSONResponse:
     with closing(get_connection()) as connection:
         metrics = dashboard_message_metrics(connection)
     analytics = fetch_ga4_analytics()
-    return JSONResponse(build_combined_insights(metrics, analytics))
+    return json_no_store(build_combined_insights(metrics, analytics))
 
 
 @app.get("/api/debug/email")

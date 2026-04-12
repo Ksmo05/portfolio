@@ -974,6 +974,15 @@ body.dashboard-page {
   box-shadow: var(--dashboard-shadow-strong);
 }
 
+.dashboard-page .dashboard-top-actions {
+  margin-top: 0;
+  align-items: center;
+}
+
+.dashboard-page #dashboardLastRefresh {
+  white-space: nowrap;
+}
+
 .dashboard-page .executive-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
@@ -1116,7 +1125,7 @@ body.dashboard-page {
 
 .dashboard-page .dashboard-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   margin-top: 18px;
 }
@@ -1580,5 +1589,10 @@ body.dashboard-page {
   .dashboard-page .ga4-metric-strip,
   .dashboard-page .breakdown-card .chart-stack {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-page .dashboard-top-actions {
+    margin-top: 14px;
+    align-items: stretch;
   }
 }

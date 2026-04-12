@@ -1,5 +1,12 @@
-const AI_INBOX_API_URL = process.env.NEXT_PUBLIC_INBOX_API_URL?.trim() || null;
 const REQUEST_TIMEOUT_MS = 15000;
+
+const INBOX_API_URL_CANDIDATES = [
+  process.env.NEXT_PUBLIC_INBOX_API_URL,
+  process.env.NEXT_PUBLIC_API_BASE_URL,
+  process.env.NEXT_PUBLIC_BACKEND_URL,
+]
+  .map((value) => value?.trim() || "")
+  .filter(Boolean);
 
 export const CHAT_WIDGET_SOURCE = "portfolio-chat-widget";
 export const CONTACT_FORM_SOURCE = "portfolio-vercel";
@@ -57,6 +64,23 @@ function isPlaceholderInboxUrl(normalizedUrl: string) {
   );
 }
 
+function resolveConfiguredInboxUrl() {
+  for (const candidate of INBOX_API_URL_CANDIDATES) {
+    const normalized = normalizeInboxUrl(candidate);
+    if (!isPlaceholderInboxUrl(normalized)) {
+      return normalized;
+    }
+  }
+
+  if (INBOX_API_URL_CANDIDATES.length > 0) {
+    return normalizeInboxUrl(INBOX_API_URL_CANDIDATES[0]);
+  }
+
+  return null;
+}
+
+const AI_INBOX_API_URL = resolveConfiguredInboxUrl();
+
 export function getInboxApiBaseUrl() {
   if (!AI_INBOX_API_URL) {
     throw new Error("missing-inbox-api-url");
@@ -65,6 +89,13 @@ export function getInboxApiBaseUrl() {
   const normalized = normalizeInboxUrl(AI_INBOX_API_URL);
 
   if (isPlaceholderInboxUrl(normalized)) {
+    if (
+      typeof window !== "undefined" &&
+      (/^https?:\/\/localhost(?::\d+)?$/i.test(window.location.origin) ||
+        /^https?:\/\/127\.0\.0\.1(?::\d+)?$/i.test(window.location.origin))
+    ) {
+      return window.location.origin;
+    }
     throw new Error("placeholder-inbox-api-url");
   }
 

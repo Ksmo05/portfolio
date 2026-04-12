@@ -34,36 +34,42 @@ export default function Footer() {
       <div className="page-shell">
         <div className="section-shell rounded-[2rem] px-7 py-8 md:px-10 md:py-10">
           <div className="grid gap-8 md:grid-cols-3">
-        <div>
-          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-slate-200">{siteConfig.name}</p>
-          <p className="mt-4 text-sm leading-6 text-slate-300">{siteConfig.position}</p>
-          <p className="mt-2 text-sm text-slate-500">{siteConfig.location}</p>
-        </div>
+            <div>
+              <p className="text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-slate-200">{siteConfig.name}</p>
+              <p className="mt-4 text-sm leading-6 text-slate-300">{siteConfig.position}</p>
+              <p className="mt-2 text-sm text-slate-500">{siteConfig.location}</p>
+            </div>
 
-        <div>
-          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-slate-200">{copy.nav}</p>
-          <ul className="mt-3 space-y-2">
-            {navLinks.map((link) => (
-              <li key={link.href}>
-                <Link href={link.href} className="text-sm text-slate-300 transition hover:text-white">
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+            <div>
+              <p className="text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-slate-200">{copy.nav}</p>
+              <ul className="mt-3 space-y-2">
+                {navLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="text-sm text-slate-300 transition hover:text-white">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-        <div>
-          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-slate-200">{copy.profile}</p>
-          <ul className="mt-3 space-y-2 text-sm text-slate-300">
-            <li>
-              <a href={siteConfig.linkedin} target="_blank" rel="noreferrer" className="transition hover:text-white">
-                {copy.linkedin}
-              </a>
-            </li>
-            <li>{copy.note}</li>
-          </ul>
-        </div>
+            <div>
+              <p className="text-[0.78rem] font-semibold uppercase tracking-[0.24em] text-slate-200">{copy.profile}</p>
+              <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                <li>
+                  <a
+                    href={siteConfig.linkedin}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`${copy.linkedin} - ${siteConfig.name}`}
+                    className="transition hover:text-white"
+                  >
+                    {copy.linkedin}
+                  </a>
+                </li>
+                <li>{copy.note}</li>
+              </ul>
+            </div>
           </div>
           <div className="mt-10 border-t border-white/8 pt-5">
             <p className="text-xs text-slate-500">© {new Date().getFullYear()} {siteConfig.name}. {copy.rights}</p>

@@ -163,7 +163,7 @@ export default async function LocalizedHomePage({ params }: PageProps) {
     <div className="page-shell space-y-0 py-10 md:py-14">
       <section className="grid items-center gap-12 py-16 md:gap-16 md:py-24 lg:grid-cols-[1.08fr_0.92fr]">
         <div className="animate-fade-up">
-          <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">{site.name} · {site.location}</p>
+          <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">{site.name} {" | "} {site.location}</p>
           <h1 className="mt-6 max-w-4xl text-5xl font-semibold tracking-[-0.05em] text-white md:text-7xl md:leading-[0.96]">{text.heroTitle}</h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200 md:text-2xl md:leading-9">{text.heroSubtitle}</p>
           <p className="text-muted mt-6 max-w-2xl text-base leading-8 md:text-lg">{getShortBio(locale)}</p>

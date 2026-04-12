@@ -1,6 +1,7 @@
 (function () {
   const chartRegistry = [];
   let geoChartLoadedPromise = null;
+  const FETCH_TIMEOUT_MS = 12000;
 
   function $(id) {
     return document.getElementById(id);
@@ -34,8 +35,12 @@
   }
 
   async function fetchJsonOrNull(url) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(function () {
+      controller.abort();
+    }, FETCH_TIMEOUT_MS);
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { signal: controller.signal });
       const text = await response.text();
       const data = text ? JSON.parse(text) : null;
       if (!response.ok) {
@@ -46,7 +51,17 @@
     } catch (error) {
       console.warn("[dashboard] endpoint failed", { url, error });
       return null;
+    } finally {
+      window.clearTimeout(timeoutId);
     }
+  }
+
+  function formatRefreshTime(date) {
+    return new Intl.DateTimeFormat("en", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(date);
   }
 
   function countBy(items, key) {
@@ -738,6 +753,15 @@
     node.hidden = !visible;
   }
 
+  function syncSectionVisibility(sectionId) {
+    const section = $(sectionId);
+    if (!section) return;
+    const visibleChildren = Array.from(section.children).some(function (child) {
+      return !(child instanceof HTMLElement) || !child.hidden;
+    });
+    section.hidden = !visibleChildren;
+  }
+
   function hasPositiveValues(items) {
     return Array.isArray(items) && items.some(function (item) {
       return Number(item && item.value) > 0;
@@ -816,6 +840,7 @@
     setCardVisible("kpiChatAvgLeadCard", chatAvgLead > 0);
     setCardVisible("kpiGaSessionsCard", gaSessions30d > 0);
     setCardVisible("kpiGaUsersCard", gaUsers30d > 0);
+    syncSectionVisibility("dashboardKpiSection");
 
     const gaHasMetrics = gaSessions30d > 0 || gaUsers30d > 0;
     const gaHasCountries = !!(
@@ -919,6 +944,11 @@
       applyFilters();
     }
 
+    const refreshNode = $("dashboardLastRefresh");
+    if (refreshNode) {
+      refreshNode.textContent = `Updated ${formatRefreshTime(new Date())}`;
+    }
+
     const exportPdfButton = $("exportPdfButton");
     if (exportPdfButton && !exportPdfButton.dataset.bound) {
       exportPdfButton.dataset.bound = "true";
@@ -930,5 +960,11 @@
 
   loadDashboard().catch(function () {
     setText("chatAnalyticsCount", "Dashboard unavailable");
+    setText("recentMessagesCount", "Unavailable");
+    setText("dashboardLastRefresh", "Unable to refresh data");
+    setCardVisible("chatOverviewCard", false);
+    setCardVisible("quantifiedInsightsCard", false);
+    setCardVisible("ga4AnalyticsCard", false);
+    syncSectionVisibility("dashboardKpiSection");
   });
 })();

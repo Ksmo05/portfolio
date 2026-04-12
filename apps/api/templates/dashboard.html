@@ -32,13 +32,14 @@
           </div>
         </div>
         <div class="hero-actions dashboard-top-actions">
+          <span class="status-chip soft-status" id="dashboardLastRefresh">Refreshing data...</span>
           <a class="ghost-button button-link" href="{{ app_base_url }}">Back to portfolio</a>
           <a class="ghost-button button-link" href="/api/dashboard/export.xlsx">Export report</a>
           <button class="ghost-button" type="button" id="exportPdfButton">Export PDF</button>
         </div>
       </section>
 
-      <section class="dashboard-kpi-grid">
+      <section id="dashboardKpiSection" class="dashboard-kpi-grid">
         <article id="kpiChatTotalCard" class="surface-card metric-card metric-card-executive">
           <div class="metric-card-head">
             <span class="section-kicker">Chat KPI</span>

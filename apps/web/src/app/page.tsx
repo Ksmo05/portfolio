@@ -28,7 +28,7 @@ export default async function HomePage() {
       <section className="grid items-center gap-12 py-16 md:gap-16 md:py-24 lg:grid-cols-[1.08fr_0.92fr]">
         <div className="animate-fade-up">
           <p className="eyebrow-label text-[0.72rem] font-semibold uppercase">
-            {siteConfig.name} · {siteConfig.location}
+            {siteConfig.name} {" | "} {siteConfig.location}
           </p>
           <h1 className="mt-6 max-w-4xl text-5xl font-semibold tracking-[-0.05em] text-white md:text-7xl md:leading-[0.96]">
             Operations, data and digital support professional focused on process improvement, reporting and practical AI.
