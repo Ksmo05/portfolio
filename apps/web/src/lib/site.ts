@@ -22,7 +22,7 @@ const siteConfigs: Record<Locale, SiteConfig> = {
     title: "Carlos San Miguel | Operations, Data & Digital Projects",
     description:
       "Portfolio focused on operations support, process coordination, reporting, data follow-up and practical digital initiatives.",
-    url: "https://carlossanmiguelortega.com",
+    url: "https://carlossm.com",
     position:
       "Operations, data and digital support professional with experience in corporate processes, reporting and practical AI workflows.",
     location: "Madrid, Spain",
@@ -42,7 +42,7 @@ const siteConfigs: Record<Locale, SiteConfig> = {
     title: "Carlos San Miguel | Operaciones, Datos y Proyectos Digitales",
     description:
       "Portfolio centrado en soporte operativo, coordinacion de procesos, reporting, seguimiento de datos e iniciativas digitales practicas.",
-    url: "https://carlossanmiguelortega.com",
+    url: "https://carlossm.com",
     position:
       "Profesional de operaciones, datos y soporte digital con experiencia en procesos corporativos, reporting y flujos practicos de IA.",
     location: "Madrid, Espana",
