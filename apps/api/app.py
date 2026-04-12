@@ -41,6 +41,7 @@ load_dotenv(BASE_DIR / ".env")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger("ai-portfolio-inbox")
 CHAT_WIDGET_SOURCE = "portfolio-chat-widget"
+DASHBOARD_SOURCE = CHAT_WIDGET_SOURCE
 WHATSAPP_NUMBER = "+34 691068400"
 WHATSAPP_LINK = "https://wa.me/34691068400"
 WHATSAPP_TEXT = {
@@ -1479,6 +1480,9 @@ def detect_opportunity_contact_request(normalized_text: str) -> bool:
         "interesado en tu perfil", "quiero saber si podrias ayudar", "ayudar a mi empresa",
         "equipos pequenos", "equipos pequenos", "equipos pequenos", "automatizacion de reportes",
         "ia aplicada", "organizar procesos internos", "hablar de un proyecto", "hablar de una colaboracion",
+        "aceptas proyectos freelance", "estas abierto a nuevos proyectos", "te interesan colaboraciones puntuales",
+        "podrias ayudar con dashboards", "podrias ayudar con reporting", "could you help my company",
+        "help with dashboards", "help with reporting", "open to collaborations",
     }
     return any(term in normalized_text for term in opportunity_terms)
 
@@ -1503,11 +1507,13 @@ def detect_profile_grounding_topic(normalized_text: str) -> str | None:
         "donde trabaja actualmente", "donde trabaja ahora", "trabaja actualmente", "en que empresa", "current role",
         "trabajo actual", "en que trabajas", "en que trabaja", "y en que trabaja", "a que te dedicas",
         "a que se dedica", "en que trabajas ahora", "en que trabaja ahora", "rpc", "retail performance company",
+        "what do you do now", "where do you work now", "trabajo actual de carlos",
     }
     education_terms = {
         "education", "academic background", "studies", "study", "studied", "what has he studied",
         "what does he study", "formacion", "estudios", "que estudia", "que ha estudiado",
         "que estudiaste", "que has estudiado", "que formacion tienes", "formacion academica", "academic studies",
+        "what did you study", "what have you studied",
     }
     previous_experience_terms = {
         "previous experience", "prior experience", "worked before", "where has he worked before",
@@ -1588,9 +1594,9 @@ def detect_chat_topic(normalized_text: str) -> str:
         return "contact"
     if any(term in normalized_text for term in {"reporting", "dashboard", "dashboards", "kpi", "kpis", "power bi", "excel avanzado", "automation of reports", "automatizacion de reportes"}):
         return "reporting"
-    if any(term in normalized_text for term in {"business or data", "business oriented", "data oriented", "datos o negocio", "perfil mas de datos", "perfil mas de negocio", "perfil tecnico", "technical profile", "is your profile technical", "tu perfil es tecnico"}):
+    if any(term in normalized_text for term in {"business or data", "business oriented", "data oriented", "datos o negocio", "perfil mas de datos", "perfil mas de negocio", "perfil tecnico", "technical profile", "is your profile technical", "tu perfil es tecnico", "more business or data oriented", "perfil mas de datos o de negocio"}):
         return "profile-balance"
-    if any(term in normalized_text for term in {"automotive", "automocion", "automocion", "bmw"}):
+    if any(term in normalized_text for term in {"automotive", "automocion", "automocion", "bmw", "worked in automotive", "has trabajado en automocion"}):
         return "automotive"
     if any(term in normalized_text for term in {"project", "projects", "portfolio", "case study", "proyecto", "proyectos", "examples of his work", "best work", "main projects", "principales proyectos", "mejores proyectos"}):
         return "projects"
@@ -1845,21 +1851,21 @@ def build_feedback_recovery_reply(language: str, intent: str, whatsapp_offer: bo
 def build_scope_gap_reply(language: str, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
     whatsapp_url = build_whatsapp_url(language)
     if language == "es":
-        return f"No tengo esa informacion con suficiente precision. Puedes consultarmelo escribiendo en el formulario o a traves de WhatsApp. {whatsapp_url}"
-    return f"I do not have that information with enough precision. You can ask through the contact form or on WhatsApp. {whatsapp_url}"
+        return f"No tengo esa informacion con suficiente precision. Si quieres, puedes escribirme directamente por WhatsApp. {whatsapp_url}"
+    return f"I do not have that information with enough precision. If helpful, you can reach out directly on WhatsApp. {whatsapp_url}"
 
 
 def build_conversation_close_reply(language: str) -> str:
     whatsapp_url = build_whatsapp_url(language)
     if language == "es":
-        return f"Encantado de haberte ayudado. Para cualquier otra duda puedes escribirme a traves del formulario o abrir conversacion por WhatsApp. {whatsapp_url}"
-    return f"Glad I could help. If you need anything else, you can reach out through the contact form or open a WhatsApp conversation. {whatsapp_url}"
+        return f"Encantado de haberte ayudado. Para cualquier otra duda puedes escribirme por WhatsApp. {whatsapp_url}"
+    return f"Glad I could help. If you need anything else, you can reach out on WhatsApp. {whatsapp_url}"
 
 
 def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
     if language == "es":
         if contact_ready or topic == "contact":
-            return f"Puedes escribirme a traves del formulario del portfolio o, si prefieres una conversacion mas directa, abrir conversacion por WhatsApp. {build_whatsapp_url(language)}"
+            return f"Si quieres seguir con ello, puedes escribirme directamente por WhatsApp. {build_whatsapp_url(language)}"
         if whatsapp_offer and whatsapp_reason:
             return build_whatsapp_cta(language, whatsapp_reason)
         if intent == "recruiter":
@@ -1869,7 +1875,7 @@ def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, 
         return "Si quieres, puedo resumirlo en corto, enfocarlo a experiencia o senalar los proyectos mas relevantes."
 
     if contact_ready or topic == "contact":
-        return f"You can write through the portfolio contact form or, if you prefer a more direct conversation, open a WhatsApp chat. {build_whatsapp_url(language)}"
+        return f"If you want to continue, you can reach out directly on WhatsApp. {build_whatsapp_url(language)}"
     if whatsapp_offer and whatsapp_reason:
         return build_whatsapp_cta(language, whatsapp_reason)
     if intent == "recruiter":
@@ -1906,7 +1912,7 @@ def build_contact_reply(language: str, normalized_text: str, tail: str) -> str:
             return f"Si, esta abierto a colaboraciones, proyectos freelance y nuevas oportunidades cuando encajan con su perfil. {tail}"
         if has_process_terms:
             return f"Posiblemente si. Carlos suele aportar valor en reporting, procesos, soporte digital y estructuracion de informacion. {tail}"
-        return f"Puedes escribirme a traves del formulario del portfolio o, si prefieres una conversacion mas directa, abrir conversacion por WhatsApp. {build_whatsapp_url(language)}"
+        return f"Si quieres seguir con ello, puedes escribirme directamente por WhatsApp. {build_whatsapp_url(language)}"
 
     if has_dashboard_terms:
         return f"Yes, Carlos has experience with business-oriented reporting and dashboards, especially around KPI visibility, process monitoring, and decision support. {tail}"
@@ -1916,7 +1922,7 @@ def build_contact_reply(language: str, normalized_text: str, tail: str) -> str:
         return f"Yes, he is open to collaborations, freelance work, and new projects when they are aligned with his profile. {tail}"
     if has_process_terms:
         return f"Possibly yes. Carlos usually adds value in reporting, processes, digital support, and information structuring. {tail}"
-    return f"You can write through the portfolio contact form or, if you prefer a more direct conversation, open a WhatsApp chat. {build_whatsapp_url(language)}"
+    return f"If you want to continue, you can reach out directly on WhatsApp. {build_whatsapp_url(language)}"
 
 
 def build_guided_options(language: str, intent: str) -> str:
@@ -2125,8 +2131,9 @@ Adapta la respuesta a esta intencion: {intent}.
 Piensa como un asistente profesional de portfolio, no como un bot comercial.
 Si la intencion es recruiter o hiring, conecta la respuesta con encaje, experiencia relevante y un siguiente paso de contacto razonable.
 Si la intencion es cliente o colaboracion, conecta la respuesta con procesos, reporting, workflows digitales e IA practica.
-Si preguntan si puede ayudar, si esta disponible, si acepta freelance, colaboraciones, nuevos proyectos o contacto directo, responde de forma natural y remite a formulario o WhatsApp sin sonar agresivo.
+Si preguntan si puede ayudar, si esta disponible, si acepta freelance, colaboraciones, nuevos proyectos o contacto directo, responde de forma natural y remite a WhatsApp sin sonar agresivo.
 Si preguntan por reporting, dashboards, automocion, perfil tecnico o si su perfil es mas de negocio o de datos, responde de forma directa usando solo el grounding disponible en el portfolio.
+Si la informacion no esta en el portfolio o no puedes verificarla con el grounding disponible, no inventes y remite a WhatsApp.
 Si la pregunta es amplia ({guided_mode}), sintetiza primero y luego ofrece 2 o 3 caminos claros.
 Si la intencion de contacto es explicita ({contact_ready}), orienta el siguiente paso de forma practica y sin presion.
  {whatsapp_rule}
@@ -2150,8 +2157,9 @@ Adapt to this intent: {intent}.
 Think like a professional portfolio assistant, not a sales bot.
 For recruiter or hiring intent, connect the answer to role fit, relevant experience, and a sensible contact path.
 For client or collaboration intent, connect the answer to process support, reporting, digital workflows, and practical AI use.
-If the user asks whether Carlos can help, is available, accepts freelance work, collaborations, new projects, or direct contact, answer naturally and guide them to the contact form or WhatsApp without sounding pushy.
+If the user asks whether Carlos can help, is available, accepts freelance work, collaborations, new projects, or direct contact, answer naturally and guide them to WhatsApp without sounding pushy.
 If the user asks about reporting, dashboards, automotive experience, technical profile, or whether the profile is more business or data oriented, answer directly using only the grounded portfolio information.
+If the information is not in the portfolio or you cannot verify it from the available grounding, do not invent and send the user to WhatsApp.
 If the question is broad ({guided_mode}), synthesize first and then offer 2 or 3 clear directions.
 If contact intent is explicit ({contact_ready}), make the next step practical and low-pressure.
 {whatsapp_rule}
@@ -2794,10 +2802,11 @@ def recent_messages(limit: int = 12) -> list[dict[str, Any]]:
                 m.created_at
             FROM messages m
             JOIN threads t ON t.id = m.thread_id
+            WHERE m.source = ?
             ORDER BY m.created_at DESC
             LIMIT ?
             """,
-            (limit,),
+            (DASHBOARD_SOURCE, limit),
         ).fetchall()
     items = [serialize_message(row) for row in rows]
     logger.info(
@@ -2846,10 +2855,11 @@ def aggregate_counts(connection: sqlite3.Connection, column_name: str, fallback:
         f"""
         SELECT COALESCE(NULLIF(TRIM({column_name}), ''), ?) AS label, COUNT(*) AS total
         FROM messages
+        WHERE source = ?
         GROUP BY COALESCE(NULLIF(TRIM({column_name}), ''), ?)
         ORDER BY total DESC
         """,
-        (fallback, fallback),
+        (fallback, DASHBOARD_SOURCE, fallback),
     ).fetchall()
     return {row["label"]: row["total"] for row in rows}
 
@@ -2890,8 +2900,10 @@ def all_messages_for_export(connection: sqlite3.Connection) -> list[dict[str, An
             COALESCE(NULLIF(TRIM(m.theme_slug), ''), 'untagged') AS theme_slug,
             COALESCE(m.summary, m.message_summary, '') AS summary
         FROM messages m
+        WHERE m.source = ?
         ORDER BY m.created_at DESC, m.id DESC
-        """
+        """,
+        (DASHBOARD_SOURCE,),
     ).fetchall()
     return [dict(row) for row in rows]
 
@@ -2943,7 +2955,7 @@ def dashboard_chart_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
 
 
 def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
-    total_messages = connection.execute("SELECT COUNT(*) AS total FROM messages").fetchone()["total"]
+    total_messages = connection.execute("SELECT COUNT(*) AS total FROM messages WHERE source = ?", (DASHBOARD_SOURCE,)).fetchone()["total"]
     by_source = aggregate_counts(connection, "source", fallback="unknown")
     top_themes = [
         dict(row)
@@ -2953,10 +2965,12 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
                    COALESCE(theme_slug, 'general-inquiries') AS slug,
                    COUNT(*) AS total
             FROM messages
+            WHERE source = ?
             GROUP BY COALESCE(theme_slug, 'general-inquiries'), COALESCE(theme_label, 'General inbound inquiries')
             ORDER BY total DESC
             LIMIT 6
-            """
+            """,
+            (DASHBOARD_SOURCE,),
         ).fetchall()
     ]
     message_volume = [
@@ -2965,11 +2979,11 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
             """
             SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total
             FROM messages
-            WHERE created_at >= ?
+            WHERE source = ? AND created_at >= ?
             GROUP BY substr(created_at, 1, 10)
             ORDER BY day ASC
             """,
-            (iso_days_ago(30),),
+            (DASHBOARD_SOURCE, iso_days_ago(30)),
         ).fetchall()
     ]
     highest_leads = [
@@ -3000,9 +3014,11 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
                 m.created_at
             FROM messages m
             JOIN threads t ON t.id = m.thread_id
+            WHERE m.source = ?
             ORDER BY m.lead_score DESC, CASE m.priority WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END DESC, m.created_at DESC
             LIMIT 5
-            """
+            """,
+            (DASHBOARD_SOURCE,),
         ).fetchall()
     ]
     recent_high_priority = [
@@ -3033,10 +3049,12 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
                 m.created_at
             FROM messages m
             JOIN threads t ON t.id = m.thread_id
-            WHERE m.priority = 'high'
+            WHERE m.source = ? AND m.priority = 'high'
             ORDER BY m.created_at DESC
             LIMIT 6
             """
+            ,
+            (DASHBOARD_SOURCE,),
         ).fetchall()
     ]
     recent_priority_activity = recent_high_priority or [
@@ -3067,10 +3085,12 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
                 m.created_at
             FROM messages m
             JOIN threads t ON t.id = m.thread_id
-            WHERE m.priority IN ('high', 'medium')
+            WHERE m.source = ? AND m.priority IN ('high', 'medium')
             ORDER BY CASE m.priority WHEN 'high' THEN 2 WHEN 'medium' THEN 1 ELSE 0 END DESC, m.created_at DESC
             LIMIT 6
             """
+            ,
+            (DASHBOARD_SOURCE,),
         ).fetchall()
     ]
     top_opportunities = [item for item in highest_leads if item["lead_score"] >= 4][:4] or highest_leads[:4]
@@ -3111,7 +3131,7 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
             WHERE source = ?
             ORDER BY created_at ASC, id ASC
             """,
-            (CHAT_WIDGET_SOURCE,),
+            (DASHBOARD_SOURCE,),
         ).fetchall()
     ]
 
@@ -3353,6 +3373,7 @@ def build_shell_context(request: Request) -> dict[str, Any]:
         "has_openai": bool(settings.openai_api_key),
         "has_smtp": bool(settings.smtp_host and settings.smtp_username and settings.smtp_password),
         "ga4_enabled": ga4_configured(),
+        "app_base_url": settings.app_base_url.rstrip("/"),
     }
 
 
@@ -3389,7 +3410,7 @@ async def dashboard(request: Request) -> HTMLResponse:
 async def list_messages(limit: int = Query(default=12, ge=1, le=100)) -> JSONResponse:
     items = recent_messages(limit)
     with closing(get_connection()) as connection:
-        total_messages = connection.execute("SELECT COUNT(*) AS total FROM messages").fetchone()["total"]
+        total_messages = connection.execute("SELECT COUNT(*) AS total FROM messages WHERE source = ?", (DASHBOARD_SOURCE,)).fetchone()["total"]
     by_source: dict[str, int] = {}
     for item in items:
         source = item.get("source") or "unknown"

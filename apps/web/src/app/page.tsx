@@ -49,13 +49,13 @@ export default async function HomePage() {
 
         <div className="space-y-6">
           <div className="mx-auto w-fit rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.03))] p-2 shadow-[0_30px_80px_-36px_rgba(2,6,23,0.95)]">
-            <div className="h-56 w-56 overflow-hidden rounded-full border border-white/14 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] md:h-64 md:w-64">
+            <div className="flex h-56 w-56 items-center justify-center overflow-hidden rounded-full border border-white/14 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0.45))] p-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] md:h-64 md:w-64">
               <Image
-                src="/profile.jpg"
-                alt="Professional portrait of Carlos San Miguel Ortega"
+                src="/logo-csm.png"
+                alt="Carlos San Miguel portfolio logo"
                 width={320}
                 height={320}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain"
                 priority
               />
             </div>

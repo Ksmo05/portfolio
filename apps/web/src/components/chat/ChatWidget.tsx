@@ -47,7 +47,7 @@ const copy: Record<Locale, ChatCopy> = {
     resetLabel: "Restart conversation",
     sendingLabel: "Carlos AI Assistant is typing...",
     fallbackError:
-      "I can't connect to the assistant right now. Please try again in a moment or use the contact page.",
+      "I can't connect to the assistant right now. Please try again in a moment or reach out on WhatsApp.",
     quickActions: [
       {
         id: "projects",
@@ -83,7 +83,7 @@ const copy: Record<Locale, ChatCopy> = {
     resetLabel: "Reiniciar conversacion",
     sendingLabel: "Carlos AI Assistant esta escribiendo...",
     fallbackError:
-      "No puedo conectar con el asistente ahora mismo. Intentalo de nuevo en unos segundos o usa la pagina de contacto.",
+      "No puedo conectar con el asistente ahora mismo. Intentalo de nuevo en unos segundos o escribeme por WhatsApp.",
     quickActions: [
       {
         id: "projects",
@@ -155,15 +155,26 @@ function getInstantReply(message: string, locale: Locale): { reply: string; what
     "quiero hablar por whatsapp",
     "quiero contactar por whatsapp",
     "prefiero whatsapp",
+    "wasap",
+    "guasap",
+    "watsapp",
+    "whatsap",
     "quiero una conversacion directa",
     "quiero una conversación directa",
     "quiero escribirle",
     "quiero hablar sobre un proyecto",
     "quiero colaborar",
+    "estas disponible",
+    "aceptas proyectos freelance",
+    "abierto a nuevos proyectos",
     "i want to contact",
     "i want to talk",
     "i want to talk to carlos",
     "i prefer whatsapp",
+    "can you help",
+    "are you available",
+    "freelance projects",
+    "new projects",
     "whatsapp",
     "direct conversation",
     "contact form",
@@ -172,8 +183,8 @@ function getInstantReply(message: string, locale: Locale): { reply: string; what
     return {
       reply:
         locale === "es"
-          ? `Puedes escribirme a traves del formulario del portfolio o, si prefieres una conversacion mas directa, abrir conversacion por WhatsApp.\n${WHATSAPP_URL}`
-          : `You can write through the portfolio contact form or, if you prefer a more direct conversation, open a WhatsApp chat.\n${WHATSAPP_URL}`,
+          ? `Puedes escribirme directamente por WhatsApp si quieres hablar de una oportunidad, proyecto o colaboracion.\n${WHATSAPP_URL}`
+          : `You can reach out directly on WhatsApp if you want to discuss an opportunity, project, or collaboration.\n${WHATSAPP_URL}`,
       whatsappUrl: WHATSAPP_URL,
     };
   }
@@ -193,6 +204,8 @@ function getInstantReply(message: string, locale: Locale): { reply: string; what
     "a que te dedicas",
     "a que se dedica",
     "donde trabajas ahora",
+    "tu trabajo actual",
+    "what do you do now",
     "current company",
     "current role",
     "where does carlos work",
@@ -203,6 +216,144 @@ function getInstantReply(message: string, locale: Locale): { reply: string; what
         locale === "es"
           ? "Actualmente Carlos trabaja en The Retail Performance Company (RPC)."
           : "Carlos currently works at The Retail Performance Company (RPC).",
+      whatsappUrl: null,
+    };
+  }
+
+  const educationTerms = [
+    "que has estudiado",
+    "que estudiaste",
+    "que formacion tienes",
+    "formacion academica",
+    "academic background",
+    "what have you studied",
+    "what did you study",
+    "education",
+  ];
+  if (includesAny(normalized, educationTerms)) {
+    return {
+      reply:
+        locale === "es"
+          ? "En formacion, el portfolio recoge ADE en la Universidad Rey Juan Carlos, ASIR en la Universidad Europea y estudios complementarios en ciberseguridad, inteligencia artificial y big data."
+          : "In education, the portfolio includes Business Administration at Universidad Rey Juan Carlos, Network Systems Administration at Universidad Europea, and continuing studies in cybersecurity, artificial intelligence, and big data.",
+      whatsappUrl: null,
+    };
+  }
+
+  const previousExperienceTerms = [
+    "donde has trabajado antes",
+    "donde trabajabas antes",
+    "en que trabajabas antes",
+    "que hacias antes",
+    "antes de rpc",
+    "experiencia previa",
+    "trabajos anteriores",
+    "where have you worked before",
+    "previous experience",
+    "before rpc",
+  ];
+  if (includesAny(normalized, previousExperienceTerms)) {
+    return {
+      reply:
+        locale === "es"
+          ? "Antes de RPC, el portfolio recoge experiencia en Endesa, Ayuntamiento de Madrid, Openbank y Movistar Prosegur Alarmas, con foco en operaciones, documentacion, soporte y seguimiento de procesos."
+          : "Before RPC, the portfolio includes experience at Endesa, Ayuntamiento de Madrid, Openbank, and Movistar Prosegur Alarmas, focused on operations, documentation, support, and process follow-up.",
+      whatsappUrl: null,
+    };
+  }
+
+  const toolsTerms = [
+    "que herramientas utilizas",
+    "que herramientas usas",
+    "con que herramientas trabajas",
+    "que software utilizas",
+    "what tools do you use",
+    "what software do you use",
+    "current tools",
+  ];
+  if (includesAny(normalized, toolsTerms)) {
+    return {
+      reply:
+        locale === "es"
+          ? "En su trabajo actual en RPC, Carlos utiliza principalmente SAP, Excel y Qlik Sense."
+          : "In his current role at RPC, Carlos mainly works with SAP, Excel, and Qlik Sense.",
+      whatsappUrl: null,
+    };
+  }
+
+  const reportingTerms = [
+    "puedes ayudar con dashboards",
+    "puedes ayudar con reporting",
+    "experiencia con reporting",
+    "power bi o excel",
+    "can you help with dashboards",
+    "experience with reporting",
+    "power bi or excel",
+  ];
+  if (includesAny(normalized, reportingTerms)) {
+    return {
+      reply:
+        locale === "es"
+          ? `Si, Carlos tiene experiencia en reporting y dashboards orientados a negocio. Si quieres, puedes escribirme directamente por WhatsApp.\n${WHATSAPP_URL}`
+          : `Yes, Carlos has experience with business-oriented reporting and dashboards. If you want, you can reach out directly on WhatsApp.\n${WHATSAPP_URL}`,
+      whatsappUrl: WHATSAPP_URL,
+    };
+  }
+
+  const profileBalanceTerms = [
+    "perfil mas de datos o de negocio",
+    "perfil mas de datos",
+    "perfil mas de negocio",
+    "tu perfil es tecnico",
+    "more business or data oriented",
+    "is your profile technical",
+    "business or data oriented",
+  ];
+  if (includesAny(normalized, profileBalanceTerms)) {
+    return {
+      reply:
+        locale === "es"
+          ? "Su perfil combina negocio y datos. Trabaja con reporting, KPIs, dashboards y procesos operativos, conectando la parte analitica con la operativa y la de negocio."
+          : "His profile combines business and data. He works with reporting, KPIs, dashboards, and operational workflows, connecting the analytical, operational, and business sides.",
+      whatsappUrl: null,
+    };
+  }
+
+  const automotiveTerms = [
+    "has trabajado en automocion",
+    "experiencia en automocion",
+    "have you worked in automotive",
+    "automotive experience",
+    "bmw",
+  ];
+  if (includesAny(normalized, automotiveTerms)) {
+    return {
+      reply:
+        locale === "es"
+          ? "Si, su experiencia reciente esta vinculada al entorno de automocion a traves de The Retail Performance Company (RPC), en un contexto corporativo asociado a BMW."
+          : "Yes, his recent experience is linked to the automotive environment through The Retail Performance Company (RPC), in a corporate context associated with BMW.",
+      whatsappUrl: null,
+    };
+  }
+
+  const endesaTerms = ["endesa", "salesforce en endesa", "que hacias en endesa", "what did you do at endesa"];
+  if (includesAny(normalized, endesaTerms)) {
+    return {
+      reply:
+        locale === "es"
+          ? "En Endesa, Carlos trabajo en operaciones de back office centradas en documentacion, validacion y coordinacion dentro de workflows de financiacion solar, utilizando Salesforce para seguimiento del proceso."
+          : "At Endesa, Carlos worked in back-office operations focused on documentation, validation, and coordination in solar financing workflows, using Salesforce for process follow-up.",
+      whatsappUrl: null,
+    };
+  }
+
+  const ayuntamientoTerms = ["ayuntamiento de madrid", "que hacias en el ayuntamiento", "madrid city council"];
+  if (includesAny(normalized, ayuntamientoTerms)) {
+    return {
+      reply:
+        locale === "es"
+          ? "En el Ayuntamiento de Madrid, Carlos dio soporte administrativo en contratacion publica, con foco en control documental, expedientes, coordinacion y seguimiento de procesos."
+          : "At Ayuntamiento de Madrid, Carlos provided administrative support in public procurement, focused on documentation control, records, coordination, and process follow-up.",
       whatsappUrl: null,
     };
   }

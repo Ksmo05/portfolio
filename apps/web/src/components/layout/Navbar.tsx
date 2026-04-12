@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getLocaleFromPathname, withLocale, type Locale } from "@/lib/i18n";
@@ -21,8 +22,13 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/8 bg-[rgba(5,8,18,0.72)] backdrop-blur-xl">
       <div className="page-shell flex items-center justify-between py-5">
-        <Link href={`/${locale}`} className="max-w-[16rem] text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-slate-100 sm:max-w-none sm:text-[0.78rem]">
-          {siteConfig.name}
+        <Link href={`/${locale}`} className="flex items-center gap-3 text-slate-100">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] p-2 shadow-[0_14px_35px_-24px_rgba(15,23,42,0.9)]">
+            <Image src="/logo-csm.png" alt="Carlos San Miguel portfolio logo" width={28} height={28} className="h-7 w-7 object-contain" priority />
+          </span>
+          <span className="max-w-[16rem] text-[0.72rem] font-semibold uppercase tracking-[0.26em] sm:max-w-none sm:text-[0.78rem]">
+            {siteConfig.name}
+          </span>
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-2 py-2 md:flex">

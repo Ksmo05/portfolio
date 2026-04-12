@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Portfolio Inbox & Insights Dashboard</title>
+    <title>Carlos San Miguel Portfolio Dashboard</title>
     <meta
       name="description"
       content="A polished analytics dashboard for inbound portfolio messages and optional GA4 traffic insights."
@@ -20,39 +20,21 @@
   </head>
   <body class="dashboard-page">
     <main class="page-shell dashboard-shell">
-      <section class="hero-panel dashboard-hero executive-hero">
-        <div class="executive-hero-copy">
-          <div class="eyebrow">AI Portfolio Inbox & Insights</div>
-          <h1>Executive Dashboard</h1>
-          <p class="hero-copy">
-            Track message quality, themes, language mix, opportunities, and momentum in a cleaner executive view built
-            for fast review.
-          </p>
-          <div class="hero-actions dashboard-top-actions">
-            <a class="ghost-button button-link" href="/">Back to widget</a>
-            <a class="ghost-button button-link" href="/api/dashboard/export.xlsx">Export report</a>
-            <button class="ghost-button" type="button" id="exportPdfButton">Export PDF</button>
+      <section class="hero-panel dashboard-hero executive-hero dashboard-brand-hero">
+        <div class="dashboard-brand-lockup">
+          <div class="dashboard-brand-mark">
+            <img src="{{ url_for('static', path='logo-csm.png') }}" alt="Carlos San Miguel portfolio logo" />
+          </div>
+          <div class="dashboard-brand-copy">
+            <div class="eyebrow">Carlos San Miguel</div>
+            <h1>Portfolio Dashboard</h1>
+            <p class="hero-copy">Chat-first portfolio analytics, traffic signals, and executive visibility in one clean view.</p>
           </div>
         </div>
-
-        <div class="executive-hero-aside">
-          <article class="hero-stat-card hero-stat-card-strong">
-            <span class="section-kicker">Inbox status</span>
-            <strong>Operational</strong>
-            <p>Chat, SQLite, routing, exports, and backend analytics in one connected workflow.</p>
-          </article>
-          <div class="hero-stat-strip hero-stat-strip-grid">
-            <article class="hero-stat-card">
-              <span class="section-kicker">Summary engine</span>
-              <strong>{{ "OpenAI on" if has_openai else "Fallback mode" }}</strong>
-              <p>Executive summary and inbox replies stay available even when AI is unavailable.</p>
-            </article>
-            <article class="hero-stat-card">
-              <span class="section-kicker">Analytics feed</span>
-              <strong>{{ "GA4 ready" if ga4_enabled else "Inbox-only view" }}</strong>
-              <p>Designed for executive monitoring with resilient empty states and compact analytical modules.</p>
-            </article>
-          </div>
+        <div class="hero-actions dashboard-top-actions">
+          <a class="ghost-button button-link" href="{{ app_base_url }}">Back to portfolio</a>
+          <a class="ghost-button button-link" href="/api/dashboard/export.xlsx">Export report</a>
+          <button class="ghost-button" type="button" id="exportPdfButton">Export PDF</button>
         </div>
       </section>
 
@@ -276,8 +258,7 @@
             </div>
           </div>
           <p class="executive-copy analytics-copy">
-            Real inbox analytics based on the same SQLite message flow that powers the current portfolio chatbot,
-            contact form, and dashboard feed.
+            Real inbox analytics based on the same SQLite message flow that powers the current portfolio chatbot and dashboard feed.
           </p>
 
           <div class="analytics-chart-grid compact-top">
