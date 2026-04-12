@@ -24,9 +24,16 @@ export default function Navbar() {
       <div className="page-shell flex items-center justify-between py-5">
         <Link href={`/${locale}`} className="flex items-center gap-4 text-slate-100">
           <span className="flex items-center justify-center">
-            <Image src="/logo-csm.png" alt="Carlos San Miguel portfolio logo" width={52} height={52} className="h-12 w-12 object-contain" priority />
+            <Image
+              src="/logo-csm.png"
+              alt="Carlos San Miguel portfolio logo"
+              width={60}
+              height={60}
+              className="h-12 w-12 object-contain mix-blend-screen brightness-125 contrast-110 sm:h-14 sm:w-14"
+              priority
+            />
           </span>
-          <span className="max-w-[18rem] text-lg font-semibold leading-[1.05] tracking-[-0.02em] text-white sm:max-w-none sm:text-[1.05rem]">
+          <span className="max-w-[18rem] text-base font-semibold leading-[1.02] tracking-[-0.03em] text-white sm:max-w-none sm:text-[1.1rem]">
             {siteConfig.name}
           </span>
         </Link>

@@ -37,6 +37,11 @@ export const metadata: Metadata = {
     title: siteConfig.title,
     description: siteConfig.description,
   },
+  icons: {
+    icon: "/logo-csm.png",
+    shortcut: "/logo-csm.png",
+    apple: "/logo-csm.png",
+  },
 };
 
 export default function RootLayout({
