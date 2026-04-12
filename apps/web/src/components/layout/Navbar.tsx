@@ -23,8 +23,8 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-white/8 bg-[rgba(5,8,18,0.72)] backdrop-blur-xl">
       <div className="page-shell flex items-center justify-between py-5">
         <Link href={`/${locale}`} className="flex items-center gap-3 text-slate-100">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] p-2 shadow-[0_14px_35px_-24px_rgba(15,23,42,0.9)]">
-            <Image src="/logo-csm.png" alt="Carlos San Miguel portfolio logo" width={28} height={28} className="h-7 w-7 object-contain" priority />
+          <span className="flex items-center justify-center">
+            <Image src="/logo-csm.png" alt="Carlos San Miguel portfolio logo" width={34} height={34} className="h-8 w-8 object-contain" priority />
           </span>
           <span className="max-w-[16rem] text-[0.72rem] font-semibold uppercase tracking-[0.26em] sm:max-w-none sm:text-[0.78rem]">
             {siteConfig.name}

@@ -54,6 +54,10 @@ export function getInboxApiBaseUrl() {
 
   const normalized = normalizeInboxUrl(AI_INBOX_API_URL);
 
+  if (normalized.includes("TU-BACKEND-RENDER.onrender.com")) {
+    throw new Error("placeholder-inbox-api-url");
+  }
+
   if (normalized.endsWith("/api/inbox")) {
     return normalized.slice(0, -"/api/inbox".length);
   }
