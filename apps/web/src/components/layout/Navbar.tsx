@@ -20,7 +20,7 @@ export default function Navbar() {
   const getSwitchHref = (target: Locale) => withLocale(target, pathname);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/8 bg-[rgba(5,8,18,0.72)] backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-white/8 bg-[rgba(12,16,35,0.94)] backdrop-blur-xl">
       <div className="page-shell flex items-center justify-between py-5">
         <Link href={`/${locale}`} className="flex items-center gap-4 text-slate-100">
           <span className="flex items-center justify-center">
