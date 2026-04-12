@@ -16,7 +16,7 @@ from urllib.parse import quote
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from openai import OpenAI
@@ -3442,22 +3442,15 @@ def safe_dashboard_state() -> dict[str, Any]:
 async def index(request: Request) -> HTMLResponse:
     context = build_shell_context(request)
     try:
-        context.update(safe_dashboard_state())
-        return templates.TemplateResponse("index.html", context)
-    except Exception:
-        logger.exception("Index route failed to render full context; serving minimal fallback context")
-        context.update({"sample_threads": [], "dashboard_status": "No data available yet"})
-        return templates.TemplateResponse("index.html", context)
-
-
-@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request) -> HTMLResponse:
-    context = build_shell_context(request)
-    try:
         return templates.TemplateResponse("dashboard.html", context)
     except Exception:
-        logger.exception("Dashboard route failed to render full context; serving minimal fallback context")
+        logger.exception("Root dashboard route failed to render full context; serving minimal fallback context")
         return templates.TemplateResponse("dashboard.html", context)
+
+
+@app.get("/dashboard")
+async def dashboard() -> RedirectResponse:
+    return RedirectResponse(url="/", status_code=307)
 
 
 @app.get("/api/messages")

@@ -39,7 +39,7 @@
       </section>
 
       <section class="dashboard-kpi-grid">
-        <article class="surface-card metric-card metric-card-executive">
+        <article id="kpiChatTotalCard" class="surface-card metric-card metric-card-executive">
           <div class="metric-card-head">
             <span class="section-kicker">Chat KPI</span>
             <span class="status-chip soft-status">Live feed</span>
@@ -47,7 +47,7 @@
           <h3 id="chatTotalInteractions">0</h3>
           <p>Total interactions persisted from portfolio chat</p>
         </article>
-        <article class="surface-card metric-card metric-card-executive">
+        <article id="kpiChatEsCard" class="surface-card metric-card metric-card-executive">
           <div class="metric-card-head">
             <span class="section-kicker">Language</span>
             <span class="status-chip soft-status">Chat</span>
@@ -55,7 +55,7 @@
           <h3 id="chatSpanishInteractions">0</h3>
           <p>Spanish chat interactions (`language = es`)</p>
         </article>
-        <article class="surface-card metric-card metric-card-executive">
+        <article id="kpiChatEnCard" class="surface-card metric-card metric-card-executive">
           <div class="metric-card-head">
             <span class="section-kicker">Language</span>
             <span class="status-chip soft-status">Chat</span>
@@ -63,18 +63,42 @@
           <h3 id="chatEnglishInteractions">0</h3>
           <p>English chat interactions (`language = en`)</p>
         </article>
-        <article class="surface-card metric-card metric-card-executive">
+        <article id="kpiChatHighPriorityCard" class="surface-card metric-card metric-card-executive">
+          <div class="metric-card-head">
+            <span class="section-kicker">Chat KPI</span>
+            <span class="status-chip soft-status">Priority</span>
+          </div>
+          <h3 id="chatHighPriorityInteractions">0</h3>
+          <p>High-priority chat interactions</p>
+        </article>
+        <article id="kpiChatAvgLeadCard" class="surface-card metric-card metric-card-executive">
+          <div class="metric-card-head">
+            <span class="section-kicker">Chat KPI</span>
+            <span class="status-chip soft-status">Lead score</span>
+          </div>
+          <h3 id="chatAvgLeadScore">0.0</h3>
+          <p>Average lead score from chat interactions</p>
+        </article>
+        <article id="kpiGaSessionsCard" class="surface-card metric-card metric-card-executive">
           <div class="metric-card-head">
             <span class="section-kicker">GA4</span>
-            <span class="status-chip soft-status">Traffic</span>
+            <span class="status-chip soft-status">Sessions</span>
           </div>
-          <h3 id="metricGaStatus">{{ "Live" if ga4_enabled else "Optional" }}</h3>
-          <p id="metricGaDetail">Traffic analytics connection status</p>
+          <h3 id="gaSessions30d">0</h3>
+          <p>Sessions in the last 30 days</p>
+        </article>
+        <article id="kpiGaUsersCard" class="surface-card metric-card metric-card-executive">
+          <div class="metric-card-head">
+            <span class="section-kicker">GA4</span>
+            <span class="status-chip soft-status">Users</span>
+          </div>
+          <h3 id="gaUsers30d">0</h3>
+          <p>Users in the last 30 days</p>
         </article>
       </section>
 
       <section class="dashboard-grid dashboard-grid-executive">
-        <article class="surface-card span-12 module-card ga4-analytics-card">
+        <article id="ga4AnalyticsCard" class="surface-card span-12 module-card ga4-analytics-card">
           <div class="section-head">
             <div>
               <span class="section-kicker">Google Analytics 4</span>
@@ -97,7 +121,7 @@
           </div>
         </article>
 
-        <article class="surface-card span-12 module-card chat-analytics-card">
+        <article id="chatOverviewCard" class="surface-card span-12 module-card chat-analytics-card">
           <div class="section-head">
             <div>
               <span class="section-kicker">Chat overview</span>
@@ -106,7 +130,7 @@
             <span class="status-chip soft-status" id="chatAnalyticsCount">Loading</span>
           </div>
           <p class="section-helper">Real daily volume from persisted chat interactions only (source = `portfolio-chat-widget`).</p>
-          <div class="chart-surface compact-top">
+          <div id="chatDailyChartCard" class="chart-surface compact-top">
             <div class="chart-surface-head">
               <span class="section-kicker">Volume</span>
               <h3>Daily chat interactions</h3>
@@ -115,6 +139,50 @@
             <div class="chart-canvas-wrap chart-canvas-tall">
               <canvas id="chatDailyBarChart"></canvas>
             </div>
+          </div>
+        </article>
+
+        <article id="quantifiedInsightsCard" class="surface-card span-12 module-card">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker">Quantified insights</span>
+              <h2>Chat and GA4 trends</h2>
+            </div>
+          </div>
+          <p class="section-helper">Only measurable signals with real persisted data are shown in these charts.</p>
+          <div class="analytics-chart-grid compact-top">
+            <article id="chatLanguageChartCard" class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">Chat</span>
+                <h3>Language split</h3>
+                <p>Distribution of chat interactions by language.</p>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="chatLanguageDonutChart"></canvas>
+              </div>
+            </article>
+
+            <article id="gaTrafficSourcesChartCard" class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">GA4</span>
+                <h3>Traffic sources</h3>
+                <p>Sessions by GA4 channel group in the last 30 days.</p>
+              </div>
+              <div class="chart-canvas-wrap chart-canvas-tall">
+                <canvas id="gaTrafficSourcesBarChart"></canvas>
+              </div>
+            </article>
+
+            <article id="gaSessionsTrendChartCard" class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">GA4</span>
+                <h3>Sessions trend</h3>
+                <p>Daily sessions trend from the GA4 time series.</p>
+              </div>
+              <div class="chart-canvas-wrap chart-canvas-tall">
+                <canvas id="gaSessionsTrendChart"></canvas>
+              </div>
+            </article>
           </div>
         </article>
 

@@ -584,6 +584,55 @@
     );
   }
 
+  function createLineChart(canvasId, items, color) {
+    const canvas = $(canvasId);
+    if (!canvas || typeof Chart === "undefined") return;
+    const labels = chartLabels(items);
+    const values = chartValues(items);
+    chartRegistry.push(
+      new Chart(canvas, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              data: values,
+              borderColor: color || "#2b70ff",
+              backgroundColor: "rgba(43, 112, 255, 0.12)",
+              tension: 0.3,
+              fill: true,
+              pointRadius: 3,
+              pointHoverRadius: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+          },
+          scales: {
+            x: {
+              ticks: { color: "#9fb2cb" },
+              grid: { display: false },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: "#9fb2cb",
+                precision: 0,
+              },
+              grid: {
+                color: "rgba(159, 178, 203, 0.12)",
+              },
+            },
+          },
+        },
+      })
+    );
+  }
+
   function tableHeadCell(text) {
     return createElement("span", "table-cell", text);
   }
@@ -676,10 +725,23 @@
 
     return {
       total_interactions: (rawItems || []).length,
+      by_language: byLanguage,
       spanish_interactions: byLanguage.es || 0,
       english_interactions: byLanguage.en || 0,
       daily_interactions: dailyInteractions,
     };
+  }
+
+  function setCardVisible(id, visible) {
+    const node = $(id);
+    if (!node) return;
+    node.hidden = !visible;
+  }
+
+  function hasPositiveValues(items) {
+    return Array.isArray(items) && items.some(function (item) {
+      return Number(item && item.value) > 0;
+    });
   }
 
   async function loadDashboard() {
@@ -700,24 +762,6 @@
       databasePath: rawMessagesData && rawMessagesData.database_path ? rawMessagesData.database_path : "unknown",
     });
 
-    setText(
-      "metricGaStatus",
-      analytics && analytics.status === "configured"
-        ? "Live"
-        : analytics && analytics.status === "error"
-          ? "Error"
-          : "Optional"
-    );
-    const metricGaDetail = $("metricGaDetail");
-    if (metricGaDetail) {
-      metricGaDetail.textContent =
-        analytics && analytics.status === "configured"
-          ? `${analytics.totals && analytics.totals.sessions ? analytics.totals.sessions : 0} sessions in the last 30 days`
-          : analytics && analytics.reason
-            ? analytics.reason
-            : "Traffic analytics connection status";
-    }
-
     renderGaMetricStrip($("gaTopMetrics"), analytics);
     renderGaCountriesTable($("gaCountriesTable"), analytics);
     await renderGaCountriesMap($("gaCountriesMap"), analytics);
@@ -734,24 +778,112 @@
         ? messages.chat_analytics
         : fallbackChatAnalytics(rawItems);
 
-    setText("chatAnalyticsCount", `${chatAnalytics.total_interactions || 0} chat interactions`);
-    setText("chatTotalInteractions", String(chatAnalytics.total_interactions || 0));
-    setText("chatSpanishInteractions", String(chatAnalytics.spanish_interactions || 0));
-    setText("chatEnglishInteractions", String(chatAnalytics.english_interactions || 0));
+    const totalChatInteractions = Number(chatAnalytics.total_interactions || 0);
+    const chatSpanish = Number(chatAnalytics.spanish_interactions || 0);
+    const chatEnglish = Number(chatAnalytics.english_interactions || 0);
+    const chatHighPriority = rawItems.filter(function (item) {
+      return String(item && item.priority ? item.priority : "").toLowerCase() === "high";
+    }).length;
+    const leadScores = rawItems
+      .map(function (item) {
+        return Number(item && item.lead_score ? item.lead_score : 0);
+      })
+      .filter(function (value) {
+        return Number.isFinite(value) && value > 0;
+      });
+    const chatAvgLead = leadScores.length
+      ? leadScores.reduce(function (acc, value) {
+          return acc + value;
+        }, 0) / leadScores.length
+      : 0;
+
+    const gaSessions30d = Number(analytics && analytics.totals ? analytics.totals.sessions || 0 : 0);
+    const gaUsers30d = Number(analytics && analytics.totals ? analytics.totals.users || 0 : 0);
+
+    setText("chatAnalyticsCount", `${totalChatInteractions} chat interactions`);
+    setText("chatTotalInteractions", String(totalChatInteractions));
+    setText("chatSpanishInteractions", String(chatSpanish));
+    setText("chatEnglishInteractions", String(chatEnglish));
+    setText("chatHighPriorityInteractions", String(chatHighPriority));
+    setText("chatAvgLeadScore", chatAvgLead.toFixed(1));
+    setText("gaSessions30d", String(gaSessions30d));
+    setText("gaUsers30d", String(gaUsers30d));
+
+    setCardVisible("kpiChatTotalCard", totalChatInteractions > 0);
+    setCardVisible("kpiChatEsCard", chatSpanish > 0);
+    setCardVisible("kpiChatEnCard", chatEnglish > 0);
+    setCardVisible("kpiChatHighPriorityCard", chatHighPriority > 0);
+    setCardVisible("kpiChatAvgLeadCard", chatAvgLead > 0);
+    setCardVisible("kpiGaSessionsCard", gaSessions30d > 0);
+    setCardVisible("kpiGaUsersCard", gaUsers30d > 0);
+
+    const gaHasMetrics = gaSessions30d > 0 || gaUsers30d > 0;
+    const gaHasCountries = !!(
+      analytics &&
+      analytics.status === "configured" &&
+      Array.isArray(analytics.countries) &&
+      analytics.countries.length > 0
+    );
+    setCardVisible("ga4AnalyticsCard", gaHasMetrics || gaHasCountries);
 
     destroyCharts();
-    createBarChart(
-      "chatDailyBarChart",
-      Array.isArray(chatAnalytics.daily_interactions)
-        ? chatAnalytics.daily_interactions.map(function (item) {
-            return {
-              label: formatShortDayLabel(item.day),
-              value: item.total || 0,
-            };
-          })
-        : [],
-      "#5da8ff"
-    );
+    const chatDailyItems = Array.isArray(chatAnalytics.daily_interactions)
+      ? chatAnalytics.daily_interactions.map(function (item) {
+          return {
+            label: formatShortDayLabel(item.day),
+            value: item.total || 0,
+          };
+        })
+      : [];
+    const showChatDaily = hasPositiveValues(chatDailyItems);
+    setCardVisible("chatOverviewCard", totalChatInteractions > 0);
+    setCardVisible("chatDailyChartCard", showChatDaily);
+    if (showChatDaily) {
+      createBarChart("chatDailyBarChart", chatDailyItems, "#5da8ff");
+    }
+
+    const chatByLanguage = chatAnalytics.by_language || {};
+    const chatLanguageItems = [
+      { label: "es", value: Number(chatByLanguage.es || chatSpanish || 0) },
+      { label: "en", value: Number(chatByLanguage.en || chatEnglish || 0) },
+      { label: "other", value: Number(chatByLanguage.unknown || 0) },
+    ];
+    const gaTrafficItems = Array.isArray(analytics && analytics.traffic_sources)
+      ? analytics.traffic_sources.map(function (item) {
+          return {
+            label: item.channel || "unknown",
+            value: Number(item.sessions || 0),
+          };
+        })
+      : [];
+    const gaTrendItems = Array.isArray(analytics && analytics.time_series)
+      ? analytics.time_series.map(function (item) {
+          return {
+            label: formatShortDayLabel(String(item.day || "")),
+            value: Number(item.sessions || 0),
+          };
+        })
+      : [];
+
+    const showChatLanguageChart = hasPositiveValues(chatLanguageItems);
+    const showGaTrafficChart = hasPositiveValues(gaTrafficItems);
+    const showGaTrendChart = hasPositiveValues(gaTrendItems);
+    const showQuantifiedInsights = showChatLanguageChart || showGaTrafficChart || showGaTrendChart;
+
+    setCardVisible("quantifiedInsightsCard", showQuantifiedInsights);
+    setCardVisible("chatLanguageChartCard", showChatLanguageChart);
+    setCardVisible("gaTrafficSourcesChartCard", showGaTrafficChart);
+    setCardVisible("gaSessionsTrendChartCard", showGaTrendChart);
+
+    if (showChatLanguageChart) {
+      createDonutChart("chatLanguageDonutChart", chatLanguageItems);
+    }
+    if (showGaTrafficChart) {
+      createBarChart("gaTrafficSourcesBarChart", gaTrafficItems, "#2b70ff");
+    }
+    if (showGaTrendChart) {
+      createLineChart("gaSessionsTrendChart", gaTrendItems, "#24b4a3");
+    }
 
     const priorityFilter = $("filterPriority");
     const sourceFilter = $("filterSource");
