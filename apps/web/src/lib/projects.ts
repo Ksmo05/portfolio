@@ -72,10 +72,10 @@ const projectEntries: ProjectEntry[] = [
       en: "Creates a clearer professional presentation and helps explain how operations, data and digital tools connect in my profile.",
       es: "Aporta una presentacion profesional mas clara y ayuda a explicar como se conectan operaciones, datos y herramientas digitales en mi perfil.",
     },
-    imageSrc: "/projects/training-platform-real.png",
+    imageSrc: "/projects/personal-portfolio-website-reference.png",
     imageAlt: {
-      en: "Portfolio and digital content interface presented on a modern website layout.",
-      es: "Interfaz de portfolio y contenido digital presentada en un sitio web moderno.",
+      en: "Illustrated personal portfolio concept showing before-and-after transformation, digital tools, and professional positioning.",
+      es: "Concepto ilustrado de portfolio personal mostrando transformacion, herramientas digitales y posicionamiento profesional.",
     },
   },
   {
@@ -118,10 +118,10 @@ const projectEntries: ProjectEntry[] = [
       en: "Supports faster content work, clearer information handling and a more grounded use of AI in real business routines.",
       es: "Favorece un trabajo de contenido mas agil, una gestion de informacion mas clara y un uso mas realista de la IA en rutinas de negocio.",
     },
-    imageSrc: "/projects/solar-financing-documentation-workflow.svg",
+    imageSrc: "/projects/ai-tools-productivity-reference.png",
     imageAlt: {
-      en: "Workflow diagram representing digital tools, information organization and practical AI support for productivity.",
-      es: "Diagrama de flujo que representa herramientas digitales, organizacion de informacion y apoyo practico de IA para productividad.",
+      en: "Futuristic AI workstation showing content creation, automation, and productivity support workflows.",
+      es: "Estacion de trabajo futurista de IA mostrando creacion de contenido, automatizacion y flujos de productividad.",
     },
   },
   {
