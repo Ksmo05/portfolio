@@ -25,11 +25,11 @@ export default function Navbar() {
         <Link href={`/${locale}`} className="flex items-center gap-4 text-slate-100">
           <span className="flex items-center justify-center">
             <Image
-              src="/logo-csm.png"
+              src="/logo-csm-mark.png"
               alt="Carlos San Miguel portfolio logo"
               width={60}
               height={60}
-              className="h-12 w-12 object-contain mix-blend-screen brightness-125 contrast-110 sm:h-14 sm:w-14"
+              className="h-12 w-12 object-contain brightness-110 contrast-110 sm:h-14 sm:w-14"
               priority
             />
           </span>

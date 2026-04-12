@@ -38,9 +38,9 @@ export const metadata: Metadata = {
     description: siteConfig.description,
   },
   icons: {
-    icon: "/logo-csm.png",
-    shortcut: "/logo-csm.png",
-    apple: "/logo-csm.png",
+    icon: "/logo-csm-mark.png",
+    shortcut: "/logo-csm-mark.png",
+    apple: "/logo-csm-mark.png",
   },
 };
 

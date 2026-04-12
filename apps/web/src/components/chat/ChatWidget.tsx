@@ -281,6 +281,28 @@ function getInstantReply(message: string, locale: Locale): { reply: string; what
     };
   }
 
+  const projectsTerms = [
+    "most relevant projects",
+    "main projects",
+    "best projects",
+    "show me carlos most relevant projects",
+    "show me carlos' most relevant projects",
+    "proyectos mas relevantes",
+    "proyectos más relevantes",
+    "principales proyectos",
+    "muestrame los proyectos",
+    "muestrame los proyectos mas relevantes",
+  ];
+  if (includesAny(normalized, projectsTerms)) {
+    return {
+      reply:
+        locale === "es"
+          ? "Los proyectos mas relevantes del portfolio se centran en dashboards y analisis de KPI, herramientas de IA aplicadas a productividad y esta propia web profesional como proyecto digital estructurado. Si quieres, puedo ampliar uno en detalle."
+          : "The most relevant projects in the portfolio focus on dashboards and KPI analysis, AI tools applied to productivity, and this portfolio website itself as a structured digital project. If you want, I can expand on one of them in more detail.",
+      whatsappUrl: null,
+    };
+  }
+
   const reportingTerms = [
     "puedes ayudar con dashboards",
     "puedes ayudar con reporting",
