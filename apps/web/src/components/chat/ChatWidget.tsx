@@ -25,6 +25,10 @@ type ChatCopy = {
   status: string;
   welcome: string;
   helper: string;
+  headerHelper: string;
+  guidedPromptsLabel: string;
+  assistantLabel: string;
+  userLabel: string;
   placeholder: string;
   openLabel: string;
   closeLabel: string;
@@ -41,13 +45,17 @@ const copy: Record<Locale, ChatCopy> = {
     welcome:
       "Hi, I can help you explore Carlos' profile, experience, projects and ways to get in touch.",
     helper: "Start with a suggested question or write your own message.",
+    headerHelper: "Ask about experience, projects, profile fit, or open a direct contact conversation.",
+    guidedPromptsLabel: "Guided prompts",
+    assistantLabel: "Assistant",
+    userLabel: "You",
     placeholder: "Write your message...",
     openLabel: "Open chat",
     closeLabel: "Close chat",
     resetLabel: "Restart conversation",
     sendingLabel: "Carlos AI Assistant is typing...",
     fallbackError:
-      "I can't connect to the assistant right now. Please try again in a moment or reach out on WhatsApp.",
+      "I can't connect to the assistant right now. Please try again in a moment, use the portfolio form, or reach out on WhatsApp.",
     quickActions: [
       {
         id: "projects",
@@ -77,13 +85,17 @@ const copy: Record<Locale, ChatCopy> = {
     welcome:
       "Hola, puedo ayudarte a descubrir el perfil de Carlos, su experiencia, sus proyectos y las formas de contacto.",
     helper: "Empieza con una sugerencia o escribe tu propio mensaje.",
+    headerHelper: "Pregunta por experiencia, proyectos, encaje de perfil o abre contacto directo.",
+    guidedPromptsLabel: "Sugerencias guiadas",
+    assistantLabel: "Asistente",
+    userLabel: "Tu",
     placeholder: "Escribe tu mensaje...",
     openLabel: "Abrir chat",
     closeLabel: "Cerrar chat",
     resetLabel: "Reiniciar conversacion",
     sendingLabel: "Carlos AI Assistant esta escribiendo...",
     fallbackError:
-      "No puedo conectar con el asistente ahora mismo. Intentalo de nuevo en unos segundos o escribeme por WhatsApp.",
+      "No puedo conectar con el asistente ahora mismo. Intentalo de nuevo en unos segundos, usa el formulario del portfolio o escribeme por WhatsApp.",
     quickActions: [
       {
         id: "projects",
@@ -136,7 +148,7 @@ function normalizeChatText(value: string) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[?¿!¡.,;:()]/g, " ")
+    .replace(/[?¿!¡.,;:()"']/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -147,6 +159,7 @@ function includesAny(text: string, terms: string[]) {
 
 function getInstantReply(message: string, locale: Locale): { reply: string; whatsappUrl: string | null } | null {
   const normalized = normalizeChatText(message);
+  const contactPath = locale === "es" ? "/es/contact" : "/en/contact";
 
   const contactTerms = [
     "quiero contactar",
@@ -171,7 +184,7 @@ function getInstantReply(message: string, locale: Locale): { reply: string; what
     "i want to talk",
     "i want to talk to carlos",
     "i prefer whatsapp",
-    "can you help",
+    "i want to discuss an opportunity",
     "are you available",
     "freelance projects",
     "new projects",
@@ -183,8 +196,8 @@ function getInstantReply(message: string, locale: Locale): { reply: string; what
     return {
       reply:
         locale === "es"
-          ? `Puedes escribirme directamente por WhatsApp si quieres hablar de una oportunidad, proyecto o colaboracion.\n${WHATSAPP_URL}`
-          : `You can reach out directly on WhatsApp if you want to discuss an opportunity, project, or collaboration.\n${WHATSAPP_URL}`,
+          ? `Puedes escribirme por el formulario del portfolio (${contactPath}) o directamente por WhatsApp si quieres hablar de una oportunidad, proyecto o colaboracion.\n${WHATSAPP_URL}`
+          : `You can reach out through the portfolio form (${contactPath}) or directly on WhatsApp if you want to discuss an opportunity, project, or collaboration.\n${WHATSAPP_URL}`,
       whatsappUrl: WHATSAPP_URL,
     };
   }
@@ -519,7 +532,19 @@ export default function ChatWidget() {
       setMessages((current) => [...current, makeMessage("assistant", assistantMessage)]);
     } catch (error) {
       console.error("[ChatWidget] send failed", error);
-      setMessages((current) => [...current, makeMessage("assistant", text.fallbackError)]);
+      const fallbackContactPath = locale === "es" ? "/es/contact" : "/en/contact";
+      const fallbackMessage =
+        error instanceof Error &&
+        (
+          error.message === "missing-inbox-api-url" ||
+          error.message === "placeholder-inbox-api-url" ||
+          error.message === "inbox-timeout"
+        )
+          ? locale === "es"
+            ? `No puedo conectar con el asistente ahora mismo. Verifica la configuracion del backend o vuelve a intentarlo en unos segundos. Tambien puedes escribirme por el formulario (${fallbackContactPath}) o por WhatsApp.\n${WHATSAPP_URL}`
+            : `I cannot connect to the assistant right now. Please verify the backend configuration or try again in a few seconds. You can also use the portfolio form (${fallbackContactPath}) or WhatsApp.\n${WHATSAPP_URL}`
+          : text.fallbackError;
+      setMessages((current) => [...current, makeMessage("assistant", withWhatsAppCta(fallbackMessage, WHATSAPP_URL))]);
     } finally {
       setIsLoading(false);
     }
@@ -571,7 +596,7 @@ export default function ChatWidget() {
                     </div>
                   </div>
                 </div>
-                <p className="mt-3 text-xs leading-5 text-slate-400">Ask about experience, projects, profile fit, or open a direct contact conversation.</p>
+                <p className="mt-3 text-xs leading-5 text-slate-400">{text.headerHelper}</p>
               </div>
               <div className="flex items-center gap-1">
                 <button
@@ -610,7 +635,7 @@ export default function ChatWidget() {
                 <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/80">
                     <span className="h-2 w-2 rounded-full bg-cyan-300" />
-                    Guided prompts
+                    {text.guidedPromptsLabel}
                   </div>
                   <p className="mt-3 text-sm font-medium leading-6 text-white">{text.welcome}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-300">{text.helper}</p>
@@ -644,7 +669,7 @@ export default function ChatWidget() {
                         message.role === "user" ? "text-cyan-100/80" : "text-slate-400"
                       }`}
                     >
-                      {message.role === "user" ? "You" : "Assistant"}
+                      {message.role === "user" ? text.userLabel : text.assistantLabel}
                     </div>
                     <span className="whitespace-pre-wrap">
                       {renderMessageContent(message.content, locale)}

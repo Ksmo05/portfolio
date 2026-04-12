@@ -250,9 +250,10 @@ def normalize_list(values: list[str], limit: int = 6) -> list[str]:
 
 
 def tokenize(text: str) -> set[str]:
+    normalized = normalize_match_text(text or "")
     return {
         token
-        for token in re.findall(r"[a-zA-Záéíóúñü0-9]{3,}", text.lower())
+        for token in re.findall(r"[a-z0-9]{3,}", normalized)
         if token not in {"this", "that", "with", "from", "have", "your", "about", "would", "para", "como", "esto", "esta", "este"}
     }
 
@@ -261,7 +262,7 @@ def detect_language(text: str) -> str:
     tokens = tokenize(text)
     es_score = len(tokens & LANGUAGE_STOPWORDS["es"])
     en_score = len(tokens & LANGUAGE_STOPWORDS["en"])
-    if re.search(r"[ñáéíóú]", text.lower()):
+    if re.search(r"[áéíóúñ]", (text or "").lower()):
         es_score += 2
     return "es" if es_score > en_score else "en"
 
@@ -279,6 +280,15 @@ def contains_standalone_term(text: str, term: str) -> bool:
 def build_whatsapp_url(language: str) -> str:
     message = WHATSAPP_TEXT.get(language, WHATSAPP_TEXT["en"])
     return f"{WHATSAPP_LINK}?text={quote(message)}"
+
+
+def build_contact_form_url(language: str) -> str:
+    base = (settings.app_base_url or "").rstrip("/")
+    if not base:
+        return "/contact"
+    if language == "es":
+        return f"{base}/es/contact"
+    return f"{base}/en/contact"
 
 
 def language_scores(text: str) -> tuple[int, int]:
@@ -1453,13 +1463,11 @@ def detect_chat_intent(normalized_text: str) -> str:
         "vacante", "reclutador", "seleccion", "seleccionador", "manager", "manager hiring",
     }
     client_terms = {
-        "client", "project", "collaboration", "consulting", "consultant", "consultancy", "freelance",
-        "support", "workflow", "process", "process improvement", "operations support", "dashboard",
-        "reporting", "reporting help", "operations", "automation", "ai", "partner", "proposal",
-        "quote", "scope", "need help", "help with", "improve", "improvement", "efficiency",
-        "cliente", "proyecto", "colaboracion", "consultoria", "proceso", "mejora de procesos",
-        "reporte", "reporting", "dashboard", "operaciones", "soporte operativo", "automatizacion",
-        "propuesta", "presupuesto", "colaborador",
+        "client", "collaboration", "consulting", "consultant", "consultancy", "freelance",
+        "partner", "proposal", "quote", "scope", "need help", "help with", "improve", "improvement",
+        "efficiency", "professional opportunity", "project opportunity", "new project", "new projects",
+        "cliente", "colaboracion", "consultoria", "mejora de procesos", "propuesta", "presupuesto",
+        "colaborador", "oportunidad profesional", "nuevo proyecto", "nuevos proyectos",
     }
     if any(term in normalized_text for term in recruiter_terms):
         return "recruiter"
@@ -1585,14 +1593,20 @@ def detect_tooling_key(normalized_text: str) -> str | None:
 def detect_chat_topic(normalized_text: str) -> str:
     if detect_summary_request(normalized_text):
         return "summary"
+    if detect_whatsapp_request(normalized_text):
+        return "whatsapp"
+    if detect_direct_contact_request(normalized_text) or detect_opportunity_contact_request(normalized_text):
+        return "contact"
     grounding_topic = detect_profile_grounding_topic(normalized_text)
     if grounding_topic:
         return grounding_topic
-    if detect_whatsapp_request(normalized_text):
-        return "whatsapp"
-    if detect_opportunity_contact_request(normalized_text):
-        return "contact"
-    if any(term in normalized_text for term in {"contact", "email", "reach", "connect", "linkedin", "contactar", "correo", "hablar"}):
+    if any(
+        term in normalized_text
+        for term in {
+            "contact", "contact me", "email me", "reach out", "connect with",
+            "contactar", "escribeme", "escribirme", "correo", "linkedin", "ponernos en contacto",
+        }
+    ):
         return "contact"
     if any(term in normalized_text for term in {"reporting", "dashboard", "dashboards", "kpi", "kpis", "power bi", "excel avanzado", "automation of reports", "automatizacion de reportes"}):
         return "reporting"
@@ -1615,9 +1629,10 @@ def detect_chat_topic(normalized_text: str) -> str:
 
 def detect_contact_readiness(normalized_text: str) -> bool:
     contact_terms = {
-        "contact", "reach", "email", "call", "meeting", "book", "connect", "talk", "speak", "follow up",
-        "linkedin", "whatsapp", "correo", "contactar", "llamar", "reunion", "agendar", "hablar", "escribir",
-        "ponernos en contacto", "seguir hablando",
+        "contact me", "reach out", "email me", "book a call", "book a meeting", "follow up",
+        "direct contact", "direct conversation", "linkedin", "whatsapp",
+        "contactar", "ponernos en contacto", "escribeme", "escribirme", "llamame", "agendar",
+        "reunion", "contacto directo", "conversacion directa", "seguir hablando",
     }
     return (
         detect_whatsapp_request(normalized_text)
@@ -1852,22 +1867,39 @@ def build_feedback_recovery_reply(language: str, intent: str, whatsapp_offer: bo
 
 def build_scope_gap_reply(language: str, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
     whatsapp_url = build_whatsapp_url(language)
+    form_url = build_contact_form_url(language)
     if language == "es":
-        return f"No tengo esa informacion con suficiente precision. Si quieres, puedes escribirme directamente por WhatsApp. {whatsapp_url}"
-    return f"I do not have that information with enough precision. If helpful, you can reach out directly on WhatsApp. {whatsapp_url}"
+        return (
+            "No tengo esa informacion con suficiente precision. "
+            f"Puedes escribirme por el formulario ({form_url}) o por WhatsApp ({whatsapp_url})."
+        )
+    return (
+        "I do not have that information with enough precision. "
+        f"You can reach out through the portfolio form ({form_url}) or directly on WhatsApp ({whatsapp_url})."
+    )
 
 
 def build_conversation_close_reply(language: str) -> str:
     whatsapp_url = build_whatsapp_url(language)
+    form_url = build_contact_form_url(language)
     if language == "es":
-        return f"Encantado de haberte ayudado. Para cualquier otra duda puedes escribirme por WhatsApp. {whatsapp_url}"
-    return f"Glad I could help. If you need anything else, you can reach out on WhatsApp. {whatsapp_url}"
+        return (
+            "Encantado de haberte ayudado. Para cualquier otra duda "
+            f"puedes escribirme por el formulario ({form_url}) o por WhatsApp ({whatsapp_url})."
+        )
+    return (
+        "Glad I could help. If you need anything else, "
+        f"you can reach out through the form ({form_url}) or on WhatsApp ({whatsapp_url})."
+    )
 
 
 def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
     if language == "es":
         if contact_ready or topic == "contact":
-            return f"Si quieres seguir con ello, puedes escribirme directamente por WhatsApp. {build_whatsapp_url(language)}"
+            return (
+                "Si quieres seguir con ello, puedes escribirme por el formulario "
+                f"({build_contact_form_url(language)}) o directamente por WhatsApp ({build_whatsapp_url(language)})."
+            )
         if whatsapp_offer and whatsapp_reason:
             return build_whatsapp_cta(language, whatsapp_reason)
         if intent == "recruiter":
@@ -1877,7 +1909,10 @@ def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, 
         return "Si quieres, puedo resumirlo en corto, enfocarlo a experiencia o senalar los proyectos mas relevantes."
 
     if contact_ready or topic == "contact":
-        return f"If you want to continue, you can reach out directly on WhatsApp. {build_whatsapp_url(language)}"
+        return (
+            "If you want to continue, you can reach out through the form "
+            f"({build_contact_form_url(language)}) or directly on WhatsApp ({build_whatsapp_url(language)})."
+        )
     if whatsapp_offer and whatsapp_reason:
         return build_whatsapp_cta(language, whatsapp_reason)
     if intent == "recruiter":
@@ -2280,7 +2315,13 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
     if feedback_signal == "negative" and topic == "general":
         return build_feedback_recovery_reply(language, intent, whatsapp_offer, whatsapp_reason), "chat-feedback-recovery", meta
 
-    if is_scope_gap_question(normalized, topic) and not guided_mode:
+    if (
+        topic == "general"
+        and word_count >= 5
+        and is_scope_gap_question(normalized, topic)
+        and not guided_mode
+        and not detect_opportunity_contact_request(normalized)
+    ):
         scope_path = "chat-scope-gap"
         scope_meta = dict(meta)
         scope_meta["whatsapp_handoff"] = True
@@ -2853,6 +2894,7 @@ def thread_rows(limit: int = 20) -> list[dict[str, Any]]:
 
 
 def aggregate_counts(connection: sqlite3.Connection, column_name: str, fallback: str = "unknown") -> dict[str, int]:
+    column_name = validate_dashboard_column(column_name)
     rows = connection.execute(
         f"""
         SELECT COALESCE(NULLIF(TRIM({column_name}), ''), ?) AS label, COUNT(*) AS total
@@ -2872,6 +2914,7 @@ def aggregate_counts_for_source(
     source: str,
     fallback: str = "unknown",
 ) -> dict[str, int]:
+    column_name = validate_dashboard_column(column_name)
     rows = connection.execute(
         f"""
         SELECT COALESCE(NULLIF(TRIM({column_name}), ''), ?) AS label, COUNT(*) AS total
@@ -2908,6 +2951,15 @@ def all_messages_for_export(connection: sqlite3.Connection) -> list[dict[str, An
         (DASHBOARD_SOURCE,),
     ).fetchall()
     return [dict(row) for row in rows]
+
+
+DASHBOARD_AGGREGATE_COLUMNS = {"priority", "language", "category", "source", "sentiment"}
+
+
+def validate_dashboard_column(column_name: str) -> str:
+    if column_name not in DASHBOARD_AGGREGATE_COLUMNS:
+        raise ValueError(f"Unsupported dashboard column: {column_name}")
+    return column_name
 
 
 def chart_dataset_from_counts(counts: dict[str, int], limit: int | None = None) -> list[dict[str, Any]]:
@@ -3474,194 +3526,6 @@ async def inbox_preflight() -> Response:
 @app.post("/api/inbox")
 async def create_message(request: Request, background_tasks: BackgroundTasks) -> JSONResponse:
     return await handle_inbox_submission(request, background_tasks)
-
-    # ?? FIX: soportar payload tipo chat (messages[])
-    is_chat_request = payload.source == CHAT_WIDGET_SOURCE
-    if payload.messages:
-        last_user_message = next(
-            (item.get("content", "").strip() for item in reversed(payload.messages) if item.get("role") == "user" and item.get("content")),
-            "",
-        )
-        if last_user_message:
-            payload.message = last_user_message
-    logger.info(
-        "Inbox request received | source=%s | name=%s | email_provided=%s | company_provided=%s | message_length=%s",
-        payload.source,
-        payload.name,
-        bool(payload.email),
-        bool(payload.company),
-        len(payload.message),
-    )
-    logger.info(
-        "Inbox payload summary | payload=%s",
-        {
-            "name": payload.name,
-            "email": payload.email,
-            "company": payload.company,
-            "source": payload.source,
-            "message_preview": payload.message[:160],
-        },
-    )
-    if is_chat_request:
-        final_language, language_source = resolve_chat_language_details(payload)
-        logger.info(
-            "Chat request trace | endpoint=/api/inbox | source=%s | chat_locale=%s | chat_language=%s | chat_language_source=%s | history_items=%s",
-            payload.source,
-            payload.locale or "none",
-            final_language,
-            language_source,
-            len(payload.messages or []),
-        )
-        analysis, _ = heuristic_analysis(payload)
-        reply_text, engine, chat_meta = generate_chat_reply(payload, analysis, final_language)
-        logger.info(
-            "Chat response trace | chat_response_path=%s | chat_language=%s | feedback_signal=%s | feedback_reason=%s | chat_intent=%s | whatsapp_handoff=%s",
-            engine,
-            final_language,
-            chat_meta["feedback_signal"],
-            chat_meta["feedback_reason"] or "none",
-            chat_meta["intent"],
-            chat_meta["whatsapp_handoff"],
-        )
-        analysis = analysis.model_copy(update={"language": final_language, "reply_text": reply_text})
-    else:
-        analysis, engine = openai_analysis(payload)
-        chat_meta = {
-            "feedback_signal": "none",
-            "feedback_reason": None,
-            "intent": "",
-            "whatsapp_handoff": False,
-        }
-    logger.info(
-        "Inbox analysis completed | source=%s | engine=%s | theme_slug=%s | category=%s | priority=%s",
-        payload.source,
-        engine,
-        analysis.theme_slug,
-        analysis.category,
-        analysis.priority,
-    )
-    now = utc_now()
-    with closing(get_connection()) as connection:
-        try:
-            thread_id = get_or_create_thread(connection, analysis)
-            logger.info("Inbox SQLite save starting | thread_id=%s | database_path=%s", thread_id, settings.database_path)
-            cursor = connection.execute(
-                """
-                INSERT INTO messages (
-                    thread_id, user_name, user_email, company, source, language, category, priority, lead_score,
-                    sentiment, summary, key_points_json, raw_message, reply_text, theme_label, theme_slug,
-                    thread_summary, email_status, analysis_engine, created_at, sender_name, sender_email,
-                    message_text, message_summary, suggested_reply, urgency_score, themes, needs_follow_up,
-                    feedback_signal, feedback_reason, chat_intent, whatsapp_handoff
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    thread_id,
-                    payload.name,
-                    payload.email,
-                    payload.company,
-                    payload.source,
-                    analysis.language,
-                    analysis.category,
-                    analysis.priority,
-                    analysis.lead_score,
-                    analysis.sentiment,
-                    analysis.summary,
-                    json.dumps(analysis.key_points),
-                    payload.message,
-                    analysis.reply_text,
-                    analysis.theme_label,
-                    analysis.theme_slug,
-                    "",
-                    "pending",
-                    engine,
-                    now,
-                    payload.name,
-                    payload.email,
-                    payload.message,
-                    analysis.summary,
-                    analysis.reply_text,
-                    PRIORITY_RANK.get(analysis.priority, 1) * 25,
-                    json.dumps([analysis.theme_label]),
-                    1 if analysis.priority != "low" or analysis.lead_score >= 4 else 0,
-                    chat_meta["feedback_signal"],
-                    chat_meta["feedback_reason"],
-                    chat_meta["intent"],
-                    1 if chat_meta["whatsapp_handoff"] else 0,
-                ),
-            )
-            message_id = int(cursor.lastrowid)
-            logger.info("Inbox SQLite save completed | message_id=%s | thread_id=%s", message_id, thread_id)
-            thread = refresh_thread_rollup(connection, thread_id, analysis)
-            logger.info(
-                "Inbox thread rollup refreshed | thread_id=%s | message_count=%s | priority=%s",
-                thread_id,
-                thread.get("message_count"),
-                thread.get("priority"),
-            )
-            related_messages = get_thread_messages(connection, thread_id, limit=4)
-            email_status = "skipped"
-            try:
-                logger.info("Inbox email trigger starting | message_id=%s | thread_id=%s", message_id, thread_id)
-                email_status = allowed_email_status(
-                    send_email_notification(message_id, payload, analysis, thread, related_messages)
-                )
-                logger.info("Inbox email trigger finished | message_id=%s | email_status=%s", message_id, email_status)
-            except Exception as e:
-                logger.exception("Email failed but continuing flow")
-            connection.execute("UPDATE messages SET email_status = ? WHERE id = ?", (email_status, message_id))
-            logger.info("Inbox email status updated | message_id=%s | email_status=%s", message_id, email_status)
-            connection.commit()
-        except sqlite3.Error as exc:
-            logger.exception("Failed to save inbox message: %s", exc)
-            raise HTTPException(status_code=500, detail="Unable to save inbox message right now.") from exc
-        except Exception as exc:
-            logger.exception("Unexpected inbox submission failure: %s", exc)
-            raise HTTPException(status_code=500, detail="Unexpected inbox processing error.") from exc
-
-        row = connection.execute(
-            """
-            SELECT
-                m.id,
-                m.thread_id,
-                COALESCE(t.thread_title, t.title) AS thread_title,
-                COALESCE(t.theme_slug, m.theme_slug) AS theme_slug,
-                COALESCE(t.theme_label, m.theme_label) AS theme_label,
-                COALESCE(m.user_name, m.sender_name) AS user_name,
-                COALESCE(m.user_email, m.sender_email) AS user_email,
-                m.company,
-                m.source,
-                m.language,
-                m.category,
-                m.priority,
-                m.lead_score,
-                m.sentiment,
-                COALESCE(m.summary, m.message_summary) AS summary,
-                m.key_points_json,
-                COALESCE(m.raw_message, m.message_text) AS raw_message,
-                m.reply_text,
-                m.thread_summary,
-                m.email_status,
-                m.created_at
-            FROM messages m
-            JOIN threads t ON t.id = m.thread_id
-            WHERE m.id = ?
-            """,
-            (message_id,),
-        ).fetchone()
-    if row is None:
-        logger.error("Inbox submission saved but reload failed | message_id=%s", message_id)
-        raise HTTPException(status_code=500, detail="Message saved but could not be reloaded.")
-    response_payload = {"ok": True, "analysis_engine": engine, "message": serialize_message(row), "thread": thread, "related_messages": related_messages}
-    logger.info(
-        "Inbox submission completed | message_id=%s | thread_id=%s | response_keys=%s | message_keys=%s",
-        response_payload["message"]["id"],
-        response_payload["thread"].get("id"),
-        list(response_payload.keys()),
-        list(response_payload["message"].keys()),
-    )
-    return JSONResponse(response_payload, status_code=201)
 
 
 @app.get("/api/dashboard/summary")

@@ -11,12 +11,17 @@ export function useInboxDashboardData() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function load() {
       try {
         setIsLoading(true);
         setError(null);
 
-        const res = await fetch(getInboxApiEndpoint("/api/messages"));
+        const res = await fetch(getInboxApiEndpoint("/api/messages"), {
+          signal: controller.signal,
+          cache: "no-store",
+        });
 
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
@@ -35,6 +40,12 @@ export function useInboxDashboardData() {
         setMessages(normalized.messages);
         setTotal(normalized.total);
       } catch (err) {
+        if (
+          (err instanceof DOMException && err.name === "AbortError") ||
+          (err instanceof Error && err.name === "AbortError")
+        ) {
+          return;
+        }
         console.error(err);
         setError("Error loading inbox");
       } finally {
@@ -43,6 +54,10 @@ export function useInboxDashboardData() {
     }
 
     load();
+
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   return { messages, total, isLoading, error };

@@ -1,4 +1,5 @@
 const AI_INBOX_API_URL = process.env.NEXT_PUBLIC_INBOX_API_URL?.trim() || null;
+const REQUEST_TIMEOUT_MS = 15000;
 
 export const CHAT_WIDGET_SOURCE = "portfolio-chat-widget";
 export const CONTACT_FORM_SOURCE = "portfolio-vercel";
@@ -47,6 +48,15 @@ function normalizeInboxUrl(value: string) {
   return value.replace(/\/+$/, "");
 }
 
+function isPlaceholderInboxUrl(normalizedUrl: string) {
+  const lower = normalizedUrl.toLowerCase();
+  return (
+    lower.includes("tu-backend-render.onrender.com") ||
+    lower.includes("your-backend-render.onrender.com") ||
+    lower.includes("example.com")
+  );
+}
+
 export function getInboxApiBaseUrl() {
   if (!AI_INBOX_API_URL) {
     throw new Error("missing-inbox-api-url");
@@ -54,12 +64,16 @@ export function getInboxApiBaseUrl() {
 
   const normalized = normalizeInboxUrl(AI_INBOX_API_URL);
 
-  if (normalized.includes("TU-BACKEND-RENDER.onrender.com")) {
+  if (isPlaceholderInboxUrl(normalized)) {
     throw new Error("placeholder-inbox-api-url");
   }
 
   if (normalized.endsWith("/api/inbox")) {
     return normalized.slice(0, -"/api/inbox".length);
+  }
+
+  if (normalized.endsWith("/api")) {
+    return normalized.slice(0, -"/api".length);
   }
 
   return normalized;
@@ -71,13 +85,32 @@ export function getInboxApiEndpoint(path = "/api/inbox") {
 }
 
 export async function postInboxPayload<TResponse>(payload: unknown) {
-  const response = await fetch(getInboxApiEndpoint("/api/inbox"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(getInboxApiEndpoint("/api/inbox"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (
+      (error instanceof DOMException && error.name === "AbortError") ||
+      (error instanceof Error && error.name === "AbortError")
+    ) {
+      throw new Error("inbox-timeout");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const rawText = await response.text();
   let data: TResponse | null = null;

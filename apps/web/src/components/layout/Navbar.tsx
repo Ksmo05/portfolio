@@ -20,34 +20,41 @@ export default function Navbar() {
   const getSwitchHref = (target: Locale) => withLocale(target, pathname);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/8 bg-[rgba(12,16,35,0.94)] backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-white/8 bg-[rgba(3,8,43,0.95)] backdrop-blur-xl">
       <div className="page-shell flex items-center justify-between py-5">
-        <Link href={`/${locale}`} className="flex items-center gap-4 text-slate-100">
+        <Link href={`/${locale}`} className="flex items-center gap-3 text-slate-100">
           <span className="flex items-center justify-center">
             <Image
               src="/logo-csm-brand.png"
               alt="Carlos San Miguel portfolio logo"
               width={60}
               height={60}
-              className="h-12 w-12 object-contain sm:h-14 sm:w-14"
+              className="h-10 w-10 object-contain sm:h-12 sm:w-12"
               priority
             />
           </span>
-          <span className="max-w-[18rem] text-base font-semibold leading-[1.02] tracking-[-0.03em] text-white sm:max-w-none sm:text-[1.1rem]">
+          <span className="max-w-[18rem] text-base font-semibold leading-[1.03] tracking-[-0.03em] text-white sm:max-w-none sm:text-[1.08rem]">
             {siteConfig.name}
           </span>
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-2 py-2 md:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  isActive
+                    ? "bg-white/[0.1] text-white"
+                    : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="flex items-center">
@@ -70,15 +77,22 @@ export default function Navbar() {
       </div>
 
       <nav aria-label="Mobile" className="page-shell flex gap-3 overflow-x-auto pb-4 md:hidden">
-        {navLinks.map((link) => (
-          <Link
-            key={`mobile-${link.href}`}
-            href={link.href}
-            className="whitespace-nowrap rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-xs font-medium text-slate-200"
-          >
-            {link.label}
-          </Link>
-        ))}
+        {navLinks.map((link) => {
+          const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
+          return (
+            <Link
+              key={`mobile-${link.href}`}
+              href={link.href}
+              className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-medium ${
+                isActive
+                  ? "border-cyan-200/35 bg-cyan-300/15 text-white"
+                  : "border-white/10 bg-white/[0.04] text-slate-200"
+              }`}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
       </nav>
     </header>
   );

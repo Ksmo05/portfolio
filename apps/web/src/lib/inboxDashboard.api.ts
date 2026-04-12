@@ -78,13 +78,18 @@ function normalizeResponse(data: unknown): InboxDashboardResponse {
 }
 
 export async function fetchInboxDashboardData(): Promise<InboxDashboardResponse> {
-  const response = await fetch(getInboxApiEndpoint("/api/messages"), {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    cache: "no-store",
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let response: Response;
+  try {
+    response = await fetch(getInboxApiEndpoint("/api/messages"), {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const data = await response.json().catch(() => null);
 

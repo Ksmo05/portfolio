@@ -201,7 +201,9 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
           (
             submissionError.message === "Failed to fetch" ||
             submissionError.message === "invalid-json-response" ||
-            submissionError.message === "missing-inbox-api-url"
+            submissionError.message === "missing-inbox-api-url" ||
+            submissionError.message === "placeholder-inbox-api-url" ||
+            submissionError.message === "inbox-timeout"
           ))
           ? text.networkError
           : submissionError instanceof Error
@@ -237,7 +239,7 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div className="grid gap-5 md:grid-cols-2">
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <span className="mb-2 block text-sm font-medium text-slate-200">
                     {text.name} <span className="text-sky-300">({text.required})</span>
                   </span>
                   <input
@@ -250,7 +252,7 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <span className="mb-2 block text-sm font-medium text-slate-200">
                     {text.email} <span className="text-slate-500">({text.optional})</span>
                   </span>
                   <input
@@ -263,7 +265,7 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
               </div>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                <span className="mb-2 block text-sm font-medium text-slate-200">
                     {text.company} <span className="text-slate-500">({text.optional})</span>
                 </span>
                 <input
@@ -275,7 +277,7 @@ export default function AIInboxSection({ locale }: AIInboxSectionProps) {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                <span className="mb-2 block text-sm font-medium text-slate-200">
                     {text.message} <span className="text-sky-300">({text.required})</span>
                 </span>
                 <textarea

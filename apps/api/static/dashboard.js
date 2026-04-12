@@ -17,6 +17,18 @@
     return element;
   }
 
+  function setText(id, value) {
+    const node = $(id);
+    if (!node) return;
+    node.textContent = value;
+  }
+
+  function setHtml(id, value) {
+    const node = $(id);
+    if (!node) return;
+    node.innerHTML = value;
+  }
+
   function safeItems(data) {
     return Array.isArray(data && data.items) ? data.items : [];
   }
@@ -378,9 +390,14 @@
   }
 
   function renderBarChart(container, title, dataObject) {
+    if (!container) return;
+    container.innerHTML = "";
     const block = createElement("div", "chart-card");
     block.appendChild(createElement("h3", "chart-title", title));
-    const entries = Object.entries(dataObject || {});
+    const entries = Object.entries(dataObject || {}).sort(function (a, b) {
+      if (b[1] !== a[1]) return b[1] - a[1];
+      return String(a[0]).localeCompare(String(b[0]));
+    });
     if (entries.length === 0) {
       block.appendChild(createElement("div", "empty-state small-empty", "No data yet."));
       container.appendChild(block);
@@ -403,6 +420,7 @@
   }
 
   function renderSparkline(container, items) {
+    if (!container) return;
     container.innerHTML = "";
     if (!items || items.length === 0) {
       container.appendChild(createElement("div", "empty-state small-empty", "No trend data yet."));
@@ -413,25 +431,34 @@
       const col = createElement("div", "spark-col");
       const bar = createElement("div", "spark-bar");
       bar.style.height = `${Math.max((item.total / max) * 120, 10)}px`;
-      col.append(bar, createElement("span", "spark-label", item.day.slice(5)));
+      col.append(bar, createElement("span", "spark-label", formatShortDayLabel(item.day)));
       container.appendChild(col);
     });
   }
 
   function messageCard(item) {
+    const priority = String(item && item.priority ? item.priority : "low").toLowerCase();
+    const category = String(item && item.category ? item.category : "general");
+    const leadScore = Number(item && item.lead_score ? item.lead_score : 0);
+    const language = String(item && item.language ? item.language : "unknown");
+    const summary = item && item.summary ? item.summary : "No summary available";
+    const threadTitle = item && item.thread_title ? item.thread_title : "Inbox message";
+    const userName = item && item.user_name ? item.user_name : "Website visitor";
+    const company = item && item.company ? item.company : "";
+
     const card = createElement("article", "insight-card");
     const meta = createElement("div", "thread-meta");
     meta.append(
-      createElement("span", `pill priority-${item.priority}`, item.priority.toUpperCase()),
-      createElement("span", "tag", item.category),
-      createElement("span", "tag", `lead ${item.lead_score}`),
-      createElement("span", "tag", `lang ${item.language}`)
+      createElement("span", `pill priority-${priority}`, priority.toUpperCase()),
+      createElement("span", "tag", category),
+      createElement("span", "tag", `lead ${leadScore}`),
+      createElement("span", "tag", `lang ${language}`)
     );
     card.append(
       meta,
-      createElement("h3", "", item.thread_title),
-      createElement("p", "", item.summary),
-      createElement("div", "thread-footer", `${item.user_name}${item.company ? ` | ${item.company}` : ""}`)
+      createElement("h3", "", threadTitle),
+      createElement("p", "", summary),
+      createElement("div", "thread-footer", `${userName}${company ? ` | ${company}` : ""}`)
     );
     return card;
   }
@@ -672,16 +699,18 @@
       databasePath: rawMessagesData && rawMessagesData.database_path ? rawMessagesData.database_path : "unknown",
     });
 
-    $("executiveSummary").textContent = summaryData.executive_summary || "No summary yet.";
-    $("metricTotalMessages").textContent = String(summaryData.total_messages || rawItems.length || 0);
-    $("metricTopPriority").textContent = humanizeLabel(topKey(summaryData.by_priority));
-    $("metricTopTheme").textContent = (summaryData.top_themes && summaryData.top_themes[0] && summaryData.top_themes[0].label) || "-";
-    $("metricGaStatus").textContent =
+    setText("executiveSummary", summaryData.executive_summary || "No summary yet.");
+    setText("metricTotalMessages", String(summaryData.total_messages || rawItems.length || 0));
+    setText("metricTopPriority", humanizeLabel(topKey(summaryData.by_priority)));
+    setText("metricTopTheme", (summaryData.top_themes && summaryData.top_themes[0] && summaryData.top_themes[0].label) || "-");
+    setText(
+      "metricGaStatus",
       analytics && analytics.status === "configured"
         ? "Live"
         : analytics && analytics.status === "error"
           ? "Error"
-          : "Optional";
+          : "Optional"
+    );
     const metricGaDetail = $("metricGaDetail");
     if (metricGaDetail) {
       metricGaDetail.textContent =
@@ -692,10 +721,10 @@
             : "Traffic analytics connection status";
     }
 
-    $("priorityChart").innerHTML = "";
-    $("sentimentChart").innerHTML = "";
-    $("languageChart").innerHTML = "";
-    $("categoryChart").innerHTML = "";
+    setHtml("priorityChart", "");
+    setHtml("sentimentChart", "");
+    setHtml("languageChart", "");
+    setHtml("categoryChart", "");
 
     renderBarChart($("priorityChart"), "Messages by priority", summaryData.by_priority);
     renderBarChart($("sentimentChart"), "Sentiment distribution", summaryData.by_sentiment);
@@ -738,22 +767,11 @@
     renderMetricList($("recentHighPriorityList"), dashboardMessages.recent_high_priority || [], messageCard);
 
     const chatAnalytics = messages && messages.chat_analytics ? messages.chat_analytics : null;
-    const chatAnalyticsCount = $("chatAnalyticsCount");
-    if (chatAnalyticsCount) {
-      chatAnalyticsCount.textContent = chatAnalytics ? `${chatAnalytics.total_interactions || 0} chat interactions` : "No chat data";
-    }
-    const chatTotal = $("chatTotalInteractions");
-    if (chatTotal) {
-      chatTotal.textContent = String(chatAnalytics && chatAnalytics.total_interactions ? chatAnalytics.total_interactions : 0);
-    }
-    const chatSpanish = $("chatSpanishInteractions");
-    if (chatSpanish) {
-      chatSpanish.textContent = String(chatAnalytics && chatAnalytics.spanish_interactions ? chatAnalytics.spanish_interactions : 0);
-    }
-    const chatEnglish = $("chatEnglishInteractions");
-    if (chatEnglish) {
-      chatEnglish.textContent = String(chatAnalytics && chatAnalytics.english_interactions ? chatAnalytics.english_interactions : 0);
-    }
+    setText("chatAnalyticsCount", chatAnalytics ? `${chatAnalytics.total_interactions || 0} chat interactions` : "No chat data");
+    setText("chatTotalInteractions", String(chatAnalytics && chatAnalytics.total_interactions ? chatAnalytics.total_interactions : 0));
+    setText("chatSpanishInteractions", String(chatAnalytics && chatAnalytics.spanish_interactions ? chatAnalytics.spanish_interactions : 0));
+    setText("chatEnglishInteractions", String(chatAnalytics && chatAnalytics.english_interactions ? chatAnalytics.english_interactions : 0));
+    destroyCharts();
     createBarChart(
       "chatDailyBarChart",
       chatAnalytics && Array.isArray(chatAnalytics.daily_interactions)
@@ -773,6 +791,10 @@
     const searchFilter = $("filterSearch");
     const recentMessagesTable = $("recentMessagesTable");
     const recentMessagesCount = $("recentMessagesCount");
+
+    if (!priorityFilter || !sourceFilter || !languageFilter || !searchFilter || !recentMessagesTable || !recentMessagesCount) {
+      return;
+    }
 
     setSelectOptions(priorityFilter, buildFilterOptions(rawItems, "priority", ["high", "medium", "low"]), humanizeLabel);
     setSelectOptions(sourceFilter, buildFilterOptions(rawItems, "source"), humanizeLabel);
@@ -799,7 +821,6 @@
     searchFilter.addEventListener("input", applyFilters);
     applyFilters();
 
-    destroyCharts();
     createDonutChart("priorityDonutChart", chartMetrics.distribution && chartMetrics.distribution.priority);
     createDonutChart("languageDonutChart", chartMetrics.distribution && chartMetrics.distribution.language);
     createDonutChart("sourceDonutChart", chartMetrics.distribution && chartMetrics.distribution.source);
@@ -817,6 +838,6 @@
   }
 
   loadDashboard().catch(function () {
-    $("executiveSummary").textContent = "The dashboard could not be loaded right now.";
+    setText("executiveSummary", "The dashboard could not be loaded right now.");
   });
 })();

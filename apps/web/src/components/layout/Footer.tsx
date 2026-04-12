@@ -30,7 +30,7 @@ export default function Footer() {
   const copy = footerCopy[locale];
 
   return (
-    <footer className="border-t border-white/8 bg-[rgba(4,6,14,0.82)] py-16 backdrop-blur-xl">
+    <footer className="border-t border-white/8 bg-[rgba(3,8,43,0.9)] py-16 backdrop-blur-xl">
       <div className="page-shell">
         <div className="section-shell rounded-[2rem] px-7 py-8 md:px-10 md:py-10">
           <div className="grid gap-8 md:grid-cols-3">
