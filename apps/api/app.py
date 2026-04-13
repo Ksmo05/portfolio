@@ -1290,6 +1290,71 @@ def fallback_theme(tokens: set[str]) -> tuple[str, str]:
     return "general-inquiries", "General inbound inquiries"
 
 
+def detect_developer_positioning_question(normalized_text: str) -> bool:
+    developer_terms = {
+        "programas", "programo", "programar", "codigo", "escribes codigo", "desarrollador",
+        "developer", "software engineer", "engineer", "coding", "do you code", "can you code",
+        "write code", "full stack", "backend", "frontend", "api", "apis", "rest api",
+        "arquitectura", "architecture", "fastapi", "nextjs",
+    }
+    return any(term in normalized_text for term in developer_terms)
+
+
+def build_tools_intent_reply(
+    language: str,
+    intent: str,
+    tooling_key: str | None,
+    developer_question: bool,
+) -> str:
+    localized = TOOLING_FACTS.get(language, TOOLING_FACTS["en"])
+    base_fact = (
+        localized.get(tooling_key)
+        if tooling_key
+        else (
+            "Carlos combines operations, data, digital workflows, and practical AI."
+            if language == "en"
+            else "Carlos combina operaciones, datos, workflows digitales e IA practica."
+        )
+    )
+
+    if language == "es":
+        stack_line = (
+            "En entrega digital practica tambien trabaja con Next.js, FastAPI, Vercel, Render, "
+            "Excel, dashboards, Google Apps Script y copilotos de IA."
+        )
+        developer_line = (
+            "No se posiciona como un software engineer tradicional. "
+            "Construye soluciones apoyandose en IA, con foco en integracion, utilidad de negocio y puesta en marcha."
+        )
+        intent_tail = {
+            "recruiter": "Para RRHH, la propuesta de valor es impacto en negocio: convertir necesidades en flujos, reporting y soluciones usables.",
+            "client": "Para negocio/cliente, el enfoque es resolver necesidades reales con implementaciones agiles y mantenibles.",
+            "technical": "Si quieres detalle tecnico, puede explicar integraciones API, arquitectura practica y limites claros de implementacion asistida por IA.",
+            "general": "El foco es utilidad practica, integracion y adopcion en negocio, no vender un perfil de desarrollador tradicional.",
+        }.get(intent, "El foco es utilidad practica, integracion y adopcion en negocio.")
+        if developer_question:
+            return f"{developer_line} {stack_line} {intent_tail}"
+        return f"{base_fact} {stack_line} {intent_tail}"
+
+    stack_line = (
+        "In practical digital delivery, he also works with Next.js, FastAPI, Vercel, Render, "
+        "Excel, dashboards, Google Apps Script, and AI copilots."
+    )
+    developer_line = (
+        "He does not position himself as a traditional software engineer. "
+        "He builds solutions with AI support, focused on integration, business utility, and practical execution."
+    )
+    intent_tail = {
+        "recruiter": "For hiring context, the value is business impact: translating needs into usable workflows, reporting visibility, and practical solutions.",
+        "client": "For client/business context, the focus is solving real needs with fast, maintainable implementations.",
+        "technical": "For technical audiences, he can explain API integrations, practical architecture decisions, and clear AI-assisted implementation boundaries.",
+        "general": "The focus is practical utility, integration, and business adoption rather than traditional software-engineering positioning.",
+    }.get(intent, "The focus is practical utility, integration, and business adoption.")
+    if developer_question:
+        return f"{developer_line} {stack_line} {intent_tail}"
+    return f"{base_fact} {stack_line} {intent_tail}"
+
+
 def maybe_build_profile_grounded_analysis(submission: InboxSubmission) -> MessageAnalysis | None:
     normalized_text = normalize_match_text(submission.message or "")
     topic = detect_profile_grounding_topic(normalized_text)
@@ -1323,8 +1388,10 @@ def maybe_build_profile_grounded_analysis(submission: InboxSubmission) -> Messag
         )
 
     tooling_key = detect_tooling_key(normalized_text)
-    if tooling_key:
-        reply_text = TOOLING_FACTS.get(language, TOOLING_FACTS["en"]).get(tooling_key)
+    developer_question = detect_developer_positioning_question(normalized_text)
+    if tooling_key or developer_question:
+        intent = detect_chat_intent(normalized_text)
+        reply_text = build_tools_intent_reply(language, intent, tooling_key, developer_question)
         if reply_text:
             thread_title = {
                 "current_tools": "Current tools question",
@@ -1334,7 +1401,7 @@ def maybe_build_profile_grounded_analysis(submission: InboxSubmission) -> Messag
                 "qlik-sense": "Qlik Sense question",
                 "salesforce": "Salesforce question",
                 "endesa_tools": "Endesa tools question",
-            }.get(tooling_key, "Tools question")
+            }.get(tooling_key, "Tools question" if not developer_question else "Developer positioning question")
             summary = clean_text(submission.message or thread_title, 220, thread_title)
             return MessageAnalysis(
                 language=language,
@@ -1469,8 +1536,16 @@ def detect_chat_intent(normalized_text: str) -> str:
         "cliente", "colaboracion", "consultoria", "mejora de procesos", "propuesta", "presupuesto",
         "colaborador", "oportunidad profesional", "nuevo proyecto", "nuevos proyectos",
     }
+    technical_terms = {
+        "developer", "software engineer", "engineer", "programar", "programo", "codigo",
+        "coding", "code", "do you code", "can you code", "write code", "full stack",
+        "backend", "frontend", "api", "apis", "rest api", "architecture", "arquitectura",
+        "nextjs", "fastapi", "vercel", "render",
+    }
     if any(term in normalized_text for term in recruiter_terms):
         return "recruiter"
+    if any(term in normalized_text for term in technical_terms):
+        return "technical"
     if any(term in normalized_text for term in client_terms):
         return "client"
     return "general"
@@ -2183,6 +2258,7 @@ Si la intencion es recruiter o hiring, conecta la respuesta con encaje, experien
 Si la intencion es cliente o colaboracion, conecta la respuesta con procesos, reporting, workflows digitales e IA practica.
 Si preguntan si puede ayudar, si esta disponible, si acepta freelance, colaboraciones, nuevos proyectos o contacto directo, responde de forma natural y remite a WhatsApp sin sonar agresivo.
 Si preguntan por reporting, dashboards, automocion, perfil tecnico o si su perfil es mas de negocio o de datos, responde de forma directa usando solo el grounding disponible en el portfolio.
+Si preguntan por herramientas digitales o por si programa, responde con honestidad: se apoya en IA para construir soluciones y no se posiciona como software engineer tradicional.
 Si la informacion no esta en el portfolio o no puedes verificarla con el grounding disponible, no inventes y remite a WhatsApp.
 Si la pregunta es amplia ({guided_mode}), sintetiza primero y luego ofrece 2 o 3 caminos claros.
 Si la intencion de contacto es explicita ({contact_ready}), orienta el siguiente paso de forma practica y sin presion.
@@ -2209,6 +2285,7 @@ For recruiter or hiring intent, connect the answer to role fit, relevant experie
 For client or collaboration intent, connect the answer to process support, reporting, digital workflows, and practical AI use.
 If the user asks whether Carlos can help, is available, accepts freelance work, collaborations, new projects, or direct contact, answer naturally and guide them to WhatsApp without sounding pushy.
 If the user asks about reporting, dashboards, automotive experience, technical profile, or whether the profile is more business or data oriented, answer directly using only the grounded portfolio information.
+If the user asks about digital tools or whether he codes, answer honestly: he uses AI support to build solutions and does not position himself as a traditional software engineer.
 If the information is not in the portfolio or you cannot verify it from the available grounding, do not invent and send the user to WhatsApp.
 If the question is broad ({guided_mode}), synthesize first and then offer 2 or 3 clear directions.
 If contact intent is explicit ({contact_ready}), make the next step practical and low-pressure.
