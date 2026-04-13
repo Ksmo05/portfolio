@@ -42,6 +42,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(
 logger = logging.getLogger("ai-portfolio-inbox")
 CHAT_WIDGET_SOURCE = "portfolio-chat-widget"
 DASHBOARD_SOURCE = CHAT_WIDGET_SOURCE
+CHAT_SOURCE_EQUIVALENTS = (
+    "portfolio-chat-widget",
+    "portfolio-chat",
+    "chat-widget",
+    "portfolio-chatwidget",
+    "portfolio-widget-chat",
+)
 WHATSAPP_NUMBER = "+34 691068400"
 WHATSAPP_LINK = "https://wa.me/34691068400"
 WHATSAPP_TEXT = {
@@ -584,6 +591,41 @@ def normalize_locale_value(value: Any) -> str | None:
     return None
 
 
+def normalize_source_key(value: Any) -> str:
+    candidate = clean_text(value, 80).lower().replace("_", "-")
+    candidate = re.sub(r"\s+", "-", candidate).strip("-")
+    return candidate
+
+
+def canonicalize_source(value: Any, has_history: bool = False) -> str:
+    source_key = normalize_source_key(value)
+    if not source_key:
+        return CHAT_WIDGET_SOURCE
+    if has_history and source_key in {"portfolio-vercel", "portfolio-form", "contact-form", "contact"}:
+        return CHAT_WIDGET_SOURCE
+    if "chat" in source_key or "widget" in source_key or "assistant" in source_key:
+        return CHAT_WIDGET_SOURCE
+    return source_key
+
+
+def chat_scope_where(alias: str = "m") -> str:
+    placeholders = ", ".join(["?"] * len(CHAT_SOURCE_EQUIVALENTS))
+    return f"""
+        (
+            COALESCE(NULLIF(TRIM(LOWER({alias}.source)), ''), '') = ?
+            OR COALESCE(NULLIF(TRIM(LOWER({alias}.source)), ''), '') IN ({placeholders})
+            OR COALESCE(NULLIF(TRIM(LOWER({alias}.source)), ''), '') LIKE '%chat%'
+            OR COALESCE(NULLIF(TRIM({alias}.chat_intent), ''), '') <> ''
+            OR COALESCE({alias}.whatsapp_handoff, 0) = 1
+            OR {alias}.response_latency_ms IS NOT NULL
+        )
+    """.strip()
+
+
+def chat_scope_params() -> tuple[Any, ...]:
+    return (CHAT_WIDGET_SOURCE, *CHAT_SOURCE_EQUIVALENTS)
+
+
 def normalize_history_messages(value: Any) -> list[dict[str, str]]:
     if not isinstance(value, list):
         return []
@@ -651,13 +693,20 @@ def normalize_inbox_submission(raw_payload: Any, request: Request) -> tuple[Inbo
     header_locale = normalize_locale_value(request.headers.get("x-chat-locale"))
     locale = body_locale or header_locale
 
+    source_value = (
+        clean_optional_text(payload.get("source"), 80)
+        or clean_optional_text(request.headers.get("x-chat-source"), 80)
+        or CHAT_WIDGET_SOURCE
+    )
+    normalized_source = canonicalize_source(source_value, has_history=bool(history))
+
     normalized_payload = InboxSubmission.model_validate(
         {
             "name": clean_optional_text(payload.get("name"), 80) or "Website Visitor",
             "email": clean_email(payload.get("email")),
             "company": clean_optional_text(payload.get("company"), 120),
             "message": message or "",
-            "source": clean_optional_text(payload.get("source"), 80) or CHAT_WIDGET_SOURCE,
+            "source": normalized_source,
             "messages": history,
             "locale": locale,
         }
@@ -2912,9 +2961,11 @@ def serialize_message(row: sqlite3.Row) -> dict[str, Any]:
 
 
 def recent_messages(limit: int = 12) -> list[dict[str, Any]]:
+    where_sql = chat_scope_where("m")
+    where_params = chat_scope_params()
     with closing(get_connection()) as connection:
         rows = connection.execute(
-            """
+            f"""
             SELECT
                 m.id,
                 m.thread_id,
@@ -2939,11 +2990,11 @@ def recent_messages(limit: int = 12) -> list[dict[str, Any]]:
                 m.created_at
             FROM messages m
             JOIN threads t ON t.id = m.thread_id
-            WHERE m.source = ?
+            WHERE {where_sql}
             ORDER BY m.created_at DESC
             LIMIT ?
             """,
-            (DASHBOARD_SOURCE, limit),
+            (*where_params, limit),
         ).fetchall()
     items = [serialize_message(row) for row in rows]
     logger.info(
@@ -2989,15 +3040,17 @@ def thread_rows(limit: int = 20) -> list[dict[str, Any]]:
 
 def aggregate_counts(connection: sqlite3.Connection, column_name: str, fallback: str = "unknown") -> dict[str, int]:
     column_name = validate_dashboard_column(column_name)
+    where_sql = chat_scope_where("m")
+    where_params = chat_scope_params()
     rows = connection.execute(
         f"""
         SELECT COALESCE(NULLIF(TRIM({column_name}), ''), ?) AS label, COUNT(*) AS total
-        FROM messages
-        WHERE source = ?
+        FROM messages m
+        WHERE {where_sql}
         GROUP BY COALESCE(NULLIF(TRIM({column_name}), ''), ?)
         ORDER BY total DESC
         """,
-        (fallback, DASHBOARD_SOURCE, fallback),
+        (fallback, *where_params, fallback),
     ).fetchall()
     return {row["label"]: row["total"] for row in rows}
 
@@ -3023,8 +3076,10 @@ def aggregate_counts_for_source(
 
 
 def all_messages_for_export(connection: sqlite3.Connection) -> list[dict[str, Any]]:
+    where_sql = chat_scope_where("m")
+    where_params = chat_scope_params()
     rows = connection.execute(
-        """
+        f"""
         SELECT
             m.id,
             m.created_at,
@@ -3039,10 +3094,10 @@ def all_messages_for_export(connection: sqlite3.Connection) -> list[dict[str, An
             COALESCE(NULLIF(TRIM(m.theme_slug), ''), 'untagged') AS theme_slug,
             COALESCE(m.summary, m.message_summary, '') AS summary
         FROM messages m
-        WHERE m.source = ?
+        WHERE {where_sql}
         ORDER BY m.created_at DESC, m.id DESC
         """,
-        (DASHBOARD_SOURCE,),
+        where_params,
     ).fetchall()
     return [dict(row) for row in rows]
 
@@ -3103,41 +3158,46 @@ def dashboard_chart_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
 
 
 def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
-    total_messages = connection.execute("SELECT COUNT(*) AS total FROM messages WHERE source = ?", (DASHBOARD_SOURCE,)).fetchone()["total"]
+    where_sql = chat_scope_where("m")
+    where_params = chat_scope_params()
+    total_messages = connection.execute(
+        f"SELECT COUNT(*) AS total FROM messages m WHERE {where_sql}",
+        where_params,
+    ).fetchone()["total"]
     by_source = aggregate_counts(connection, "source", fallback="unknown")
     top_themes = [
         dict(row)
         for row in connection.execute(
-            """
+            f"""
             SELECT COALESCE(theme_label, 'General inbound inquiries') AS label,
                    COALESCE(theme_slug, 'general-inquiries') AS slug,
                    COUNT(*) AS total
-            FROM messages
-            WHERE source = ?
+            FROM messages m
+            WHERE {where_sql}
             GROUP BY COALESCE(theme_slug, 'general-inquiries'), COALESCE(theme_label, 'General inbound inquiries')
             ORDER BY total DESC
             LIMIT 6
             """,
-            (DASHBOARD_SOURCE,),
+            where_params,
         ).fetchall()
     ]
     message_volume = [
         dict(row)
         for row in connection.execute(
-            """
+            f"""
             SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS total
-            FROM messages
-            WHERE source = ? AND created_at >= ?
+            FROM messages m
+            WHERE {where_sql} AND m.created_at >= ?
             GROUP BY substr(created_at, 1, 10)
             ORDER BY day ASC
             """,
-            (DASHBOARD_SOURCE, iso_days_ago(30)),
+            (*where_params, iso_days_ago(30)),
         ).fetchall()
     ]
     highest_leads = [
         serialize_message(row)
         for row in connection.execute(
-            """
+            f"""
             SELECT
                 m.id,
                 m.thread_id,
@@ -3162,17 +3222,17 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
                 m.created_at
             FROM messages m
             JOIN threads t ON t.id = m.thread_id
-            WHERE m.source = ?
+            WHERE {where_sql}
             ORDER BY m.lead_score DESC, CASE m.priority WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END DESC, m.created_at DESC
             LIMIT 5
             """,
-            (DASHBOARD_SOURCE,),
+            where_params,
         ).fetchall()
     ]
     recent_high_priority = [
         serialize_message(row)
         for row in connection.execute(
-            """
+            f"""
             SELECT
                 m.id,
                 m.thread_id,
@@ -3197,18 +3257,18 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
                 m.created_at
             FROM messages m
             JOIN threads t ON t.id = m.thread_id
-            WHERE m.source = ? AND m.priority = 'high'
+            WHERE {where_sql} AND m.priority = 'high'
             ORDER BY m.created_at DESC
             LIMIT 6
             """
             ,
-            (DASHBOARD_SOURCE,),
+            where_params,
         ).fetchall()
     ]
     recent_priority_activity = recent_high_priority or [
         serialize_message(row)
         for row in connection.execute(
-            """
+            f"""
             SELECT
                 m.id,
                 m.thread_id,
@@ -3233,12 +3293,12 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
                 m.created_at
             FROM messages m
             JOIN threads t ON t.id = m.thread_id
-            WHERE m.source = ? AND m.priority IN ('high', 'medium')
+            WHERE {where_sql} AND m.priority IN ('high', 'medium')
             ORDER BY CASE m.priority WHEN 'high' THEN 2 WHEN 'medium' THEN 1 ELSE 0 END DESC, m.created_at DESC
             LIMIT 6
             """
             ,
-            (DASHBOARD_SOURCE,),
+            where_params,
         ).fetchall()
     ]
     top_opportunities = [item for item in highest_leads if item["lead_score"] >= 4][:4] or highest_leads[:4]
@@ -3267,19 +3327,21 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
 
 
 def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
+    where_sql = chat_scope_where("m")
+    where_params = chat_scope_params()
     rows = [
         dict(row)
         for row in connection.execute(
-            """
+            f"""
             SELECT
                 id,
                 created_at,
                 COALESCE(language, 'unknown') AS language
-            FROM messages
-            WHERE source = ?
+            FROM messages m
+            WHERE {where_sql}
             ORDER BY created_at ASC, id ASC
             """,
-            (DASHBOARD_SOURCE,),
+            where_params,
         ).fetchall()
     ]
 
@@ -3558,8 +3620,13 @@ async def dashboard() -> RedirectResponse:
 @app.get("/api/messages")
 async def list_messages(limit: int = Query(default=12, ge=1, le=100)) -> JSONResponse:
     items = recent_messages(limit)
+    where_sql = chat_scope_where("m")
+    where_params = chat_scope_params()
     with closing(get_connection()) as connection:
-        total_messages = connection.execute("SELECT COUNT(*) AS total FROM messages WHERE source = ?", (DASHBOARD_SOURCE,)).fetchone()["total"]
+        total_messages = connection.execute(
+            f"SELECT COUNT(*) AS total FROM messages m WHERE {where_sql}",
+            where_params,
+        ).fetchone()["total"]
         source_rows = connection.execute(
             """
             SELECT COALESCE(source, 'unknown') AS source, COUNT(*) AS total
