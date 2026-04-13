@@ -55,7 +55,7 @@ const copy: Record<Locale, ChatCopy> = {
     resetLabel: "Restart conversation",
     sendingLabel: "Carlos AI Assistant is typing...",
     fallbackError:
-      "I can't connect to the assistant right now. Please try again in a moment, use the portfolio form, or reach out on WhatsApp.",
+      "I can't connect to the assistant right now. Please try again in a moment or reach out on WhatsApp.",
     quickActions: [
       {
         id: "projects",
@@ -95,7 +95,7 @@ const copy: Record<Locale, ChatCopy> = {
     resetLabel: "Reiniciar conversacion",
     sendingLabel: "Carlos AI Assistant esta escribiendo...",
     fallbackError:
-      "No puedo conectar con el asistente ahora mismo. Intentalo de nuevo en unos segundos, usa el formulario del portfolio o escribeme por WhatsApp.",
+      "No puedo conectar con el asistente ahora mismo. Intentalo de nuevo en unos segundos o escribeme por WhatsApp.",
     quickActions: [
       {
         id: "projects",
@@ -209,7 +209,6 @@ function getInstantReply(message: string, locale: Locale): { reply: string; what
     "new projects",
     "whatsapp",
     "direct conversation",
-    "contact form",
   ]));
   if (includesAny(normalized, contactTerms)) {
     return {
@@ -290,25 +289,6 @@ function getInstantReply(message: string, locale: Locale): { reply: string; what
         locale === "es"
           ? "Antes de RPC, el portfolio recoge experiencia en Endesa, Ayuntamiento de Madrid, Openbank y Movistar Prosegur Alarmas, con foco en operaciones, documentacion, soporte y seguimiento de procesos."
           : "Before RPC, the portfolio includes experience at Endesa, Ayuntamiento de Madrid, Openbank, and Movistar Prosegur Alarmas, focused on operations, documentation, support, and process follow-up.",
-      whatsappUrl: null,
-    };
-  }
-
-  const toolsTerms = [
-    "que herramientas utilizas",
-    "que herramientas usas",
-    "con que herramientas trabajas",
-    "que software utilizas",
-    "what tools do you use",
-    "what software do you use",
-    "current tools",
-  ];
-  if (includesAny(normalized, toolsTerms)) {
-    return {
-      reply:
-        locale === "es"
-          ? "En su trabajo actual en RPC, Carlos utiliza principalmente SAP, Excel y Qlik Sense."
-          : "In his current role at RPC, Carlos mainly works with SAP, Excel, and Qlik Sense.",
       whatsappUrl: null,
     };
   }

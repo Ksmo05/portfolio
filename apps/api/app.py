@@ -1596,7 +1596,7 @@ def detect_profile_grounding_topic(normalized_text: str) -> str | None:
     }
     education_terms = {
         "education", "academic background", "studies", "study", "studied", "what has he studied",
-        "what does he study", "formacion", "estudios", "que estudia", "que ha estudiado",
+        "what does he study", "estudios", "que estudia", "que ha estudiado",
         "que estudiaste", "que has estudiado", "que formacion tienes", "formacion academica", "academic studies",
         "what did you study", "what have you studied",
     }
@@ -1632,7 +1632,9 @@ def detect_tooling_key(normalized_text: str) -> str | None:
         "herramientas utilizas", "herramientas usas", "con que herramientas trabajas", "con que herramientas usas",
         "software utilizas", "herramientas utilizas actualmente", "herramientas usas actualmente",
         "herramientas usas en tu trabajo actual", "que herramientas utilizas", "que herramientas usas",
+        "herramientas digitales", "que herramientas digitales manejas", "que herramientas digitales maneja",
         "what tools do you use", "which tools do you use", "what software do you use", "current tools",
+        "digital tools", "tool stack",
     }
     previous_markers = {
         "herramientas has utilizado", "herramientas usabas", "otros proyectos", "experiencias previas",
@@ -1642,6 +1644,10 @@ def detect_tooling_key(normalized_text: str) -> str | None:
 
     if detect_whatsapp_request(normalized_text) or detect_direct_contact_request(normalized_text):
         return None
+    if "herramient" in normalized_text and "digital" in normalized_text:
+        return "current_tools"
+    if "tools" in normalized_text and "digital" in normalized_text:
+        return "current_tools"
     if "salesforce" in normalized_text:
         return "salesforce"
     if "qlik sense" in normalized_text:
@@ -1955,29 +1961,27 @@ def build_feedback_recovery_reply(language: str, intent: str, whatsapp_offer: bo
 
 def build_scope_gap_reply(language: str, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
     whatsapp_url = build_whatsapp_url(language)
-    form_url = build_contact_form_url(language)
     if language == "es":
         return (
             "No tengo esa informacion con suficiente precision. "
-            f"Puedes escribirme por el formulario ({form_url}) o por WhatsApp ({whatsapp_url})."
+            f"Puedes escribirme directamente por WhatsApp ({whatsapp_url})."
         )
     return (
         "I do not have that information with enough precision. "
-        f"You can reach out through the portfolio form ({form_url}) or directly on WhatsApp ({whatsapp_url})."
+        f"You can reach out directly on WhatsApp ({whatsapp_url})."
     )
 
 
 def build_conversation_close_reply(language: str) -> str:
     whatsapp_url = build_whatsapp_url(language)
-    form_url = build_contact_form_url(language)
     if language == "es":
         return (
             "Encantado de haberte ayudado. Para cualquier otra duda "
-            f"puedes escribirme por el formulario ({form_url}) o por WhatsApp ({whatsapp_url})."
+            f"puedes escribirme por WhatsApp ({whatsapp_url})."
         )
     return (
         "Glad I could help. If you need anything else, "
-        f"you can reach out through the form ({form_url}) or on WhatsApp ({whatsapp_url})."
+        f"you can reach out on WhatsApp ({whatsapp_url})."
     )
 
 
@@ -1985,8 +1989,8 @@ def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, 
     if language == "es":
         if contact_ready or topic == "contact":
             return (
-                "Si quieres seguir con ello, puedes escribirme por el formulario "
-                f"({build_contact_form_url(language)}) o directamente por WhatsApp ({build_whatsapp_url(language)})."
+                "Si quieres seguir con ello, puedes escribirme directamente por WhatsApp "
+                f"({build_whatsapp_url(language)})."
             )
         if whatsapp_offer and whatsapp_reason:
             return build_whatsapp_cta(language, whatsapp_reason)
@@ -1998,8 +2002,8 @@ def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, 
 
     if contact_ready or topic == "contact":
         return (
-            "If you want to continue, you can reach out through the form "
-            f"({build_contact_form_url(language)}) or directly on WhatsApp ({build_whatsapp_url(language)})."
+            "If you want to continue, you can reach out directly on WhatsApp "
+            f"({build_whatsapp_url(language)})."
         )
     if whatsapp_offer and whatsapp_reason:
         return build_whatsapp_cta(language, whatsapp_reason)
