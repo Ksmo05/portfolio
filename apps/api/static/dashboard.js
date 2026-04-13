@@ -776,6 +776,7 @@
     console.debug("[dashboard] loaded chat + ga4 dataset", {
       rawCount: rawItems.length,
       rawSources: rawMessagesData && rawMessagesData.sources ? rawMessagesData.sources : {},
+      scopeMode: rawMessagesData && rawMessagesData.scope_mode ? rawMessagesData.scope_mode : "unknown",
       gaStatus: analytics && analytics.status ? analytics.status : "unknown",
       databasePath: rawMessagesData && rawMessagesData.database_path ? rawMessagesData.database_path : "unknown",
     });

@@ -626,6 +626,25 @@ def chat_scope_params() -> tuple[Any, ...]:
     return (CHAT_WIDGET_SOURCE, *CHAT_SOURCE_EQUIVALENTS)
 
 
+def resolve_dashboard_scope(
+    connection: sqlite3.Connection,
+    alias: str = "m",
+) -> tuple[str, tuple[Any, ...], str]:
+    where_sql = chat_scope_where(alias)
+    params = chat_scope_params()
+    total = connection.execute(
+        f"SELECT COUNT(*) AS total FROM messages {alias} WHERE {where_sql}",
+        params,
+    ).fetchone()["total"]
+    if int(total or 0) > 0:
+        return where_sql, params, "chat-scope"
+    logger.warning(
+        "Dashboard chat-scope returned zero rows | database_path=%s | fallback_scope=all-messages",
+        settings.database_path,
+    )
+    return "1=1", tuple(), "all-messages-fallback"
+
+
 def normalize_history_messages(value: Any) -> list[dict[str, str]]:
     if not isinstance(value, list):
         return []
@@ -2961,9 +2980,8 @@ def serialize_message(row: sqlite3.Row) -> dict[str, Any]:
 
 
 def recent_messages(limit: int = 12) -> list[dict[str, Any]]:
-    where_sql = chat_scope_where("m")
-    where_params = chat_scope_params()
     with closing(get_connection()) as connection:
+        where_sql, where_params, scope_mode = resolve_dashboard_scope(connection, "m")
         rows = connection.execute(
             f"""
             SELECT
@@ -2998,10 +3016,11 @@ def recent_messages(limit: int = 12) -> list[dict[str, Any]]:
         ).fetchall()
     items = [serialize_message(row) for row in rows]
     logger.info(
-        "Dashboard recent messages read | database_path=%s | limit=%s | returned=%s",
+        "Dashboard recent messages read | database_path=%s | limit=%s | returned=%s | scope_mode=%s",
         settings.database_path,
         limit,
         len(items),
+        scope_mode,
     )
     return items
 
@@ -3040,8 +3059,7 @@ def thread_rows(limit: int = 20) -> list[dict[str, Any]]:
 
 def aggregate_counts(connection: sqlite3.Connection, column_name: str, fallback: str = "unknown") -> dict[str, int]:
     column_name = validate_dashboard_column(column_name)
-    where_sql = chat_scope_where("m")
-    where_params = chat_scope_params()
+    where_sql, where_params, _ = resolve_dashboard_scope(connection, "m")
     rows = connection.execute(
         f"""
         SELECT COALESCE(NULLIF(TRIM({column_name}), ''), ?) AS label, COUNT(*) AS total
@@ -3076,8 +3094,7 @@ def aggregate_counts_for_source(
 
 
 def all_messages_for_export(connection: sqlite3.Connection) -> list[dict[str, Any]]:
-    where_sql = chat_scope_where("m")
-    where_params = chat_scope_params()
+    where_sql, where_params, _ = resolve_dashboard_scope(connection, "m")
     rows = connection.execute(
         f"""
         SELECT
@@ -3158,8 +3175,7 @@ def dashboard_chart_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
 
 
 def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
-    where_sql = chat_scope_where("m")
-    where_params = chat_scope_params()
+    where_sql, where_params, scope_mode = resolve_dashboard_scope(connection, "m")
     total_messages = connection.execute(
         f"SELECT COUNT(*) AS total FROM messages m WHERE {where_sql}",
         where_params,
@@ -3317,18 +3333,18 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
         "recurring_interests": top_themes[:4],
     }
     logger.info(
-        "Dashboard metrics read | database_path=%s | total_messages=%s | by_source=%s | by_language=%s",
+        "Dashboard metrics read | database_path=%s | total_messages=%s | by_source=%s | by_language=%s | scope_mode=%s",
         settings.database_path,
         metrics["total_messages"],
         metrics["by_source"],
         metrics["by_language"],
+        scope_mode,
     )
     return metrics
 
 
 def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
-    where_sql = chat_scope_where("m")
-    where_params = chat_scope_params()
+    where_sql, where_params, scope_mode = resolve_dashboard_scope(connection, "m")
     rows = [
         dict(row)
         for row in connection.execute(
@@ -3371,6 +3387,7 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
         "spanish_interactions": by_language.get("es", 0),
         "english_interactions": by_language.get("en", 0),
         "daily_interactions": daily_interactions,
+        "scope_mode": scope_mode,
         "interaction_definition": "One interaction equals one persisted chat message row with source portfolio-chat-widget.",
     }
     logger.info(
@@ -3620,9 +3637,8 @@ async def dashboard() -> RedirectResponse:
 @app.get("/api/messages")
 async def list_messages(limit: int = Query(default=12, ge=1, le=100)) -> JSONResponse:
     items = recent_messages(limit)
-    where_sql = chat_scope_where("m")
-    where_params = chat_scope_params()
     with closing(get_connection()) as connection:
+        where_sql, where_params, scope_mode = resolve_dashboard_scope(connection, "m")
         total_messages = connection.execute(
             f"SELECT COUNT(*) AS total FROM messages m WHERE {where_sql}",
             where_params,
@@ -3650,6 +3666,7 @@ async def list_messages(limit: int = Query(default=12, ge=1, le=100)) -> JSONRes
             "items": items,
             "sources": by_source,
             "total": total_messages,
+            "scope_mode": scope_mode,
             "database_path": str(settings.database_path),
         }
     )
