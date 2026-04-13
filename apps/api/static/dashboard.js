@@ -709,10 +709,6 @@
     });
   }
 
-  function isChatSource(value) {
-    return String(value || "").toLowerCase().includes("chat");
-  }
-
   function fallbackChatAnalytics(rawItems) {
     const byLanguage = { es: 0, en: 0, unknown: 0 };
     const dailyTotals = {};
@@ -775,9 +771,7 @@
       fetchJsonOrNull("/api/dashboard/analytics"),
     ]);
 
-    const rawItems = safeItems(rawMessagesData).filter(function (item) {
-      return isChatSource(item && item.source);
-    });
+    const rawItems = safeItems(rawMessagesData);
 
     console.debug("[dashboard] loaded chat + ga4 dataset", {
       rawCount: rawItems.length,

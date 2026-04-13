@@ -484,21 +484,6 @@ export default function ChatWidget() {
     setIsOpen(true);
 
     try {
-      if (instantReply) {
-        const assistantMessage = withWhatsAppCta(instantReply.reply, instantReply.whatsappUrl);
-        setMessages((current) => [...current, makeMessage("assistant", assistantMessage)]);
-        void sendChatMessage(trimmed, history, locale).then(function (result) {
-          if (result.whatsappHandoff && result.whatsappUrl) {
-            console.debug("[ChatWidget] instant reply persisted with CTA", {
-              whatsappHandoff: result.whatsappHandoff,
-              whatsappUrl: result.whatsappUrl,
-            });
-          }
-        }).catch(function (error) {
-          console.warn("[ChatWidget] instant reply persistence failed", error);
-        });
-        return;
-      }
       const result = await sendChatMessage(trimmed, history, locale);
       const assistantMessage = withWhatsAppCta(result.reply, result.whatsappUrl);
       if (result.whatsappHandoff && result.whatsappUrl) {
@@ -510,6 +495,11 @@ export default function ChatWidget() {
       setMessages((current) => [...current, makeMessage("assistant", assistantMessage)]);
     } catch (error) {
       console.error("[ChatWidget] send failed", error);
+      if (instantReply) {
+        const localAssistantMessage = withWhatsAppCta(instantReply.reply, instantReply.whatsappUrl);
+        setMessages((current) => [...current, makeMessage("assistant", localAssistantMessage)]);
+        return;
+      }
       const fallbackProfilePath = locale === "es" ? "/es/professional-profile" : "/en/professional-profile";
       const fallbackMessage =
         error instanceof Error &&
