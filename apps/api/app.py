@@ -615,9 +615,16 @@ def chat_scope_where(alias: str = "m") -> str:
             COALESCE(NULLIF(TRIM(LOWER({alias}.source)), ''), '') = ?
             OR COALESCE(NULLIF(TRIM(LOWER({alias}.source)), ''), '') IN ({placeholders})
             OR COALESCE(NULLIF(TRIM(LOWER({alias}.source)), ''), '') LIKE '%chat%'
+            OR COALESCE(NULLIF(TRIM(LOWER({alias}.analysis_engine)), ''), '') LIKE 'chat-%'
             OR COALESCE(NULLIF(TRIM({alias}.chat_intent), ''), '') <> ''
             OR COALESCE({alias}.whatsapp_handoff, 0) = 1
             OR {alias}.response_latency_ms IS NOT NULL
+            OR (
+                COALESCE(NULLIF(TRIM(LOWER({alias}.source)), ''), '') IN ('portfolio-vercel', 'portfolio-form', 'contact-form')
+                AND COALESCE(NULLIF(TRIM({alias}.user_email), ''), '') = ''
+                AND COALESCE(NULLIF(TRIM({alias}.company), ''), '') = ''
+                AND COALESCE(NULLIF(TRIM(LOWER({alias}.user_name)), ''), '') IN ('', 'website visitor', 'visitor')
+            )
         )
     """.strip()
 
@@ -639,10 +646,12 @@ def resolve_dashboard_scope(
     if int(total or 0) > 0:
         return where_sql, params, "chat-scope"
     logger.warning(
-        "Dashboard chat-scope returned zero rows | database_path=%s | fallback_scope=all-messages",
+        "Dashboard chat-scope returned zero rows | database_path=%s | fallback_scope=chat-source-only",
         settings.database_path,
     )
-    return "1=1", tuple(), "all-messages-fallback"
+    placeholders = ", ".join(["?"] * len(CHAT_SOURCE_EQUIVALENTS))
+    source_only = f"COALESCE(NULLIF(TRIM(LOWER({alias}.source)), ''), '') IN ({placeholders})"
+    return source_only, CHAT_SOURCE_EQUIVALENTS, "chat-source-only"
 
 
 def normalize_history_messages(value: Any) -> list[dict[str, str]]:
@@ -1220,6 +1229,39 @@ def ensure_columns(connection: sqlite3.Connection, table_name: str, columns: dic
             connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
 
 
+def backfill_chat_sources(connection: sqlite3.Connection) -> int:
+    cursor = connection.execute(
+        """
+        UPDATE messages
+        SET source = ?
+        WHERE COALESCE(NULLIF(TRIM(LOWER(source)), ''), '') NOT IN (
+            'portfolio-chat-widget',
+            'portfolio-chat',
+            'chat-widget',
+            'portfolio-chatwidget',
+            'portfolio-widget-chat'
+        )
+        AND (
+            COALESCE(NULLIF(TRIM(LOWER(analysis_engine)), ''), '') LIKE 'chat-%'
+            OR COALESCE(NULLIF(TRIM(chat_intent), ''), '') <> ''
+            OR COALESCE(whatsapp_handoff, 0) = 1
+            OR response_latency_ms IS NOT NULL
+            OR (
+                COALESCE(NULLIF(TRIM(LOWER(source)), ''), '') IN ('portfolio-vercel', 'portfolio-form', 'contact-form')
+                AND COALESCE(NULLIF(TRIM(user_email), ''), '') = ''
+                AND COALESCE(NULLIF(TRIM(company), ''), '') = ''
+                AND COALESCE(NULLIF(TRIM(LOWER(user_name)), ''), '') IN ('', 'website visitor', 'visitor')
+            )
+        )
+        """,
+        (CHAT_WIDGET_SOURCE,),
+    )
+    updated = int(cursor.rowcount or 0)
+    if updated > 0:
+        logger.info("Backfilled chat source for legacy rows | updated=%s", updated)
+    return updated
+
+
 def init_db() -> None:
     with closing(get_connection()) as connection:
         connection.executescript(
@@ -1336,7 +1378,10 @@ def init_db() -> None:
         connection.execute("CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages(thread_id)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_messages_theme_slug ON messages(theme_slug)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_messages_source ON messages(source)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_messages_analysis_engine ON messages(analysis_engine)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_threads_theme_slug ON threads(theme_slug)")
+        backfill_chat_sources(connection)
         connection.commit()
 
 
@@ -3379,7 +3424,7 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
     daily_interactions = [
         {"day": day, "total": total}
         for day, total in sorted(daily_totals.items())
-    ][-14:]
+    ]
 
     analytics = {
         "total_interactions": total_interactions,

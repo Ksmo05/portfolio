@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="{{ url_for('static', path='widget.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', path='widget.css') }}?v=20260414-3" />
     <script src="https://www.gstatic.com/charts/loader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
   </head>
@@ -130,12 +130,12 @@
             </div>
             <span class="status-chip soft-status" id="chatAnalyticsCount">Loading</span>
           </div>
-          <p class="section-helper">Real daily volume from persisted chat interactions only (source = `portfolio-chat-widget`).</p>
+          <p class="section-helper">Real daily volume from persisted portfolio chat interactions only.</p>
           <div id="chatDailyChartCard" class="chart-surface compact-top">
             <div class="chart-surface-head">
               <span class="section-kicker">Volume</span>
               <h3>Daily chat interactions</h3>
-              <p>Bar chart of chat widget interactions per day across the most recent 14-day window with available data.</p>
+              <p>Bar chart of chat widget interactions per day across all available days in the persisted history.</p>
             </div>
             <div class="chart-canvas-wrap chart-canvas-tall">
               <canvas id="chatDailyBarChart"></canvas>
@@ -195,7 +195,7 @@
             </div>
             <span class="status-chip" id="recentMessagesCount">Loading</span>
           </div>
-          <p class="section-helper">Filter by urgency, source, language, or search terms to review the current inbox feed.</p>
+          <p class="section-helper">Filter chat interactions by urgency, source, language, or search terms.</p>
 
           <div class="dashboard-toolbar">
             <label class="toolbar-field">
@@ -207,7 +207,7 @@
             <label class="toolbar-field">
               <span>Source</span>
               <select id="filterSource">
-                <option value="">All sources</option>
+                <option value="">All chat sources</option>
               </select>
             </label>
             <label class="toolbar-field">
@@ -229,6 +229,6 @@
       </section>
     </main>
 
-    <script src="{{ url_for('static', path='dashboard.js') }}" defer></script>
+    <script src="{{ url_for('static', path='dashboard.js') }}?v=20260414-3" defer></script>
   </body>
 </html>

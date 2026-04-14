@@ -34,6 +34,12 @@
     return Array.isArray(data && data.items) ? data.items : [];
   }
 
+  function isFormSource(value) {
+    const source = String(value || "").trim().toLowerCase();
+    if (!source) return false;
+    return source.includes("form") || source === "portfolio-vercel" || source === "portfolio-contact";
+  }
+
   async function fetchJsonOrNull(url) {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(function () {
@@ -124,6 +130,10 @@
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
+  }
+
+  function compareByDateDesc(a, b) {
+    return String(b && b.created_at ? b.created_at : "").localeCompare(String(a && a.created_at ? a.created_at : ""));
   }
 
   function buildFilterOptions(items, key, preferredOrder) {
@@ -771,7 +781,9 @@
       fetchJsonOrNull("/api/dashboard/analytics"),
     ]);
 
-    const rawItems = safeItems(rawMessagesData);
+    const rawItems = safeItems(rawMessagesData).filter(function (item) {
+      return !isFormSource(item && item.source);
+    });
 
     console.debug("[dashboard] loaded chat + ga4 dataset", {
       rawCount: rawItems.length,
@@ -797,9 +809,21 @@
         ? messages.chat_analytics
         : fallbackChatAnalytics(rawItems);
 
-    const totalChatInteractions = Number(chatAnalytics.total_interactions || 0);
-    const chatSpanish = Number(chatAnalytics.spanish_interactions || 0);
-    const chatEnglish = Number(chatAnalytics.english_interactions || 0);
+    const fallbackByLanguage = rawItems.reduce(
+      function (acc, item) {
+        const language = String(item && item.language ? item.language : "unknown").toLowerCase();
+        if (!acc[language]) {
+          acc[language] = 0;
+        }
+        acc[language] += 1;
+        return acc;
+      },
+      { es: 0, en: 0, unknown: 0 }
+    );
+
+    const totalChatInteractions = Number(chatAnalytics.total_interactions || rawItems.length || 0);
+    const chatSpanish = Number(chatAnalytics.spanish_interactions || fallbackByLanguage.es || 0);
+    const chatEnglish = Number(chatAnalytics.english_interactions || fallbackByLanguage.en || 0);
     const chatHighPriority = rawItems.filter(function (item) {
       return String(item && item.priority ? item.priority : "").toLowerCase() === "high";
     }).length;
@@ -847,14 +871,35 @@
     setCardVisible("ga4AnalyticsCard", gaHasMetrics || gaHasCountries);
 
     destroyCharts();
-    const chatDailyItems = Array.isArray(chatAnalytics.daily_interactions)
-      ? chatAnalytics.daily_interactions.map(function (item) {
-          return {
-            label: formatShortDayLabel(item.day),
-            value: item.total || 0,
-          };
-        })
-      : [];
+    const fallbackDailyMap = rawItems.reduce(function (acc, item) {
+      const day = String(item && item.created_at ? item.created_at : "").slice(0, 10);
+      if (!day) return acc;
+      acc[day] = (acc[day] || 0) + 1;
+      return acc;
+    }, {});
+    const fallbackDailyItems = Object.entries(fallbackDailyMap)
+      .map(function ([day, total]) {
+        return { day: day, total: total };
+      })
+      .sort(function (a, b) {
+        return String(a.day).localeCompare(String(b.day));
+      });
+
+    const rawDailyItems = Array.isArray(chatAnalytics.daily_interactions) && chatAnalytics.daily_interactions.length > 0
+      ? chatAnalytics.daily_interactions
+      : fallbackDailyItems;
+
+    const chatDailyItems = rawDailyItems.map(function (item) {
+      return {
+        label: formatShortDayLabel(item.day),
+        value: item.total || 0,
+      };
+    });
+    if (rawDailyItems.length > 0) {
+      const firstDay = rawDailyItems[0].day || "";
+      const lastDay = rawDailyItems[rawDailyItems.length - 1].day || "";
+      setText("chatAnalyticsCount", `${totalChatInteractions} chat interactions (${firstDay} to ${lastDay})`);
+    }
     const showChatDaily = hasPositiveValues(chatDailyItems);
     setCardVisible("chatOverviewCard", totalChatInteractions > 0);
     setCardVisible("chatDailyChartCard", showChatDaily);
@@ -926,9 +971,9 @@
           const matchesLanguage = !languageFilter.value || item.language === languageFilter.value;
           const matchesSearch = !searchFilter.value || messageSearchBlob(item).includes(searchFilter.value.trim().toLowerCase());
           return matchesPriority && matchesSource && matchesLanguage && matchesSearch;
-        });
+        }).sort(compareByDateDesc);
 
-        recentMessagesCount.textContent = `${filteredItems.length} shown`;
+        recentMessagesCount.textContent = `${filteredItems.length} shown / ${rawItems.length} total`;
         renderRecentMessages(recentMessagesTable, filteredItems.slice(0, 24));
       }
 
