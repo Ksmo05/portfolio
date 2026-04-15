@@ -273,6 +273,48 @@
     });
   }
 
+  function renderDebugMetricList(container, items, labelKey) {
+    if (!container) return;
+    container.innerHTML = "";
+    if (!Array.isArray(items) || items.length === 0) {
+      container.appendChild(createElement("div", "empty-state small-empty", "No rows available."));
+      return;
+    }
+    items.forEach(function (item) {
+      const row = createElement("div", "list-row");
+      const label = createElement("strong", null, item && item[labelKey] ? item[labelKey] : "unknown");
+      const value = createElement("span", "tag", String(item && item.total ? item.total : 0));
+      row.appendChild(label);
+      row.appendChild(value);
+      container.appendChild(row);
+    });
+  }
+
+  function renderDebugRows(container, items) {
+    if (!container) return;
+    container.innerHTML = "";
+    if (!Array.isArray(items) || items.length === 0) {
+      container.appendChild(createElement("div", "empty-state small-empty", "No persisted rows found."));
+      return;
+    }
+    items.forEach(function (item) {
+      const wrapper = createElement("div", "list-stack-item");
+      const top = createElement("div", "list-row");
+      top.appendChild(createElement("strong", null, `#${item && item.id ? item.id : "-"}`));
+      top.appendChild(createElement("span", "tag", formatMessageDate(item && item.created_at ? item.created_at : "")));
+      const meta = createElement(
+        "p",
+        "inline-meta",
+        `source=${item && item.source ? item.source : "unknown"} | engine=${item && item.analysis_engine ? item.analysis_engine : "unknown"} | lang=${item && item.language ? item.language : "unknown"} | intent=${item && item.chat_intent ? item.chat_intent : "unknown"}`
+      );
+      const preview = createElement("p", "section-helper", item && item.preview ? item.preview : "No preview");
+      wrapper.appendChild(top);
+      wrapper.appendChild(meta);
+      wrapper.appendChild(preview);
+      container.appendChild(wrapper);
+    });
+  }
+
   function formatShortDayLabel(value) {
     if (!value) return "-";
     const parsed = new Date(`${value}T00:00:00`);
@@ -807,10 +849,11 @@
   }
 
   async function loadDashboard() {
-    const [rawMessagesData, messages, analytics] = await Promise.all([
+    const [rawMessagesData, messages, analytics, chatDebug] = await Promise.all([
       fetchJsonOrNull("/api/messages?limit=100"),
       fetchJsonOrNull("/api/dashboard/messages"),
       fetchJsonOrNull("/api/dashboard/analytics"),
+      fetchJsonOrNull("/api/debug/chat-persistence"),
     ]);
 
     const rawItems = safeItems(rawMessagesData).filter(function (item) {
@@ -823,7 +866,18 @@
       scopeMode: rawMessagesData && rawMessagesData.scope_mode ? rawMessagesData.scope_mode : "unknown",
       gaStatus: analytics && analytics.status ? analytics.status : "unknown",
       databasePath: rawMessagesData && rawMessagesData.database_path ? rawMessagesData.database_path : "unknown",
+      debug: chatDebug,
     });
+
+    setText("chatDebugScopeMode", chatDebug && chatDebug.scope_mode ? chatDebug.scope_mode : "Unavailable");
+    setText("chatDebugDatabasePath", chatDebug && chatDebug.database_path ? chatDebug.database_path : "unknown");
+    setText("chatDebugStrictTotal", String(chatDebug && Number.isFinite(Number(chatDebug.strict_chat_total)) ? Number(chatDebug.strict_chat_total) : 0));
+    setText("chatDebugResolvedTotal", String(chatDebug && Number.isFinite(Number(chatDebug.resolved_chat_total)) ? Number(chatDebug.resolved_chat_total) : 0));
+    setText("chatDebugCanonicalTotal", String(chatDebug && Number.isFinite(Number(chatDebug.canonical_source_total)) ? Number(chatDebug.canonical_source_total) : 0));
+    setText("chatDebugTotalMessages", String(chatDebug && Number.isFinite(Number(chatDebug.total_messages)) ? Number(chatDebug.total_messages) : 0));
+    renderDebugMetricList($("chatDebugSources"), chatDebug && Array.isArray(chatDebug.source_breakdown) ? chatDebug.source_breakdown : [], "source");
+    renderDebugMetricList($("chatDebugEngines"), chatDebug && Array.isArray(chatDebug.analysis_breakdown) ? chatDebug.analysis_breakdown : [], "analysis_engine");
+    renderDebugRows($("chatDebugRows"), chatDebug && Array.isArray(chatDebug.recent_rows) ? chatDebug.recent_rows : []);
 
     renderGaMetricStrip($("gaTopMetrics"), analytics);
     renderGaCountriesTable($("gaCountriesTable"), analytics);

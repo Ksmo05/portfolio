@@ -3790,6 +3790,128 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
     return analytics
 
 
+def dashboard_chat_debug(connection: sqlite3.Connection) -> dict[str, Any]:
+    strict_where = chat_scope_where("m")
+    strict_params = chat_scope_params()
+    resolved_where, resolved_params, scope_mode = resolve_dashboard_scope(connection, "m")
+
+    total_messages = int(
+        connection.execute("SELECT COUNT(*) AS total FROM messages").fetchone()["total"] or 0
+    )
+    strict_total = int(
+        connection.execute(
+            f"SELECT COUNT(*) AS total FROM messages m WHERE {strict_where}",
+            strict_params,
+        ).fetchone()["total"]
+        or 0
+    )
+    resolved_total = int(
+        connection.execute(
+            f"SELECT COUNT(*) AS total FROM messages m WHERE {resolved_where}",
+            resolved_params,
+        ).fetchone()["total"]
+        or 0
+    )
+    canonical_total = int(
+        connection.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM messages
+            WHERE COALESCE(NULLIF(TRIM(LOWER(source)), ''), '') = ?
+            """,
+            (CHAT_WIDGET_SOURCE,),
+        ).fetchone()["total"]
+        or 0
+    )
+
+    source_breakdown = [
+        {
+            "source": str(row["source"] or "unknown"),
+            "total": int(row["total"] or 0),
+        }
+        for row in connection.execute(
+            """
+            SELECT COALESCE(NULLIF(TRIM(source), ''), 'unknown') AS source, COUNT(*) AS total
+            FROM messages
+            GROUP BY COALESCE(NULLIF(TRIM(source), ''), 'unknown')
+            ORDER BY total DESC, source ASC
+            LIMIT 12
+            """
+        ).fetchall()
+    ]
+    analysis_breakdown = [
+        {
+            "analysis_engine": str(row["analysis_engine"] or "unknown"),
+            "total": int(row["total"] or 0),
+        }
+        for row in connection.execute(
+            """
+            SELECT COALESCE(NULLIF(TRIM(analysis_engine), ''), 'unknown') AS analysis_engine, COUNT(*) AS total
+            FROM messages
+            GROUP BY COALESCE(NULLIF(TRIM(analysis_engine), ''), 'unknown')
+            ORDER BY total DESC, analysis_engine ASC
+            LIMIT 12
+            """
+        ).fetchall()
+    ]
+    recent_rows = [
+        {
+            "id": int(row["id"] or 0),
+            "created_at": row["created_at"],
+            "source": row["source"],
+            "analysis_engine": row["analysis_engine"],
+            "language": row["language"],
+            "chat_intent": row["chat_intent"],
+            "conversation_goal": row["conversation_goal"],
+            "reply_type": row["reply_type"],
+            "priority": row["priority"],
+            "lead_score": row["lead_score"],
+            "preview": row["preview"],
+        }
+        for row in connection.execute(
+            """
+            SELECT
+                id,
+                created_at,
+                COALESCE(NULLIF(TRIM(source), ''), 'unknown') AS source,
+                COALESCE(NULLIF(TRIM(analysis_engine), ''), 'unknown') AS analysis_engine,
+                COALESCE(NULLIF(TRIM(language), ''), 'unknown') AS language,
+                COALESCE(NULLIF(TRIM(chat_intent), ''), 'unknown') AS chat_intent,
+                COALESCE(NULLIF(TRIM(conversation_goal), ''), 'unknown') AS conversation_goal,
+                COALESCE(NULLIF(TRIM(reply_type), ''), 'unknown') AS reply_type,
+                COALESCE(NULLIF(TRIM(priority), ''), 'unknown') AS priority,
+                COALESCE(lead_score, 0) AS lead_score,
+                substr(COALESCE(raw_message, message_text, ''), 1, 120) AS preview
+            FROM messages
+            ORDER BY created_at DESC, id DESC
+            LIMIT 10
+            """
+        ).fetchall()
+    ]
+
+    debug_payload = {
+        "database_path": str(settings.database_path),
+        "scope_mode": scope_mode,
+        "strict_chat_total": strict_total,
+        "resolved_chat_total": resolved_total,
+        "canonical_source_total": canonical_total,
+        "total_messages": total_messages,
+        "source_breakdown": source_breakdown,
+        "analysis_breakdown": analysis_breakdown,
+        "recent_rows": recent_rows,
+    }
+    logger.info(
+        "Dashboard chat debug served | database_path=%s | total_messages=%s | strict_chat_total=%s | resolved_chat_total=%s | canonical_source_total=%s | scope_mode=%s",
+        settings.database_path,
+        total_messages,
+        strict_total,
+        resolved_total,
+        canonical_total,
+        scope_mode,
+    )
+    return debug_payload
+
+
 def fallback_executive_summary(metrics: dict[str, Any]) -> str:
     total = metrics["total_messages"]
     top_theme = metrics["top_themes"][0]["label"] if metrics["top_themes"] else "general inbound inquiries"
@@ -4061,6 +4183,13 @@ async def list_messages(limit: int = Query(default=12, ge=1, le=100)) -> JSONRes
             "database_path": str(settings.database_path),
         }
     )
+
+
+@app.get("/api/debug/chat-persistence")
+async def debug_chat_persistence() -> JSONResponse:
+    with closing(get_connection()) as connection:
+        payload = dashboard_chat_debug(connection)
+    return json_no_store(payload)
 
 
 @app.get("/api/threads")
