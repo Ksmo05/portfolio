@@ -48,6 +48,7 @@ CHAT_SOURCE_EQUIVALENTS = (
     "chat-widget",
     "portfolio-chatwidget",
     "portfolio-widget-chat",
+    "portfolio-vercel",
 )
 WHATSAPP_NUMBER = "+34 691068400"
 WHATSAPP_LINK = "https://wa.me/34691068400"
@@ -644,7 +645,7 @@ def canonicalize_source(value: Any, has_history: bool = False) -> str:
     source_key = normalize_source_key(value)
     if not source_key:
         return CHAT_WIDGET_SOURCE
-    if has_history and source_key in {"portfolio-vercel", "portfolio-form", "contact-form", "contact"}:
+    if source_key in {"portfolio-vercel", "portfolio-form", "contact-form", "contact"}:
         return CHAT_WIDGET_SOURCE
     if "chat" in source_key or "widget" in source_key or "assistant" in source_key:
         return CHAT_WIDGET_SOURCE
@@ -1307,23 +1308,28 @@ def backfill_chat_sources(connection: sqlite3.Connection) -> int:
         """
         UPDATE messages
         SET source = ?
-        WHERE COALESCE(NULLIF(TRIM(LOWER(source)), ''), '') NOT IN (
-            'portfolio-chat-widget',
-            'portfolio-chat',
-            'chat-widget',
-            'portfolio-chatwidget',
-            'portfolio-widget-chat'
-        )
-        AND (
-            COALESCE(NULLIF(TRIM(LOWER(analysis_engine)), ''), '') LIKE 'chat-%'
-            OR COALESCE(NULLIF(TRIM(chat_intent), ''), '') <> ''
-            OR COALESCE(whatsapp_handoff, 0) = 1
-            OR response_latency_ms IS NOT NULL
+        WHERE (
+            COALESCE(NULLIF(TRIM(LOWER(source)), ''), '') IN ('portfolio-vercel', 'portfolio-form', 'contact-form', 'contact')
             OR (
-                COALESCE(NULLIF(TRIM(LOWER(source)), ''), '') IN ('portfolio-vercel', 'portfolio-form', 'contact-form')
-                AND COALESCE(NULLIF(TRIM(user_email), ''), '') = ''
-                AND COALESCE(NULLIF(TRIM(company), ''), '') = ''
-                AND COALESCE(NULLIF(TRIM(LOWER(user_name)), ''), '') IN ('', 'website visitor', 'visitor')
+                COALESCE(NULLIF(TRIM(LOWER(source)), ''), '') NOT IN (
+                    'portfolio-chat-widget',
+                    'portfolio-chat',
+                    'chat-widget',
+                    'portfolio-chatwidget',
+                    'portfolio-widget-chat'
+                )
+                AND (
+                    COALESCE(NULLIF(TRIM(LOWER(analysis_engine)), ''), '') LIKE 'chat-%'
+                    OR COALESCE(NULLIF(TRIM(chat_intent), ''), '') <> ''
+                    OR COALESCE(whatsapp_handoff, 0) = 1
+                    OR response_latency_ms IS NOT NULL
+                    OR (
+                        COALESCE(NULLIF(TRIM(LOWER(source)), ''), '') IN ('portfolio-vercel', 'portfolio-form', 'contact-form')
+                        AND COALESCE(NULLIF(TRIM(user_email), ''), '') = ''
+                        AND COALESCE(NULLIF(TRIM(company), ''), '') = ''
+                        AND COALESCE(NULLIF(TRIM(LOWER(user_name)), ''), '') IN ('', 'website visitor', 'visitor')
+                    )
+                )
             )
         )
         """,

@@ -37,7 +37,7 @@
   function isFormSource(value) {
     const source = String(value || "").trim().toLowerCase();
     if (!source) return false;
-    return source.includes("form") || source === "portfolio-vercel" || source === "portfolio-contact";
+    return source.includes("form") || source === "portfolio-contact";
   }
 
   async function fetchJsonOrNull(url) {
@@ -878,6 +878,7 @@
     renderDebugMetricList($("chatDebugSources"), chatDebug && Array.isArray(chatDebug.source_breakdown) ? chatDebug.source_breakdown : [], "source");
     renderDebugMetricList($("chatDebugEngines"), chatDebug && Array.isArray(chatDebug.analysis_breakdown) ? chatDebug.analysis_breakdown : [], "analysis_engine");
     renderDebugRows($("chatDebugRows"), chatDebug && Array.isArray(chatDebug.recent_rows) ? chatDebug.recent_rows : []);
+    setCardVisible("chatDebugCard", false);
 
     renderGaMetricStrip($("gaTopMetrics"), analytics);
     renderGaCountriesTable($("gaCountriesTable"), analytics);
