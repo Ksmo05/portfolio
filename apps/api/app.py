@@ -218,6 +218,49 @@ PROJECT_SPOTLIGHTS = {
     ],
 }
 
+ROLE_REPLY_FACTS = {
+    "en": {
+        "operations-analyst": "Yes, Carlos could fit well in an Operations Analyst role. His background combines reporting, KPI visibility, process follow-up, and operational support in corporate environments.",
+        "business-operations": "Yes, Business Operations is a natural fit. His profile combines process coordination, reporting, operational support, and digital workflows with a practical business focus.",
+        "reporting-analyst": "Yes, especially in business-oriented reporting contexts. He has experience with KPI tracking, dashboards, operational visibility, and decision-support reporting.",
+        "business-support": "Yes, that would make sense. A big part of his profile is supporting business teams through reporting, structured follow-up, process support, and digital coordination.",
+        "process-analyst": "Yes, he could contribute in a Process Analyst role, especially where visibility, follow-up, coordination, and workflow improvement matter.",
+        "operations-coordinator": "Yes, Operations Coordinator is a strong match. His experience is closely tied to coordination, incidents, follow-up, reporting, and support across business processes.",
+        "project-support": "He could contribute well in Project Support or PMO-style roles where structured follow-up, reporting, coordination, and operational visibility are important.",
+        "back-office": "Yes, that fits clearly. His background includes back-office operations, documentation workflows, validation, and structured process support.",
+        "digital-operations": "Yes, Digital Operations is one of the most natural angles for his profile. He combines operations, tools, reporting, workflows, and practical AI with a business focus.",
+        "business-analyst": "It can make sense if the role is business-oriented. His profile fits best when analysis is connected to operations, reporting, dashboards, and process visibility rather than purely technical analytics.",
+        "kpi-dashboard": "Yes, he could contribute in KPI or dashboard-focused roles, especially where data visibility needs to support business follow-up and operational decisions.",
+        "process-improvement": "Yes, that makes sense. His profile is well aligned with roles focused on process visibility, structured follow-up, reporting, and practical improvement opportunities.",
+        "purchasing-support": "Yes, especially because his recent experience includes Purchasing support, SAP-related follow-up, reporting, and coordination in a BMW-related environment.",
+        "aftersales-support": "Yes, that fits well. His current role already includes Aftersales-related support, coordination, reporting, and operational follow-up.",
+        "sales-operations": "Potentially yes, especially in roles that combine business support, reporting, KPI follow-up, and coordination rather than pure sales execution.",
+        "data-reporting-support": "Yes, that is a very natural fit. His profile is strong in data visibility, reporting support, dashboards, and structured operational follow-up.",
+        "workflow-automation-support": "Yes, especially when the focus is practical workflow improvement, digital support, reporting automation, and applied AI rather than traditional software engineering.",
+        "customer-operations": "Yes, that can make sense. His background includes customer-facing operational support, regulated workflows, incident handling, and structured follow-up.",
+    },
+    "es": {
+        "operations-analyst": "Si, Carlos podria encajar bien en un rol de Operations Analyst. Su trayectoria combina reporting, visibilidad KPI, seguimiento de procesos y soporte operativo en entornos corporativos.",
+        "business-operations": "Si, Business Operations es un encaje natural. Su perfil combina coordinacion de procesos, reporting, soporte operativo y workflows digitales con foco practico de negocio.",
+        "reporting-analyst": "Si, sobre todo en contextos de reporting orientado a negocio. Tiene experiencia en seguimiento de KPIs, dashboards, visibilidad operativa y apoyo a la toma de decisiones.",
+        "business-support": "Si, tendria bastante sentido. Una parte importante de su perfil esta en apoyar a equipos de negocio con reporting, seguimiento estructurado, soporte a procesos y coordinacion digital.",
+        "process-analyst": "Si, podria aportar en un rol de Process Analyst, especialmente donde sean importantes la visibilidad, el seguimiento, la coordinacion y la mejora de workflows.",
+        "operations-coordinator": "Si, Operations Coordinator encaja bastante bien. Su experiencia esta muy ligada a coordinacion, incidencias, seguimiento, reporting y soporte entre procesos de negocio.",
+        "project-support": "Podria aportar bien en Project Support o funciones tipo PMO cuando haga falta seguimiento estructurado, reporting, coordinacion y visibilidad operativa.",
+        "back-office": "Si, eso encaja de forma clara. Su trayectoria incluye operaciones de back office, workflows documentales, validacion y soporte estructurado a procesos.",
+        "digital-operations": "Si, Digital Operations es una de las lecturas mas naturales de su perfil. Combina operaciones, herramientas, reporting, workflows e IA practica con foco de negocio.",
+        "business-analyst": "Puede tener sentido si el rol es orientado a negocio. Su perfil encaja mejor cuando el analisis esta conectado con operaciones, reporting, dashboards y visibilidad de procesos, mas que con analitica puramente tecnica.",
+        "kpi-dashboard": "Si, podria aportar en roles centrados en KPI o dashboards, sobre todo cuando la visibilidad de datos tenga que apoyar el seguimiento del negocio y la operativa.",
+        "process-improvement": "Si, tiene sentido. Su perfil esta bastante alineado con roles de visibilidad de procesos, seguimiento estructurado, reporting y mejora practica de la operativa.",
+        "purchasing-support": "Si, especialmente porque su experiencia reciente incluye soporte a Purchasing, seguimiento relacionado con SAP, reporting y coordinacion en un entorno vinculado a BMW.",
+        "aftersales-support": "Si, encaja bien. Su rol actual ya incluye soporte relacionado con Aftersales, coordinacion, reporting y seguimiento operativo.",
+        "sales-operations": "Podria tener sentido, sobre todo en funciones que combinen soporte a negocio, reporting, KPIs y coordinacion, mas que venta pura.",
+        "data-reporting-support": "Si, ese es un encaje muy natural. Su perfil es fuerte en visibilidad de datos, soporte a reporting, dashboards y seguimiento operativo estructurado.",
+        "workflow-automation-support": "Si, sobre todo cuando el foco esta en mejorar workflows, soporte digital, automatizacion de reporting e IA aplicada de forma practica, no en desarrollo tradicional.",
+        "customer-operations": "Si, puede encajar. Su trayectoria incluye soporte operativo orientado a cliente, workflows regulados, gestion de incidencias y seguimiento estructurado.",
+    },
+}
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -1708,6 +1751,8 @@ def infer_conversation_goal(intent: str, topic: str, analysis_theme_slug: str) -
     theme_slug = (analysis_theme_slug or "").strip().lower()
     if theme_slug == "tools":
         return "tools"
+    if topic == "role-fit":
+        return "role-fit"
     if topic in {"contact", "whatsapp"}:
         return "contact"
     if topic == "projects":
@@ -1789,8 +1834,73 @@ def detect_summary_request(normalized_text: str) -> bool:
         "summary", "summarize", "summarise", "short version", "short overview", "quick summary",
         "high level overview", "key points", "overview", "resumen", "resumelo", "hazme un resumen",
         "dime lo principal", "resumen rapido", "resumen en 3 puntos", "lo mas importante",
+        "resumeme", "resumir", "resume", "puedes resumir", "me lo resumes", "resumelo en corto",
+        "can you summarise", "can you summarize", "summarise it", "summarize it", "make it shorter",
     ]
     return any(pattern in normalized_text for pattern in summary_patterns)
+
+
+def detect_role_focus(normalized_text: str) -> str | None:
+    role_terms = {
+        "operations-analyst": {
+            "operations analyst", "analista de operaciones",
+        },
+        "business-operations": {
+            "business operations", "operaciones de negocio",
+        },
+        "reporting-analyst": {
+            "reporting analyst", "analista de reporting", "analista de reportes",
+        },
+        "business-support": {
+            "business support", "support specialist", "soporte de negocio", "business support specialist",
+        },
+        "process-analyst": {
+            "process analyst", "analista de procesos",
+        },
+        "operations-coordinator": {
+            "operations coordinator", "coordinador de operaciones",
+        },
+        "project-support": {
+            "project support", "pmo", "project coordinator", "soporte de proyectos",
+        },
+        "back-office": {
+            "back office", "back-office", "operaciones back office",
+        },
+        "digital-operations": {
+            "digital operations", "operaciones digitales",
+        },
+        "business-analyst": {
+            "business analyst", "analista de negocio",
+        },
+        "kpi-dashboard": {
+            "kpi", "kpis", "dashboard analyst", "dashboards", "dashboard role", "rol de dashboards",
+        },
+        "process-improvement": {
+            "process improvement", "mejora de procesos",
+        },
+        "purchasing-support": {
+            "purchasing support", "procurement support", "compras", "purchasing", "procurement",
+        },
+        "aftersales-support": {
+            "aftersales", "after sales", "postventa", "aftersales support",
+        },
+        "sales-operations": {
+            "sales operations", "operaciones comerciales",
+        },
+        "data-reporting-support": {
+            "data reporting support", "reporting support", "data support", "soporte de reporting", "soporte de datos",
+        },
+        "workflow-automation-support": {
+            "workflow", "automation support", "workflow automation", "automatizacion", "automatizacion de reporting",
+        },
+        "customer-operations": {
+            "customer operations", "operaciones de cliente",
+        },
+    }
+    for role_key, terms in role_terms.items():
+        if any(term in normalized_text for term in terms):
+            return role_key
+    return None
 
 
 def detect_profile_grounding_topic(normalized_text: str) -> str | None:
@@ -1886,6 +1996,8 @@ def detect_tooling_key(normalized_text: str) -> str | None:
 def detect_chat_topic(normalized_text: str) -> str:
     if detect_summary_request(normalized_text):
         return "summary"
+    if detect_role_focus(normalized_text):
+        return "role-fit"
     if detect_whatsapp_request(normalized_text):
         return "whatsapp"
     if any(
@@ -2266,6 +2378,36 @@ def build_contact_reply(language: str, normalized_text: str, tail: str) -> str:
     return f"If you want to continue, you can reach out directly on WhatsApp. {build_whatsapp_url(language)}"
 
 
+def build_summary_reply(language: str) -> str:
+    if language == "es":
+        return (
+            "Resumen rapido: Carlos tiene un perfil orientado a operaciones, reporting, soporte a procesos y mejora de workflows digitales, "
+            "con un enfoque muy practico de negocio.\n\n"
+            "Si quieres, te lo adapto a un puesto concreto, a experiencia previa o a herramientas."
+        )
+    return (
+        "Quick summary: Carlos has a profile centered on operations, reporting, process support, and digital workflow improvement, "
+        "with a very practical business focus.\n\n"
+        "If you want, I can adapt it to a specific role, previous experience, or tools."
+    )
+
+
+def build_role_fit_reply(language: str, role_key: str | None) -> str:
+    localized = ROLE_REPLY_FACTS.get(language, ROLE_REPLY_FACTS["en"])
+    if role_key and role_key in localized:
+        return localized[role_key]
+
+    if language == "es":
+        return (
+            "Carlos podria aportar especialmente en puestos de operaciones, reporting, soporte de negocio, "
+            "coordinacion de procesos o analisis operativo."
+        )
+    return (
+        "Carlos could contribute especially well in roles related to operations, reporting, business support, "
+        "process coordination, or operational analysis."
+    )
+
+
 def build_guided_options(language: str, intent: str) -> str:
     if language == "es":
         if intent == "recruiter":
@@ -2378,13 +2520,14 @@ def build_static_chat_reply(
     whatsapp_offer: bool,
     whatsapp_reason: str | None,
     normalized_text: str,
+    role_key: str | None,
 ) -> str | None:
     tail = build_chat_cta(language, intent, topic, contact_ready, whatsapp_offer, whatsapp_reason)
 
     replies = {
         "en": {
             "whatsapp": build_whatsapp_cta("en", whatsapp_reason or "explicit"),
-            "summary": "Quick summary:\n- Carlos is an operations, data, and digital support professional with a clear corporate profile.\n- His experience is centered on process support, reporting, SAP-related workflows, coordination, incidents, and structured follow-up.\n- He also uses digital tools and practical AI to improve productivity, information handling, and workflow efficiency.",
+            "summary": build_summary_reply("en"),
             "current-role": build_current_role_reply("en") + "\n\n" + tail,
             "education": build_education_reply("en") + "\n\n" + tail,
             "previous-experience": build_previous_experience_reply("en") + "\n\n" + tail,
@@ -2394,6 +2537,7 @@ def build_static_chat_reply(
             "profile-balance": "Carlos' profile combines both business and data. He works with reporting, KPIs, dashboards, and operational workflows, while also bringing a practical digital foundation that connects the operational, analytical, and business sides.\n\n" + tail,
             "automotive": "Yes, his recent experience is linked to the automotive environment through The Retail Performance Company (RPC), in a corporate context associated with BMW.\n\n" + tail,
             "projects": build_projects_reply("en"),
+            "role-fit": build_role_fit_reply("en", role_key) + "\n\n" + tail,
             "fit": "Carlos' profile combines business, operations, and data. He works with reporting, KPIs, dashboards, process support, and digital coordination, with a practical foundation in tools and workflows rather than a purely technical-specialist profile.\n\n" + tail,
             "practical-ai": "His use of AI is practical and business-oriented. The focus is on writing support, information organization, summarization, and workflow efficiency in everyday workflows.\n\n" + tail,
             "contact": build_contact_reply("en", normalized_text, tail),
@@ -2401,7 +2545,7 @@ def build_static_chat_reply(
         },
         "es": {
             "whatsapp": build_whatsapp_cta("es", whatsapp_reason or "explicit"),
-            "summary": "Resumen rapido:\n- Carlos es un profesional de operaciones, datos y soporte digital con perfil corporativo claro.\n- Su experiencia se centra en soporte a procesos, reporting, workflows relacionados con SAP, coordinacion, incidencias y seguimiento estructurado.\n- Tambien utiliza herramientas digitales e IA practica para mejorar productividad, gestion de la informacion y eficiencia de workflows.",
+            "summary": build_summary_reply("es"),
             "current-role": build_current_role_reply("es") + "\n\n" + tail,
             "education": build_education_reply("es") + "\n\n" + tail,
             "previous-experience": build_previous_experience_reply("es") + "\n\n" + tail,
@@ -2411,6 +2555,7 @@ def build_static_chat_reply(
             "profile-balance": "Su perfil combina negocio y datos. Trabaja con reporting, KPIs, dashboards y procesos operativos, pero tambien conecta la parte analitica con la operativa y la de negocio.\n\n" + tail,
             "automotive": "Si, su experiencia reciente esta vinculada al entorno de automocion a traves de The Retail Performance Company (RPC), en un contexto corporativo asociado a BMW.\n\n" + tail,
             "projects": build_projects_reply("es"),
+            "role-fit": build_role_fit_reply("es", role_key) + "\n\n" + tail,
             "fit": "Su perfil combina negocio, operaciones y datos. Trabaja con reporting, KPIs, dashboards, soporte a procesos y coordinacion digital, con una base practica en herramientas y workflows mas que un enfoque puramente tecnico-especialista.\n\n" + tail,
             "practical-ai": "Su uso de IA es practico y orientado a negocio. El foco esta en apoyo a redaccion, organizacion de informacion, resumenes y eficiencia de workflows del dia a dia.\n\n" + tail,
             "contact": build_contact_reply("es", normalized_text, tail),
@@ -2591,6 +2736,7 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
     normalized = normalize_match_text(submission.message)
     intent = detect_chat_intent(normalized)
     topic = detect_chat_topic(normalized)
+    role_key = detect_role_focus(normalized)
     contact_ready = detect_contact_readiness(normalized)
     guided_mode = needs_guided_next_step(normalized, topic)
     whatsapp_offer, whatsapp_reason = resolve_whatsapp_offer(language, intent, topic, normalized, submission.messages)
@@ -2607,6 +2753,7 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
     meta = {
         "intent": intent,
         "topic": topic,
+        "role_key": role_key or "",
         "conversation_goal": conversation_goal,
         "intent_confidence": intent_confidence,
         "clarification_needed": clarification_needed,
@@ -2654,7 +2801,7 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
             scope_path = f"{scope_path}-whatsapp-{whatsapp_reason}"
         return build_scope_gap_reply(language, True, whatsapp_reason), scope_path, scope_meta
 
-    static_reply = build_static_chat_reply(language, topic, intent, contact_ready, guided_mode, whatsapp_offer, whatsapp_reason, normalized)
+    static_reply = build_static_chat_reply(language, topic, intent, contact_ready, guided_mode, whatsapp_offer, whatsapp_reason, normalized, role_key)
     if static_reply and should_use_repetition_fallback(static_reply, submission.messages, topic):
         repetition_meta = dict(meta)
         repetition_meta["whatsapp_handoff"] = True
