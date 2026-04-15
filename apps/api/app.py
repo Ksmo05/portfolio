@@ -4295,7 +4295,6 @@ async def dashboard_metrics() -> JSONResponse:
 async def dashboard_export_excel() -> StreamingResponse:
     with closing(get_connection()) as connection:
         messages = all_messages_for_export(connection)
-        metrics = dashboard_chart_metrics(connection)
         chat_analytics = dashboard_chat_analytics(connection)
     ga4_analytics = fetch_ga4_analytics()
 
@@ -4482,43 +4481,6 @@ async def dashboard_export_excel() -> StreamingResponse:
         ga4_sheet.cell(row=ga_row, column=1, value=item.get("day"))
         ga4_sheet.cell(row=ga_row, column=2, value=int(item.get("sessions", 0) or 0))
         ga_row += 1
-
-    messages_sheet = workbook.create_sheet("Chat Interactions")
-    headers = [
-        "id",
-        "created_at",
-        "source",
-        "language",
-        "priority",
-        "chat_intent",
-        "conversation_goal",
-        "reply_type",
-        "intent_confidence",
-        "clarification_needed",
-        "resolved_likely",
-        "summary",
-    ]
-    messages_sheet.append(headers)
-    for cell in messages_sheet[1]:
-        cell.font = Font(bold=True)
-
-    for item in messages:
-        messages_sheet.append(
-            [
-                item["id"],
-                item["created_at"],
-                item["source"],
-                item["language"],
-                item["priority"],
-                item.get("chat_intent", "general"),
-                item.get("conversation_goal", "general"),
-                item.get("reply_type", "heuristic"),
-                item.get("intent_confidence", 0.5),
-                int(item.get("clarification_needed", 0) or 0),
-                int(item.get("resolved_likely", 0) or 0),
-                item["summary"],
-            ]
-        )
 
     for worksheet in workbook.worksheets:
         worksheet.freeze_panes = "A2"
