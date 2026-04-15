@@ -849,11 +849,10 @@
   }
 
   async function loadDashboard() {
-    const [rawMessagesData, messages, analytics, chatDebug] = await Promise.all([
+    const [rawMessagesData, messages, analytics] = await Promise.all([
       fetchJsonOrNull("/api/messages?limit=100"),
       fetchJsonOrNull("/api/dashboard/messages"),
       fetchJsonOrNull("/api/dashboard/analytics"),
-      fetchJsonOrNull("/api/debug/chat-persistence"),
     ]);
 
     const rawItems = safeItems(rawMessagesData).filter(function (item) {
@@ -866,19 +865,7 @@
       scopeMode: rawMessagesData && rawMessagesData.scope_mode ? rawMessagesData.scope_mode : "unknown",
       gaStatus: analytics && analytics.status ? analytics.status : "unknown",
       databasePath: rawMessagesData && rawMessagesData.database_path ? rawMessagesData.database_path : "unknown",
-      debug: chatDebug,
     });
-
-    setText("chatDebugScopeMode", chatDebug && chatDebug.scope_mode ? chatDebug.scope_mode : "Unavailable");
-    setText("chatDebugDatabasePath", chatDebug && chatDebug.database_path ? chatDebug.database_path : "unknown");
-    setText("chatDebugStrictTotal", String(chatDebug && Number.isFinite(Number(chatDebug.strict_chat_total)) ? Number(chatDebug.strict_chat_total) : 0));
-    setText("chatDebugResolvedTotal", String(chatDebug && Number.isFinite(Number(chatDebug.resolved_chat_total)) ? Number(chatDebug.resolved_chat_total) : 0));
-    setText("chatDebugCanonicalTotal", String(chatDebug && Number.isFinite(Number(chatDebug.canonical_source_total)) ? Number(chatDebug.canonical_source_total) : 0));
-    setText("chatDebugTotalMessages", String(chatDebug && Number.isFinite(Number(chatDebug.total_messages)) ? Number(chatDebug.total_messages) : 0));
-    renderDebugMetricList($("chatDebugSources"), chatDebug && Array.isArray(chatDebug.source_breakdown) ? chatDebug.source_breakdown : [], "source");
-    renderDebugMetricList($("chatDebugEngines"), chatDebug && Array.isArray(chatDebug.analysis_breakdown) ? chatDebug.analysis_breakdown : [], "analysis_engine");
-    renderDebugRows($("chatDebugRows"), chatDebug && Array.isArray(chatDebug.recent_rows) ? chatDebug.recent_rows : []);
-    setCardVisible("chatDebugCard", false);
 
     renderGaMetricStrip($("gaTopMetrics"), analytics);
     renderGaCountriesTable($("gaCountriesTable"), analytics);
@@ -930,7 +917,6 @@
     const gaSessions30d = Number(analytics && analytics.totals ? analytics.totals.sessions || 0 : 0);
     const gaUsers30d = Number(analytics && analytics.totals ? analytics.totals.users || 0 : 0);
 
-    setText("chatAnalyticsCount", `${totalChatInteractions} chat interactions`);
     setText("chatTotalInteractions", String(totalChatInteractions));
     setText("chatSpanishInteractions", String(chatSpanish));
     setText("chatEnglishInteractions", String(chatEnglish));
@@ -972,28 +958,6 @@
         return String(a.day).localeCompare(String(b.day));
       });
 
-    const rawDailyItems = Array.isArray(chatAnalytics.daily_interactions) && chatAnalytics.daily_interactions.length > 0
-      ? chatAnalytics.daily_interactions
-      : fallbackDailyItems;
-
-    const chatDailyItems = rawDailyItems.map(function (item) {
-      return {
-        label: formatShortDayLabel(item.day),
-        value: item.total || 0,
-      };
-    });
-    if (rawDailyItems.length > 0) {
-      const firstDay = rawDailyItems[0].day || "";
-      const lastDay = rawDailyItems[rawDailyItems.length - 1].day || "";
-      setText("chatAnalyticsCount", `${totalChatInteractions} chat interactions (${firstDay} to ${lastDay})`);
-    }
-    const showChatDaily = hasPositiveValues(chatDailyItems);
-    setCardVisible("chatOverviewCard", totalChatInteractions > 0);
-    setCardVisible("chatDailyChartCard", showChatDaily);
-    if (showChatDaily) {
-      createBarChart("chatDailyBarChart", chatDailyItems, "#5da8ff");
-    }
-
     const chatByLanguage = chatAnalytics.by_language || {};
     const chatLanguageItems = [
       { label: "es", value: Number(chatByLanguage.es || chatSpanish || 0) },
@@ -1017,25 +981,63 @@
         })
       : [];
 
+    const chatMixItems = [
+      { label: "total", value: totalChatInteractions },
+      { label: "spanish", value: chatSpanish },
+      { label: "english", value: chatEnglish },
+      { label: "high priority", value: chatHighPriority },
+    ];
     const showChatLanguageChart = hasPositiveValues(chatLanguageItems);
+    const showChatMixChart = hasPositiveValues(chatMixItems);
     const showGaTrafficChart = hasPositiveValues(gaTrafficItems);
     const showGaTrendChart = hasPositiveValues(gaTrendItems);
     const chatGoals = chatAnalytics.by_conversation_goal || {};
     const chatReplyTypes = chatAnalytics.by_reply_type || {};
+    const chatGoalItems = Object.entries(chatGoals).map(function ([label, value]) {
+      return { label: label, value: Number(value || 0) };
+    });
+    const chatReplyTypeItems = Object.entries(chatReplyTypes).map(function ([label, value]) {
+      return { label: label, value: Number(value || 0) };
+    });
     const clarificationNeeded = Number(chatAnalytics.clarification_needed_count || 0);
     const resolvedLikely = Number(chatAnalytics.resolved_likely_count || 0);
+    const unresolvedLikely = Number(chatAnalytics.unresolved_likely_count || Math.max(totalChatInteractions - resolvedLikely, 0));
     const avgIntentConfidence = Number(chatAnalytics.avg_intent_confidence || 0);
-    const showChatSignals = Object.keys(chatGoals).length > 0 || Object.keys(chatReplyTypes).length > 0 || clarificationNeeded > 0 || resolvedLikely > 0;
-    const showQuantifiedInsights = showChatLanguageChart || showGaTrafficChart || showGaTrendChart || showChatSignals;
+    const chatSignalItems = [
+      { label: "resolved", value: resolvedLikely },
+      { label: "clarification", value: clarificationNeeded },
+      { label: "unresolved", value: unresolvedLikely },
+    ];
+    const showChatGoalsChart = hasPositiveValues(chatGoalItems);
+    const showChatReplyTypeChart = hasPositiveValues(chatReplyTypeItems);
+    const showChatSignals = hasPositiveValues(chatSignalItems) || avgIntentConfidence > 0;
+    const showQuantifiedInsights =
+      showChatMixChart ||
+      showChatLanguageChart ||
+      showChatGoalsChart ||
+      showChatReplyTypeChart ||
+      showGaTrafficChart ||
+      showGaTrendChart ||
+      showChatSignals;
 
     setCardVisible("quantifiedInsightsCard", showQuantifiedInsights);
+    setCardVisible("chatMixChartCard", showChatMixChart);
     setCardVisible("chatLanguageChartCard", showChatLanguageChart);
+    setCardVisible("chatGoalChartCard", showChatGoalsChart);
     setCardVisible("gaTrafficSourcesChartCard", showGaTrafficChart);
     setCardVisible("gaSessionsTrendChartCard", showGaTrendChart);
     setCardVisible("chatSignalsCard", showChatSignals);
+    setCardVisible("chatReplyTypeChartCard", showChatReplyTypeChart);
+
+    if (showChatMixChart) {
+      createBarChart("chatMixBarChart", chatMixItems, "#5da8ff");
+    }
 
     if (showChatLanguageChart) {
       createDonutChart("chatLanguageDonutChart", chatLanguageItems);
+    }
+    if (showChatGoalsChart) {
+      createDonutChart("chatGoalDonutChart", chatGoalItems);
     }
     if (showGaTrafficChart) {
       createBarChart("gaTrafficSourcesBarChart", gaTrafficItems, "#2b70ff");
@@ -1044,45 +1046,14 @@
       createLineChart("gaSessionsTrendChart", gaTrendItems, "#24b4a3");
     }
     if (showChatSignals) {
-      setText("chatResolvedLikely", String(resolvedLikely));
-      setText("chatClarificationNeeded", String(clarificationNeeded));
-      setText("chatIntentConfidence", avgIntentConfidence.toFixed(2));
-      renderCountMapList($("chatGoalList"), chatGoals, humanizeLabel);
-      renderCountMapList($("chatReplyTypeList"), chatReplyTypes, humanizeLabel);
+      createBarChart("chatSignalsBarChart", chatSignalItems, "#18b5a4");
+      setHtml(
+        "chatSignalsSummary",
+        `Resolved: <strong>${resolvedLikely}</strong> · Clarification needed: <strong>${clarificationNeeded}</strong> · Avg confidence: <strong>${avgIntentConfidence.toFixed(2)}</strong>`
+      );
     }
-
-    const priorityFilter = $("filterPriority");
-    const sourceFilter = $("filterSource");
-    const languageFilter = $("filterLanguage");
-    const searchFilter = $("filterSearch");
-    const recentMessagesTable = $("recentMessagesTable");
-    const recentMessagesCount = $("recentMessagesCount");
-
-    if (priorityFilter && sourceFilter && languageFilter && searchFilter && recentMessagesTable && recentMessagesCount) {
-      setSelectOptions(priorityFilter, buildFilterOptions(rawItems, "priority", ["high", "medium", "low"]), humanizeLabel);
-      setSelectOptions(sourceFilter, buildFilterOptions(rawItems, "source"), humanizeLabel);
-      setSelectOptions(languageFilter, buildFilterOptions(rawItems, "language", ["en", "es"]), function (value) {
-        return String(value).toUpperCase();
-      });
-
-      function applyFilters() {
-        const filteredItems = rawItems.filter((item) => {
-          const matchesPriority = !priorityFilter.value || item.priority === priorityFilter.value;
-          const matchesSource = !sourceFilter.value || item.source === sourceFilter.value;
-          const matchesLanguage = !languageFilter.value || item.language === languageFilter.value;
-          const matchesSearch = !searchFilter.value || messageSearchBlob(item).includes(searchFilter.value.trim().toLowerCase());
-          return matchesPriority && matchesSource && matchesLanguage && matchesSearch;
-        }).sort(compareByDateDesc);
-
-        recentMessagesCount.textContent = `${filteredItems.length} shown / ${rawItems.length} total`;
-        renderRecentMessages(recentMessagesTable, filteredItems.slice(0, 24));
-      }
-
-      [priorityFilter, sourceFilter, languageFilter].forEach((element) => {
-        element.addEventListener("change", applyFilters);
-      });
-      searchFilter.addEventListener("input", applyFilters);
-      applyFilters();
+    if (showChatReplyTypeChart) {
+      createDonutChart("chatReplyTypeDonutChart", chatReplyTypeItems);
     }
 
     const refreshNode = $("dashboardLastRefresh");
@@ -1100,10 +1071,7 @@
   }
 
   loadDashboard().catch(function () {
-    setText("chatAnalyticsCount", "Dashboard unavailable");
-    setText("recentMessagesCount", "Unavailable");
     setText("dashboardLastRefresh", "Unable to refresh data");
-    setCardVisible("chatOverviewCard", false);
     setCardVisible("quantifiedInsightsCard", false);
     setCardVisible("chatSignalsCard", false);
     setCardVisible("ga4AnalyticsCard", false);

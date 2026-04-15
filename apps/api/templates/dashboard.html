@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="{{ url_for('static', path='widget.css') }}?v=20260415-3" />
+    <link rel="stylesheet" href="{{ url_for('static', path='widget.css') }}?v=20260415-4" />
     <script src="https://www.gstatic.com/charts/loader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
   </head>
@@ -99,47 +99,6 @@
       </section>
 
       <section class="dashboard-grid dashboard-grid-executive">
-        <article id="chatDebugCard" class="surface-card span-12 module-card">
-          <div class="section-head">
-            <div>
-              <span class="section-kicker">Diagnostics</span>
-              <h2>Chat persistence debug</h2>
-            </div>
-            <span class="status-chip soft-status" id="chatDebugScopeMode">Loading</span>
-          </div>
-          <p class="section-helper">Temporary production diagnostics to verify whether portfolio chat interactions are reaching the same SQLite database used by the dashboard.</p>
-          <div class="list-stack compact-top">
-            <div class="list-row">
-              <strong>Database path</strong>
-              <span class="tag" id="chatDebugDatabasePath">-</span>
-            </div>
-            <div class="list-row">
-              <strong>Strict chat scope rows</strong>
-              <span class="tag" id="chatDebugStrictTotal">0</span>
-            </div>
-            <div class="list-row">
-              <strong>Resolved dashboard scope rows</strong>
-              <span class="tag" id="chatDebugResolvedTotal">0</span>
-            </div>
-            <div class="list-row">
-              <strong>Canonical source rows</strong>
-              <span class="tag" id="chatDebugCanonicalTotal">0</span>
-            </div>
-            <div class="list-row">
-              <strong>Total rows in messages table</strong>
-              <span class="tag" id="chatDebugTotalMessages">0</span>
-            </div>
-          </div>
-          <div class="subsection-label compact-top">Source breakdown</div>
-          <div id="chatDebugSources" class="list-stack"></div>
-          <div class="subsection-label compact-top">Analysis engine breakdown</div>
-          <div id="chatDebugEngines" class="list-stack"></div>
-          <div class="subsection-label compact-top">Latest raw rows</div>
-          <div id="chatDebugRows" class="list-stack"></div>
-        </article>
-      </section>
-
-      <section class="dashboard-grid dashboard-grid-executive">
         <article id="ga4AnalyticsCard" class="surface-card span-12 module-card ga4-analytics-card">
           <div class="section-head">
             <div>
@@ -163,36 +122,26 @@
           </div>
         </article>
 
-        <article id="chatOverviewCard" class="surface-card span-12 module-card chat-analytics-card">
-          <div class="section-head">
-            <div>
-              <span class="section-kicker">Chat overview</span>
-              <h2>Chat activity overview</h2>
-            </div>
-            <span class="status-chip soft-status" id="chatAnalyticsCount">Loading</span>
-          </div>
-          <p class="section-helper">Real daily volume from persisted portfolio chat interactions only.</p>
-          <div id="chatDailyChartCard" class="chart-surface compact-top">
-            <div class="chart-surface-head">
-              <span class="section-kicker">Volume</span>
-              <h3>Daily chat interactions</h3>
-              <p>Bar chart of chat widget interactions per day across all available days in the persisted history.</p>
-            </div>
-            <div class="chart-canvas-wrap chart-canvas-tall">
-              <canvas id="chatDailyBarChart"></canvas>
-            </div>
-          </div>
-        </article>
-
         <article id="quantifiedInsightsCard" class="surface-card span-12 module-card">
           <div class="section-head">
             <div>
               <span class="section-kicker">Quantified insights</span>
-              <h2>Chat and GA4 trends</h2>
+              <h2>Chat and GA4 visual insights</h2>
             </div>
           </div>
-          <p class="section-helper">Only measurable signals with real persisted data are shown in these charts.</p>
+          <p class="section-helper">Only measurable signals with real persisted data are shown here. Empty blocks have been removed so the dashboard stays focused and visual.</p>
           <div class="analytics-chart-grid compact-top">
+            <article id="chatMixChartCard" class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">Chat</span>
+                <h3>Interaction mix</h3>
+                <p>Comparison of total chat volume, Spanish, English, and high-priority interactions.</p>
+              </div>
+              <div class="chart-canvas-wrap chart-canvas-tall">
+                <canvas id="chatMixBarChart"></canvas>
+              </div>
+            </article>
+
             <article id="chatLanguageChartCard" class="chart-surface">
               <div class="chart-surface-head">
                 <span class="section-kicker">Chat</span>
@@ -201,6 +150,17 @@
               </div>
               <div class="chart-canvas-wrap">
                 <canvas id="chatLanguageDonutChart"></canvas>
+              </div>
+            </article>
+
+            <article id="chatGoalChartCard" class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">Chat</span>
+                <h3>Conversation goals</h3>
+                <p>What users most frequently try to get from the chat based on persisted interaction goals.</p>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="chatGoalDonutChart"></canvas>
               </div>
             </article>
 
@@ -229,73 +189,29 @@
             <article id="chatSignalsCard" class="chart-surface">
               <div class="chart-surface-head">
                 <span class="section-kicker">Chat quality</span>
-                <h3>Conversation signals</h3>
-                <p>Natural conversation quality signals from persisted chat interactions.</p>
+                <h3>Conversation quality</h3>
+                <p id="chatSignalsSummary">Natural conversation quality signals from persisted chat interactions.</p>
               </div>
-              <div class="list-stack compact-top" id="chatSignalKpis">
-                <div class="list-row">
-                  <strong>Likely resolved</strong>
-                  <span class="tag" id="chatResolvedLikely">0</span>
-                </div>
-                <div class="list-row">
-                  <strong>Needs clarification</strong>
-                  <span class="tag" id="chatClarificationNeeded">0</span>
-                </div>
-                <div class="list-row">
-                  <strong>Avg intent confidence</strong>
-                  <span class="tag" id="chatIntentConfidence">0.00</span>
-                </div>
+              <div class="chart-canvas-wrap chart-canvas-tall">
+                <canvas id="chatSignalsBarChart"></canvas>
               </div>
-              <div class="subsection-label compact-top">Top conversation goals</div>
-              <div id="chatGoalList" class="list-stack"></div>
-              <div class="subsection-label compact-top">Reply paths</div>
-              <div id="chatReplyTypeList" class="list-stack"></div>
             </article>
-          </div>
-        </article>
 
-        <article class="surface-card span-12 latest-messages-card">
-          <div class="section-head">
-            <div>
-              <span class="section-kicker">Recent inbox log</span>
-              <h2>Latest messages</h2>
-            </div>
-            <span class="status-chip" id="recentMessagesCount">Loading</span>
-          </div>
-          <p class="section-helper">Filter chat interactions by urgency, source, language, or search terms.</p>
-
-          <div class="dashboard-toolbar">
-            <label class="toolbar-field">
-              <span>Priority</span>
-              <select id="filterPriority">
-                <option value="">All priorities</option>
-              </select>
-            </label>
-            <label class="toolbar-field">
-              <span>Source</span>
-              <select id="filterSource">
-                <option value="">All chat sources</option>
-              </select>
-            </label>
-            <label class="toolbar-field">
-              <span>Language</span>
-              <select id="filterLanguage">
-                <option value="">All languages</option>
-              </select>
-            </label>
-            <label class="toolbar-field toolbar-search">
-              <span>Search</span>
-              <input id="filterSearch" type="search" placeholder="Name, company, summary, theme..." />
-            </label>
-          </div>
-
-          <div class="message-table-wrap">
-            <div class="message-table" id="recentMessagesTable"></div>
+            <article id="chatReplyTypeChartCard" class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">Chat quality</span>
+                <h3>Reply paths</h3>
+                <p>Distribution of how the assistant answered: grounded, heuristic, fallback, or handoff.</p>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="chatReplyTypeDonutChart"></canvas>
+              </div>
+            </article>
           </div>
         </article>
       </section>
     </main>
 
-    <script src="{{ url_for('static', path='dashboard.js') }}?v=20260415-3" defer></script>
+    <script src="{{ url_for('static', path='dashboard.js') }}?v=20260415-4" defer></script>
   </body>
 </html>
