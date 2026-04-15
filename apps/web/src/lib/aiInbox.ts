@@ -20,6 +20,8 @@ type ChatReplyResponse = {
         reply?: string;
         whatsapp_handoff?: boolean;
         whatsapp_url?: string;
+        saved?: boolean;
+        source?: string;
       };
 };
 
@@ -49,6 +51,7 @@ export type ChatSendResult = {
   reply: string;
   whatsappHandoff: boolean;
   whatsappUrl: string | null;
+  saved: boolean;
 };
 
 function normalizeInboxUrl(value: string) {
@@ -188,6 +191,14 @@ export async function sendChatMessage(message: string, history: ChatHistoryItem[
     throw new Error("chat-empty-response");
   }
 
+  const saved =
+    typeof data?.message === "object" &&
+    data?.message !== null &&
+    data.message.saved === true;
+  if (!saved) {
+    throw new Error("chat-not-persisted");
+  }
+
   const whatsappHandoff =
     typeof data?.message === "object" &&
     data?.message !== null &&
@@ -204,6 +215,7 @@ export async function sendChatMessage(message: string, history: ChatHistoryItem[
     reply,
     whatsappHandoff,
     whatsappUrl,
+    saved,
   } satisfies ChatSendResult;
 }
 

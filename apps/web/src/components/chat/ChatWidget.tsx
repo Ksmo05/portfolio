@@ -143,235 +143,6 @@ function getInitialMessages(locale: Locale) {
 const urlPattern = /(https?:\/\/[^\s]+)/g;
 const WHATSAPP_URL = "https://wa.me/34691068400";
 
-function normalizeChatText(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[?¿!¡.,;:()"'/]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function includesAny(text: string, terms: string[]) {
-  return terms.some((term) => text.includes(term));
-}
-
-function getInstantReply(message: string, locale: Locale): { reply: string; whatsappUrl: string | null } | null {
-  const normalized = normalizeChatText(message);
-  const profilePath = locale === "es" ? "/es/professional-profile" : "/en/professional-profile";
-
-  const projectsTerms = [
-    "most relevant projects",
-    "main projects",
-    "best projects",
-    "show me carlos most relevant projects",
-    "proyectos mas relevantes",
-    "principales proyectos",
-    "muestrame los proyectos",
-    "muestrame los proyectos mas relevantes",
-  ];
-  if (includesAny(normalized, projectsTerms)) {
-    return {
-      reply:
-        locale === "es"
-          ? "Los proyectos mas relevantes del portfolio se centran en dashboards y analisis de KPI, herramientas de IA aplicadas a productividad y esta propia web profesional como proyecto digital estructurado. Si quieres, puedo ampliar uno en detalle."
-          : "The most relevant projects in the portfolio focus on dashboards and KPI analysis, AI tools applied to productivity, and this portfolio website itself as a structured digital project. If you want, I can expand on one of them in more detail.",
-      whatsappUrl: null,
-    };
-  }
-
-  const contactTerms = Array.from(new Set([
-    "quiero contactar",
-    "quiero hablar",
-    "quiero hablar con carlos",
-    "quiero hablar por whatsapp",
-    "quiero contactar por whatsapp",
-    "prefiero whatsapp",
-    "wasap",
-    "guasap",
-    "watsapp",
-    "whatsap",
-    "quiero una conversacion directa",
-    "quiero escribirle",
-    "quiero hablar sobre un proyecto",
-    "quiero colaborar",
-    "estas disponible",
-    "aceptas proyectos freelance",
-    "abierto a nuevos proyectos",
-    "i want to contact",
-    "i want to talk",
-    "i want to talk to carlos",
-    "i prefer whatsapp",
-    "i want to discuss an opportunity",
-    "are you available",
-    "freelance projects",
-    "new projects",
-    "whatsapp",
-    "direct conversation",
-  ]));
-  if (includesAny(normalized, contactTerms)) {
-    return {
-      reply:
-        locale === "es"
-          ? `Si quieres, puedes revisar primero mi perfil (${profilePath}) y escribirme directamente por WhatsApp para hablar de una oportunidad, proyecto o colaboracion.\n${WHATSAPP_URL}`
-          : `If you want, you can first review my profile (${profilePath}) and reach me directly on WhatsApp to discuss an opportunity, project, or collaboration.\n${WHATSAPP_URL}`,
-      whatsappUrl: WHATSAPP_URL,
-    };
-  }
-
-  const nameTerms = ["como te llamas", "como se llama", "cual es tu nombre", "quien eres", "what is your name", "whats your name", "who are you"];
-  if (includesAny(normalized, nameTerms)) {
-    return {
-      reply: locale === "es" ? "Mi nombre es Carlos San Miguel." : "My name is Carlos San Miguel.",
-      whatsappUrl: null,
-    };
-  }
-
-  const currentRoleTerms = [
-    "en que trabajas",
-    "en que trabaja",
-    "y en que trabaja",
-    "a que te dedicas",
-    "a que se dedica",
-    "donde trabajas ahora",
-    "tu trabajo actual",
-    "what do you do now",
-    "current company",
-    "current role",
-    "where does carlos work",
-  ];
-  if (includesAny(normalized, currentRoleTerms)) {
-    return {
-      reply:
-        locale === "es"
-          ? "Actualmente Carlos trabaja en The Retail Performance Company (RPC)."
-          : "Carlos currently works at The Retail Performance Company (RPC).",
-      whatsappUrl: null,
-    };
-  }
-
-  const educationTerms = [
-    "que has estudiado",
-    "que estudiaste",
-    "que formacion tienes",
-    "formacion academica",
-    "academic background",
-    "what have you studied",
-    "what did you study",
-    "education",
-  ];
-  if (includesAny(normalized, educationTerms)) {
-    return {
-      reply:
-        locale === "es"
-          ? "En formacion, el portfolio recoge ADE en la Universidad Rey Juan Carlos, ASIR en la Universidad Europea y estudios complementarios en ciberseguridad, inteligencia artificial y big data."
-          : "In education, the portfolio includes Business Administration at Universidad Rey Juan Carlos, Network Systems Administration at Universidad Europea, and continuing studies in cybersecurity, artificial intelligence, and big data.",
-      whatsappUrl: null,
-    };
-  }
-
-  const previousExperienceTerms = [
-    "donde has trabajado antes",
-    "donde trabajabas antes",
-    "en que trabajabas antes",
-    "que hacias antes",
-    "antes de rpc",
-    "experiencia previa",
-    "trabajos anteriores",
-    "where have you worked before",
-    "previous experience",
-    "before rpc",
-  ];
-  if (includesAny(normalized, previousExperienceTerms)) {
-    return {
-      reply:
-        locale === "es"
-          ? "Antes de RPC, el portfolio recoge experiencia en Endesa, Ayuntamiento de Madrid, Openbank y Movistar Prosegur Alarmas, con foco en operaciones, documentacion, soporte y seguimiento de procesos."
-          : "Before RPC, the portfolio includes experience at Endesa, Ayuntamiento de Madrid, Openbank, and Movistar Prosegur Alarmas, focused on operations, documentation, support, and process follow-up.",
-      whatsappUrl: null,
-    };
-  }
-
-  const reportingTerms = [
-    "puedes ayudar con dashboards",
-    "puedes ayudar con reporting",
-    "experiencia con reporting",
-    "power bi o excel",
-    "can you help with dashboards",
-    "experience with reporting",
-    "power bi or excel",
-  ];
-  if (includesAny(normalized, reportingTerms)) {
-    return {
-      reply:
-        locale === "es"
-          ? `Si, Carlos tiene experiencia en reporting y dashboards orientados a negocio. Si quieres, puedes escribirme directamente por WhatsApp.\n${WHATSAPP_URL}`
-          : `Yes, Carlos has experience with business-oriented reporting and dashboards. If you want, you can reach out directly on WhatsApp.\n${WHATSAPP_URL}`,
-      whatsappUrl: WHATSAPP_URL,
-    };
-  }
-
-  const profileBalanceTerms = [
-    "perfil mas de datos o de negocio",
-    "perfil mas de datos",
-    "perfil mas de negocio",
-    "tu perfil es tecnico",
-    "more business or data oriented",
-    "is your profile technical",
-    "business or data oriented",
-  ];
-  if (includesAny(normalized, profileBalanceTerms)) {
-    return {
-      reply:
-        locale === "es"
-          ? "Su perfil combina negocio y datos. Trabaja con reporting, KPIs, dashboards y procesos operativos, conectando la parte analitica con la operativa y la de negocio."
-          : "His profile combines business and data. He works with reporting, KPIs, dashboards, and operational workflows, connecting the analytical, operational, and business sides.",
-      whatsappUrl: null,
-    };
-  }
-
-  const automotiveTerms = [
-    "has trabajado en automocion",
-    "experiencia en automocion",
-    "have you worked in automotive",
-    "automotive experience",
-    "bmw",
-  ];
-  if (includesAny(normalized, automotiveTerms)) {
-    return {
-      reply:
-        locale === "es"
-          ? "Si, su experiencia reciente esta vinculada al entorno de automocion a traves de The Retail Performance Company (RPC), en un contexto corporativo asociado a BMW."
-          : "Yes, his recent experience is linked to the automotive environment through The Retail Performance Company (RPC), in a corporate context associated with BMW.",
-      whatsappUrl: null,
-    };
-  }
-
-  const endesaTerms = ["endesa", "salesforce en endesa", "que hacias en endesa", "what did you do at endesa"];
-  if (includesAny(normalized, endesaTerms)) {
-    return {
-      reply:
-        locale === "es"
-          ? "En Endesa, Carlos trabajo en operaciones de back office centradas en documentacion, validacion y coordinacion dentro de workflows de financiacion solar, utilizando Salesforce para seguimiento del proceso."
-          : "At Endesa, Carlos worked in back-office operations focused on documentation, validation, and coordination in solar financing workflows, using Salesforce for process follow-up.",
-      whatsappUrl: null,
-    };
-  }
-
-  const ayuntamientoTerms = ["ayuntamiento de madrid", "que hacias en el ayuntamiento", "madrid city council"];
-  if (includesAny(normalized, ayuntamientoTerms)) {
-    return {
-      reply:
-        locale === "es"
-          ? "En el Ayuntamiento de Madrid, Carlos dio soporte administrativo en contratacion publica, con foco en control documental, expedientes, coordinacion y seguimiento de procesos."
-          : "At Ayuntamiento de Madrid, Carlos provided administrative support in public procurement, focused on documentation control, records, coordination, and process follow-up.",
-      whatsappUrl: null,
-    };
-  }
-
-  return null;
-}
 
 function getWhatsAppCtaLabel(locale: Locale) {
   return locale === "es" ? "Abrir conversacion en WhatsApp" : "Open WhatsApp chat";
@@ -470,7 +241,6 @@ export default function ChatWidget() {
   async function handleSend(message: string) {
     const trimmed = message.trim();
     if (!trimmed || isLoading) return;
-    const instantReply = getInstantReply(trimmed, locale);
     const history =
       messages.length <= 1
         ? []
@@ -495,22 +265,18 @@ export default function ChatWidget() {
       setMessages((current) => [...current, makeMessage("assistant", assistantMessage)]);
     } catch (error) {
       console.error("[ChatWidget] send failed", error);
-      if (instantReply) {
-        const localAssistantMessage = withWhatsAppCta(instantReply.reply, instantReply.whatsappUrl);
-        setMessages((current) => [...current, makeMessage("assistant", localAssistantMessage)]);
-        return;
-      }
       const fallbackProfilePath = locale === "es" ? "/es/professional-profile" : "/en/professional-profile";
       const fallbackMessage =
         error instanceof Error &&
         (
+          error.message === "chat-not-persisted" ||
           error.message === "missing-inbox-api-url" ||
           error.message === "placeholder-inbox-api-url" ||
           error.message === "inbox-timeout"
         )
           ? locale === "es"
-            ? `No puedo conectar con el asistente ahora mismo. Verifica la configuracion del backend o vuelve a intentarlo en unos segundos. Tambien puedes revisar mi perfil (${fallbackProfilePath}) y escribirme por WhatsApp.\n${WHATSAPP_URL}`
-            : `I cannot connect to the assistant right now. Please verify the backend configuration or try again in a few seconds. You can also review my profile (${fallbackProfilePath}) and reach out on WhatsApp.\n${WHATSAPP_URL}`
+            ? `No he podido registrar esta interaccion en el backend, por lo que no se reflejara en el dashboard. Verifica la conexion del backend y vuelve a intentarlo. Tambien puedes revisar mi perfil (${fallbackProfilePath}) y escribirme por WhatsApp.\n${WHATSAPP_URL}`
+            : `I could not persist this interaction in the backend, so it will not appear in the dashboard. Please verify backend connectivity and try again. You can also review my profile (${fallbackProfilePath}) and reach out on WhatsApp.\n${WHATSAPP_URL}`
           : text.fallbackError;
       setMessages((current) => [...current, makeMessage("assistant", withWhatsAppCta(fallbackMessage, WHATSAPP_URL))]);
     } finally {
