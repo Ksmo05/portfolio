@@ -783,6 +783,11 @@ def build_message_payload(
         "feedback_signal": meta.get("feedback_signal", "none"),
         "feedback_reason": meta.get("feedback_reason") or "",
         "chat_intent": meta.get("intent") or "",
+        "conversation_goal": meta.get("conversation_goal") or "general",
+        "reply_type": meta.get("reply_type") or "heuristic",
+        "intent_confidence": float(meta.get("intent_confidence", 0.5) or 0.5),
+        "clarification_needed": bool(meta.get("clarification_needed", False)),
+        "resolved_likely": bool(meta.get("resolved_likely", False)),
         "whatsapp_handoff": whatsapp_handoff,
         "whatsapp_url": whatsapp_url,
         "created_at": created_at or utc_now(),
@@ -842,6 +847,11 @@ async def handle_inbox_submission(request: Request, background_tasks: Background
         "feedback_signal": "none",
         "feedback_reason": None,
         "intent": "",
+        "conversation_goal": "general",
+        "reply_type": "heuristic",
+        "intent_confidence": 0.5,
+        "clarification_needed": False,
+        "resolved_likely": False,
         "whatsapp_handoff": False,
     }
     thread: dict[str, Any] | None = None
@@ -932,14 +942,28 @@ async def handle_inbox_submission(request: Request, background_tasks: Background
                 )
                 analysis, _ = heuristic_analysis(submission)
                 reply_text, engine, chat_meta = generate_chat_reply(submission, analysis, final_language)
+                chat_meta["reply_type"] = chat_meta.get("reply_type") or infer_reply_type(engine)
+                chat_meta["conversation_goal"] = chat_meta.get("conversation_goal") or infer_conversation_goal(
+                    chat_meta.get("intent", "general"),
+                    chat_meta.get("topic", "general"),
+                    analysis.theme_slug,
+                )
+                chat_meta["intent_confidence"] = float(chat_meta.get("intent_confidence", 0.5) or 0.5)
+                chat_meta["clarification_needed"] = bool(chat_meta.get("clarification_needed", False))
+                chat_meta["resolved_likely"] = bool(chat_meta.get("resolved_likely", False))
                 analysis = analysis.model_copy(update={"language": final_language, "reply_text": reply_text})
                 logger.info(
-                    "Chat response trace | chat_response_path=%s | chat_language=%s | feedback_signal=%s | feedback_reason=%s | chat_intent=%s | whatsapp_handoff=%s",
+                    "Chat response trace | chat_response_path=%s | chat_language=%s | feedback_signal=%s | feedback_reason=%s | chat_intent=%s | conversation_goal=%s | reply_type=%s | confidence=%s | clarification_needed=%s | resolved_likely=%s | whatsapp_handoff=%s",
                     engine,
                     final_language,
                     chat_meta["feedback_signal"],
                     chat_meta["feedback_reason"] or "none",
                     chat_meta["intent"],
+                    chat_meta["conversation_goal"],
+                    chat_meta["reply_type"],
+                    chat_meta["intent_confidence"],
+                    chat_meta["clarification_needed"],
+                    chat_meta["resolved_likely"],
                     chat_meta["whatsapp_handoff"],
                 )
             else:
@@ -981,10 +1005,11 @@ async def handle_inbox_submission(request: Request, background_tasks: Background
                     sentiment, summary, key_points_json, raw_message, reply_text, theme_label, theme_slug,
                     thread_summary, email_status, analysis_engine, created_at, sender_name, sender_email,
                     message_text, message_summary, suggested_reply, urgency_score, themes, needs_follow_up,
-                    feedback_signal, feedback_reason, chat_intent, whatsapp_handoff
+                    feedback_signal, feedback_reason, chat_intent, whatsapp_handoff, conversation_goal,
+                    reply_type, intent_confidence, clarification_needed, resolved_likely
                     , response_latency_ms
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     thread_id,
@@ -1019,6 +1044,11 @@ async def handle_inbox_submission(request: Request, background_tasks: Background
                     chat_meta["feedback_reason"],
                     chat_meta["intent"],
                     1 if chat_meta["whatsapp_handoff"] else 0,
+                    chat_meta.get("conversation_goal") or "general",
+                    chat_meta.get("reply_type") or "heuristic",
+                    float(chat_meta.get("intent_confidence", 0.5) or 0.5),
+                    1 if chat_meta.get("clarification_needed") else 0,
+                    1 if chat_meta.get("resolved_likely") else 0,
                     response_latency_ms,
                 ),
             )
@@ -1321,6 +1351,11 @@ def init_db() -> None:
                 feedback_reason TEXT,
                 chat_intent TEXT,
                 whatsapp_handoff INTEGER DEFAULT 0,
+                conversation_goal TEXT DEFAULT 'general',
+                reply_type TEXT DEFAULT 'heuristic',
+                intent_confidence REAL DEFAULT 0.5,
+                clarification_needed INTEGER DEFAULT 0,
+                resolved_likely INTEGER DEFAULT 0,
                 FOREIGN KEY(thread_id) REFERENCES threads(id)
             );
             """
@@ -1372,6 +1407,11 @@ def init_db() -> None:
                 "feedback_reason": "TEXT",
                 "chat_intent": "TEXT",
                 "whatsapp_handoff": "INTEGER DEFAULT 0",
+                "conversation_goal": "TEXT DEFAULT 'general'",
+                "reply_type": "TEXT DEFAULT 'heuristic'",
+                "intent_confidence": "REAL DEFAULT 0.5",
+                "clarification_needed": "INTEGER DEFAULT 0",
+                "resolved_likely": "INTEGER DEFAULT 0",
                 "response_latency_ms": "REAL",
             },
         )
@@ -1613,7 +1653,7 @@ def heuristic_analysis(submission: InboxSubmission) -> tuple[MessageAnalysis, st
     key_points = normalize_list(sentence_parts[:3] or [summary], limit=5)
 
     if language == "es":
-        reply_text = "Gracias por escribir. Tu mensaje se ha registrado correctamente. Si hace falta, puedo ampliar experiencia, proyectos o encaje profesional desde un perfil centrado en operaciones, reporting, soporte a procesos y uso practico de IA."
+        reply_text = "Gracias por escribir. Tu mensaje se ha registrado correctamente. Si te ayuda, puedo ampliar experiencia, proyectos o aporte para un rol desde un perfil centrado en operaciones, reporting, soporte a procesos y uso practico de IA."
     else:
         reply_text = "Thanks for reaching out. Your message has been logged successfully. If helpful, I can expand on experience, projects, or professional fit from a profile centered on operations, reporting, process support, and practical AI use."
 
@@ -1662,6 +1702,65 @@ def detect_chat_intent(normalized_text: str) -> str:
     if any(term in normalized_text for term in client_terms):
         return "client"
     return "general"
+
+
+def infer_conversation_goal(intent: str, topic: str, analysis_theme_slug: str) -> str:
+    theme_slug = (analysis_theme_slug or "").strip().lower()
+    if theme_slug == "tools":
+        return "tools"
+    if topic in {"contact", "whatsapp"}:
+        return "contact"
+    if topic == "projects":
+        return "projects"
+    if topic in {"reporting", "practical-ai"}:
+        return "capabilities"
+    if topic in {"name", "current-role", "education", "previous-experience", "specific-experience", "experience", "profile", "profile-balance", "automotive", "fit"}:
+        return "profile"
+    if intent in {"recruiter", "client"}:
+        return "opportunity"
+    return "general"
+
+
+def infer_intent_confidence(normalized_text: str, intent: str, topic: str, analysis_theme_slug: str) -> float:
+    score = 0.52
+    if (analysis_theme_slug or "").strip().lower() in {"tools", "name", "current-role", "education", "previous-experience", "specific-experience"}:
+        score = max(score, 0.9)
+    if topic in {"projects", "reporting", "practical-ai", "contact", "whatsapp"}:
+        score = max(score, 0.78)
+    if intent in {"recruiter", "client", "technical"}:
+        score = max(score, 0.74)
+    if detect_whatsapp_request(normalized_text) or detect_direct_contact_request(normalized_text):
+        score = max(score, 0.86)
+    return round(min(0.98, score), 2)
+
+
+def detect_clarification_needed(normalized_text: str, messages: list[dict[str, str]] | None, feedback_signal: str) -> bool:
+    if feedback_signal == "negative":
+        return True
+    clarification_terms = {
+        "me refiero", "no era eso", "no es eso", "aclara", "mas concreto", "mas clara",
+        "i mean", "not that", "be more specific", "clarify", "more concrete",
+    }
+    if any(term in normalized_text for term in clarification_terms):
+        return True
+    return detect_stuck_conversation(messages)
+
+
+def infer_reply_type(engine: str) -> str:
+    path = (engine or "").strip().lower()
+    if path.startswith("chat-grounded-"):
+        return "grounded"
+    if path.startswith("chat-static-"):
+        return "static"
+    if path.startswith("chat-openai"):
+        return "openai"
+    if "scope-gap" in path or "fallback" in path:
+        return "fallback"
+    if "feedback-recovery" in path:
+        return "recovery"
+    if "close-conversation" in path:
+        return "close"
+    return "heuristic"
 
 
 def detect_opportunity_contact_request(normalized_text: str) -> bool:
@@ -2066,7 +2165,7 @@ def resolve_whatsapp_offer(
 def build_feedback_recovery_reply(language: str, intent: str, whatsapp_offer: bool, whatsapp_reason: str | None) -> str:
     whatsapp_tail = build_whatsapp_cta(language, whatsapp_reason or "direct") if whatsapp_offer and whatsapp_reason else ""
     if language == "es":
-        base = "Entiendo. Voy a ir mas directo. Puedo enfocarlo en experiencia, proyectos o encaje profesional."
+        base = "Entiendo. Voy a ir mas directo. Puedo enfocarlo en experiencia, proyectos o aporte para un rol."
         return f"{base} {whatsapp_tail}".strip()
     base = "Understood. I'll keep it more direct. I can focus on experience, projects, or role fit."
     return f"{base} {whatsapp_tail}".strip()
@@ -2108,7 +2207,7 @@ def build_chat_cta(language: str, intent: str, topic: str, contact_ready: bool, 
         if whatsapp_offer and whatsapp_reason:
             return build_whatsapp_cta(language, whatsapp_reason)
         if intent == "recruiter":
-            return "Si quieres, puedo resumir su encaje para un rol, destacar la experiencia mas relevante o centrarme en proyectos."
+            return "Si quieres, puedo resumir su aporte para un rol, destacar la experiencia mas relevante o centrarme en proyectos."
         if intent == "client":
             return "Si te sirve, puedo enfocarlo a procesos, reporting, workflows digitales o IA practica."
         return "Si quieres, puedo resumirlo en corto, enfocarlo a experiencia o senalar los proyectos mas relevantes."
@@ -2151,7 +2250,7 @@ def build_contact_reply(language: str, normalized_text: str, tail: str) -> str:
         if has_automation_terms:
             return f"Si, puede aportar en automatizacion de reporting, organizacion de informacion e IA aplicada de forma practica. {tail}"
         if has_collaboration_terms:
-            return f"Si, esta abierto a colaboraciones, proyectos freelance y nuevas oportunidades cuando encajan con su perfil. {tail}"
+            return f"Si, esta abierto a colaboraciones, proyectos freelance y nuevas oportunidades cuando tienen sentido para su perfil. {tail}"
         if has_process_terms:
             return f"Posiblemente si. Carlos suele aportar valor en reporting, procesos, soporte digital y estructuracion de informacion. {tail}"
         return f"Si quieres seguir con ello, puedes escribirme directamente por WhatsApp. {build_whatsapp_url(language)}"
@@ -2170,7 +2269,7 @@ def build_contact_reply(language: str, normalized_text: str, tail: str) -> str:
 def build_guided_options(language: str, intent: str) -> str:
     if language == "es":
         if intent == "recruiter":
-            return "Puedo ayudarte de tres formas: resumen de perfil, encaje para un rol o experiencia mas relevante."
+            return "Puedo ayudarte de tres formas: resumen de perfil, aporte para un rol o experiencia mas relevante."
         if intent == "client":
             return "Puedo ayudarte de tres formas: resumen del perfil, donde puede aportar en procesos/reporting o siguiente paso de contacto."
         return "Puedo ayudarte de tres formas: resumen del perfil, experiencia principal o proyectos mas relevantes."
@@ -2191,7 +2290,7 @@ def build_projects_reply(language: str) -> str:
         return (
             "Estos son los proyectos mas relevantes:\n"
             + body
-            + "\n\nSi quieres, puedo resumir uno de ellos con mas detalle o decirte cual encaja mejor con operaciones, datos o IA practica."
+            + "\n\nSi quieres, puedo resumir uno de ellos con mas detalle o decirte cual aporta mas en operaciones, datos o IA practica."
         )
 
     body = "\n".join(
@@ -2244,7 +2343,7 @@ def build_current_role_reply(language: str) -> str:
     if language == "es":
         return (
             base
-            + "\n\nSi quieres, tambien puedo resumir sus funciones principales o explicarte como encaja ese rol con su perfil general."
+            + "\n\nSi quieres, tambien puedo resumir sus funciones principales o explicarte como se conecta ese rol con su perfil general."
         )
     return (
         base
@@ -2371,7 +2470,7 @@ Habla siempre en positivo y centrado en valor real. No definas el perfil por neg
 Adapta la respuesta a esta intencion: {intent}.
 {brevity_rule}
 Piensa como un asistente profesional de portfolio, no como un bot comercial.
-Si la intencion es recruiter o hiring, conecta la respuesta con encaje, experiencia relevante y un siguiente paso de contacto razonable.
+Si la intencion es recruiter o hiring, conecta la respuesta con aporte para el rol, experiencia relevante y un siguiente paso de contacto razonable.
 Si la intencion es cliente o colaboracion, conecta la respuesta con procesos, reporting, workflows digitales e IA practica.
 Si preguntan si puede ayudar, si esta disponible, si acepta freelance, colaboraciones, nuevos proyectos o contacto directo, responde de forma natural y remite a WhatsApp sin sonar agresivo.
 Si preguntan por reporting, dashboards, automocion, perfil tecnico o si su perfil es mas de negocio o de datos, responde de forma directa usando solo el grounding disponible en el portfolio.
@@ -2502,9 +2601,17 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
     if feedback_signal == "none":
         feedback_signal, feedback_reason = detect_recent_feedback(submission.messages)
     word_count = len(normalized.split())
+    conversation_goal = infer_conversation_goal(intent, topic, analysis.theme_slug)
+    intent_confidence = infer_intent_confidence(normalized, intent, topic, analysis.theme_slug)
+    clarification_needed = detect_clarification_needed(normalized, submission.messages, feedback_signal)
     meta = {
         "intent": intent,
         "topic": topic,
+        "conversation_goal": conversation_goal,
+        "intent_confidence": intent_confidence,
+        "clarification_needed": clarification_needed,
+        "resolved_likely": feedback_signal == "positive",
+        "reply_type": "heuristic",
         "feedback_signal": feedback_signal,
         "feedback_reason": feedback_reason,
         "whatsapp_handoff": whatsapp_offer,
@@ -2512,15 +2619,23 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
 
     if analysis.theme_slug in {"name", "current-role", "education", "previous-experience", "specific-experience", "tools"} and analysis.reply_text:
         grounded_path = f"chat-grounded-{analysis.theme_slug}"
-        return analysis.reply_text, grounded_path, meta
+        grounded_meta = dict(meta)
+        grounded_meta["reply_type"] = "grounded"
+        return analysis.reply_text, grounded_path, grounded_meta
 
     if detect_conversation_close_intent(normalized):
         close_meta = dict(meta)
         close_meta["whatsapp_handoff"] = True
+        close_meta["resolved_likely"] = True
+        close_meta["reply_type"] = "close"
         return build_conversation_close_reply(language), "chat-close-conversation", close_meta
 
     if feedback_signal == "negative" and topic == "general":
-        return build_feedback_recovery_reply(language, intent, whatsapp_offer, whatsapp_reason), "chat-feedback-recovery", meta
+        recovery_meta = dict(meta)
+        recovery_meta["reply_type"] = "recovery"
+        recovery_meta["clarification_needed"] = True
+        recovery_meta["resolved_likely"] = False
+        return build_feedback_recovery_reply(language, intent, whatsapp_offer, whatsapp_reason), "chat-feedback-recovery", recovery_meta
 
     if (
         topic == "general"
@@ -2532,6 +2647,9 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
         scope_path = "chat-scope-gap"
         scope_meta = dict(meta)
         scope_meta["whatsapp_handoff"] = True
+        scope_meta["reply_type"] = "fallback"
+        scope_meta["clarification_needed"] = True
+        scope_meta["resolved_likely"] = False
         if whatsapp_offer and whatsapp_reason:
             scope_path = f"{scope_path}-whatsapp-{whatsapp_reason}"
         return build_scope_gap_reply(language, True, whatsapp_reason), scope_path, scope_meta
@@ -2540,18 +2658,27 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
     if static_reply and should_use_repetition_fallback(static_reply, submission.messages, topic):
         repetition_meta = dict(meta)
         repetition_meta["whatsapp_handoff"] = True
+        repetition_meta["reply_type"] = "fallback"
+        repetition_meta["clarification_needed"] = True
+        repetition_meta["resolved_likely"] = False
         return build_scope_gap_reply(language, True, whatsapp_reason), "chat-repetition-fallback", repetition_meta
     if static_reply and (topic != "general" or word_count <= 8):
         path = f"chat-static-{topic}" if topic != "general" else "chat-static-short"
+        static_meta = dict(meta)
+        static_meta["reply_type"] = "static"
+        if topic in {"contact", "whatsapp"} and whatsapp_offer:
+            static_meta["resolved_likely"] = True
         if whatsapp_offer and whatsapp_reason:
             path = f"{path}-whatsapp-{whatsapp_reason}"
-        return static_reply, path, meta
+        return static_reply, path, static_meta
 
     if guided_mode and static_reply:
         guided_path = "chat-static-guided"
+        guided_meta = dict(meta)
+        guided_meta["reply_type"] = "static"
         if whatsapp_offer and whatsapp_reason:
             guided_path = f"{guided_path}-whatsapp-{whatsapp_reason}"
-        return static_reply, guided_path, meta
+        return static_reply, guided_path, guided_meta
 
     model_reply, engine = openai_chat_reply(
         submission,
@@ -2570,12 +2697,20 @@ def generate_chat_reply(submission: InboxSubmission, analysis: MessageAnalysis, 
         if should_use_repetition_fallback(model_reply, submission.messages, topic):
             repetition_meta = dict(meta)
             repetition_meta["whatsapp_handoff"] = True
+            repetition_meta["reply_type"] = "fallback"
+            repetition_meta["clarification_needed"] = True
+            repetition_meta["resolved_likely"] = False
             return build_scope_gap_reply(language, True, whatsapp_reason), "chat-repetition-fallback", repetition_meta
-        return model_reply, engine, meta
+        model_meta = dict(meta)
+        model_meta["reply_type"] = "openai"
+        return model_reply, engine, model_meta
 
     fallback_path = "chat-fallback"
     fallback_meta = dict(meta)
     fallback_meta["whatsapp_handoff"] = True
+    fallback_meta["reply_type"] = "fallback"
+    fallback_meta["clarification_needed"] = True
+    fallback_meta["resolved_likely"] = False
     if whatsapp_offer and whatsapp_reason:
         fallback_path = f"{fallback_path}-whatsapp-{whatsapp_reason}"
     return fallback_chat_reply(language, intent, contact_ready, True, whatsapp_reason), fallback_path, fallback_meta
@@ -3019,6 +3154,11 @@ def serialize_message(row: sqlite3.Row) -> dict[str, Any]:
         "feedback_signal": row_value(row, "feedback_signal", "none") or "none",
         "feedback_reason": row_value(row, "feedback_reason", "") or "",
         "chat_intent": row_value(row, "chat_intent", "") or "",
+        "conversation_goal": row_value(row, "conversation_goal", "general") or "general",
+        "reply_type": row_value(row, "reply_type", "heuristic") or "heuristic",
+        "intent_confidence": float(row_value(row, "intent_confidence", 0.5) or 0.5),
+        "clarification_needed": bool(row_value(row, "clarification_needed", 0) or 0),
+        "resolved_likely": bool(row_value(row, "resolved_likely", 0) or 0),
         "whatsapp_handoff": bool(row_value(row, "whatsapp_handoff", 0) or 0),
         "created_at": row_value(row, "created_at", utc_now()),
     }
@@ -3154,7 +3294,13 @@ def all_messages_for_export(connection: sqlite3.Connection) -> list[dict[str, An
             COALESCE(NULLIF(TRIM(m.priority), ''), 'unknown') AS priority,
             COALESCE(NULLIF(TRIM(m.theme_label), ''), 'Untagged') AS theme_label,
             COALESCE(NULLIF(TRIM(m.theme_slug), ''), 'untagged') AS theme_slug,
-            COALESCE(m.summary, m.message_summary, '') AS summary
+            COALESCE(m.summary, m.message_summary, '') AS summary,
+            COALESCE(NULLIF(TRIM(m.chat_intent), ''), 'general') AS chat_intent,
+            COALESCE(NULLIF(TRIM(m.conversation_goal), ''), 'general') AS conversation_goal,
+            COALESCE(NULLIF(TRIM(m.reply_type), ''), 'heuristic') AS reply_type,
+            COALESCE(m.intent_confidence, 0.5) AS intent_confidence,
+            COALESCE(m.clarification_needed, 0) AS clarification_needed,
+            COALESCE(m.resolved_likely, 0) AS resolved_likely
         FROM messages m
         WHERE {where_sql}
         ORDER BY m.created_at DESC, m.id DESC
@@ -3351,6 +3497,15 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
                 m.reply_text,
                 m.thread_summary,
                 m.email_status,
+                m.feedback_signal,
+                m.feedback_reason,
+                m.chat_intent,
+                m.conversation_goal,
+                m.reply_type,
+                m.intent_confidence,
+                m.clarification_needed,
+                m.resolved_likely,
+                m.whatsapp_handoff,
                 m.created_at
             FROM messages m
             JOIN threads t ON t.id = m.thread_id
@@ -3397,7 +3552,13 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
             SELECT
                 id,
                 created_at,
-                COALESCE(language, 'unknown') AS language
+                COALESCE(language, 'unknown') AS language,
+                COALESCE(NULLIF(TRIM(conversation_goal), ''), 'general') AS conversation_goal,
+                COALESCE(NULLIF(TRIM(reply_type), ''), 'heuristic') AS reply_type,
+                COALESCE(intent_confidence, 0.5) AS intent_confidence,
+                COALESCE(clarification_needed, 0) AS clarification_needed,
+                COALESCE(resolved_likely, 0) AS resolved_likely,
+                COALESCE(response_latency_ms, 0) AS response_latency_ms
             FROM messages m
             WHERE {where_sql}
             ORDER BY created_at ASC, id ASC
@@ -3409,12 +3570,41 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
     total_interactions = len(rows)
     by_language = {"es": 0, "en": 0, "unknown": 0}
     daily_totals: dict[str, int] = {}
+    by_goal: dict[str, int] = {}
+    by_reply_type: dict[str, int] = {}
+    clarification_count = 0
+    resolved_count = 0
+    confidence_values: list[float] = []
+    response_times: list[float] = []
 
     for row in rows:
         language = (row.get("language") or "unknown").strip().lower() or "unknown"
         if language not in by_language:
             by_language[language] = 0
         by_language[language] += 1
+
+        goal = str(row.get("conversation_goal") or "general").strip().lower() or "general"
+        by_goal[goal] = by_goal.get(goal, 0) + 1
+
+        reply_type = str(row.get("reply_type") or "heuristic").strip().lower() or "heuristic"
+        by_reply_type[reply_type] = by_reply_type.get(reply_type, 0) + 1
+
+        if int(row.get("clarification_needed") or 0) == 1:
+            clarification_count += 1
+        if int(row.get("resolved_likely") or 0) == 1:
+            resolved_count += 1
+
+        try:
+            confidence_values.append(float(row.get("intent_confidence") or 0.5))
+        except (TypeError, ValueError):
+            confidence_values.append(0.5)
+
+        try:
+            latency = float(row.get("response_latency_ms") or 0)
+            if latency > 0:
+                response_times.append(latency)
+        except (TypeError, ValueError):
+            pass
 
         created_at_raw = row.get("created_at") or ""
         day = str(created_at_raw)[:10]
@@ -3429,16 +3619,25 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
     analytics = {
         "total_interactions": total_interactions,
         "by_language": by_language,
+        "by_conversation_goal": by_goal,
+        "by_reply_type": by_reply_type,
         "spanish_interactions": by_language.get("es", 0),
         "english_interactions": by_language.get("en", 0),
+        "clarification_needed_count": clarification_count,
+        "resolved_likely_count": resolved_count,
+        "unresolved_likely_count": max(total_interactions - resolved_count, 0),
+        "avg_intent_confidence": round(sum(confidence_values) / len(confidence_values), 2) if confidence_values else 0.0,
+        "avg_response_latency_ms": round(sum(response_times) / len(response_times), 2) if response_times else 0.0,
         "daily_interactions": daily_interactions,
         "scope_mode": scope_mode,
         "interaction_definition": "One interaction equals one persisted chat message row with source portfolio-chat-widget.",
     }
     logger.info(
-        "Dashboard chat analytics read | total_interactions=%s | by_language=%s | trend_days=%s",
+        "Dashboard chat analytics read | total_interactions=%s | by_language=%s | goals=%s | reply_types=%s | trend_days=%s",
         total_interactions,
         by_language,
+        by_goal,
+        by_reply_type,
         len(daily_interactions),
     )
     return analytics
@@ -3880,14 +4079,31 @@ async def dashboard_export_excel() -> StreamingResponse:
     chat_sheet["B6"] = high_priority_count
     chat_sheet["A7"] = "Average lead score"
     chat_sheet["B7"] = average_lead_score
+    chat_sheet["A8"] = "Average intent confidence"
+    chat_sheet["B8"] = float(chat_analytics.get("avg_intent_confidence", 0.0) or 0.0)
+    chat_sheet["A9"] = "Clarification needed"
+    chat_sheet["B9"] = int(chat_analytics.get("clarification_needed_count", 0) or 0)
+    chat_sheet["A10"] = "Likely resolved"
+    chat_sheet["B10"] = int(chat_analytics.get("resolved_likely_count", 0) or 0)
 
-    chat_sheet["A9"] = "Daily chat interactions"
-    chat_sheet["A9"].font = Font(bold=True)
-    chat_sheet["A10"] = "Day"
-    chat_sheet["B10"] = "Interactions"
-    chat_sheet["A10"].font = Font(bold=True)
-    chat_sheet["B10"].font = Font(bold=True)
-    chat_row = 11
+    chat_sheet["A12"] = "Conversation goals"
+    chat_sheet["A12"].font = Font(bold=True)
+    chat_sheet["A13"] = "Goal"
+    chat_sheet["B13"] = "Count"
+    chat_sheet["A13"].font = Font(bold=True)
+    chat_sheet["B13"].font = Font(bold=True)
+    goal_row = 14
+    for goal, total in (chat_analytics.get("by_conversation_goal", {}) or {}).items():
+        chat_sheet.cell(row=goal_row, column=1, value=goal)
+        chat_sheet.cell(row=goal_row, column=2, value=int(total or 0))
+        goal_row += 1
+
+    chat_row = max(goal_row + 2, 18)
+    chat_sheet.cell(row=chat_row, column=1, value="Daily chat interactions").font = Font(bold=True)
+    chat_row += 1
+    chat_sheet.cell(row=chat_row, column=1, value="Day").font = Font(bold=True)
+    chat_sheet.cell(row=chat_row, column=2, value="Interactions").font = Font(bold=True)
+    chat_row += 1
     for item in chat_analytics.get("daily_interactions", []):
         chat_sheet.cell(row=chat_row, column=1, value=item.get("day"))
         chat_sheet.cell(row=chat_row, column=2, value=int(item.get("total", 0) or 0))
@@ -3966,6 +4182,12 @@ async def dashboard_export_excel() -> StreamingResponse:
         "priority",
         "theme_label",
         "theme_slug",
+        "chat_intent",
+        "conversation_goal",
+        "reply_type",
+        "intent_confidence",
+        "clarification_needed",
+        "resolved_likely",
         "summary",
     ]
     messages_sheet.append(headers)
@@ -3986,6 +4208,12 @@ async def dashboard_export_excel() -> StreamingResponse:
                 item["priority"],
                 item["theme_label"],
                 item["theme_slug"],
+                item.get("chat_intent", "general"),
+                item.get("conversation_goal", "general"),
+                item.get("reply_type", "heuristic"),
+                item.get("intent_confidence", 0.5),
+                int(item.get("clarification_needed", 0) or 0),
+                int(item.get("resolved_likely", 0) or 0),
                 item["summary"],
             ]
         )

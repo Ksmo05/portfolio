@@ -722,6 +722,11 @@
   function fallbackChatAnalytics(rawItems) {
     const byLanguage = { es: 0, en: 0, unknown: 0 };
     const dailyTotals = {};
+    const byConversationGoal = {};
+    const byReplyType = {};
+    let clarificationNeededCount = 0;
+    let resolvedLikelyCount = 0;
+    const confidenceValues = [];
 
     (rawItems || []).forEach(function (item) {
       const language = String(item && item.language ? item.language : "unknown").toLowerCase();
@@ -729,6 +734,25 @@
         byLanguage[language] = 0;
       }
       byLanguage[language] += 1;
+
+      const goal = String(item && item.conversation_goal ? item.conversation_goal : "general").toLowerCase();
+      byConversationGoal[goal] = (byConversationGoal[goal] || 0) + 1;
+
+      const replyType = String(item && item.reply_type ? item.reply_type : "heuristic").toLowerCase();
+      byReplyType[replyType] = (byReplyType[replyType] || 0) + 1;
+
+      if (Boolean(item && item.clarification_needed)) {
+        clarificationNeededCount += 1;
+      }
+      if (Boolean(item && item.resolved_likely)) {
+        resolvedLikelyCount += 1;
+      }
+
+      const confidence = Number(item && item.intent_confidence ? item.intent_confidence : 0);
+      if (Number.isFinite(confidence) && confidence > 0) {
+        confidenceValues.push(confidence);
+      }
+
       const day = String(item && item.created_at ? item.created_at : "").slice(0, 10);
       if (day) {
         dailyTotals[day] = (dailyTotals[day] || 0) + 1;
@@ -747,8 +771,16 @@
     return {
       total_interactions: (rawItems || []).length,
       by_language: byLanguage,
+      by_conversation_goal: byConversationGoal,
+      by_reply_type: byReplyType,
       spanish_interactions: byLanguage.es || 0,
       english_interactions: byLanguage.en || 0,
+      clarification_needed_count: clarificationNeededCount,
+      resolved_likely_count: resolvedLikelyCount,
+      unresolved_likely_count: Math.max(((rawItems || []).length - resolvedLikelyCount), 0),
+      avg_intent_confidence: confidenceValues.length
+        ? Number((confidenceValues.reduce(function (acc, value) { return acc + value; }, 0) / confidenceValues.length).toFixed(2))
+        : 0,
       daily_interactions: dailyInteractions,
     };
   }
@@ -933,12 +965,19 @@
     const showChatLanguageChart = hasPositiveValues(chatLanguageItems);
     const showGaTrafficChart = hasPositiveValues(gaTrafficItems);
     const showGaTrendChart = hasPositiveValues(gaTrendItems);
-    const showQuantifiedInsights = showChatLanguageChart || showGaTrafficChart || showGaTrendChart;
+    const chatGoals = chatAnalytics.by_conversation_goal || {};
+    const chatReplyTypes = chatAnalytics.by_reply_type || {};
+    const clarificationNeeded = Number(chatAnalytics.clarification_needed_count || 0);
+    const resolvedLikely = Number(chatAnalytics.resolved_likely_count || 0);
+    const avgIntentConfidence = Number(chatAnalytics.avg_intent_confidence || 0);
+    const showChatSignals = Object.keys(chatGoals).length > 0 || Object.keys(chatReplyTypes).length > 0 || clarificationNeeded > 0 || resolvedLikely > 0;
+    const showQuantifiedInsights = showChatLanguageChart || showGaTrafficChart || showGaTrendChart || showChatSignals;
 
     setCardVisible("quantifiedInsightsCard", showQuantifiedInsights);
     setCardVisible("chatLanguageChartCard", showChatLanguageChart);
     setCardVisible("gaTrafficSourcesChartCard", showGaTrafficChart);
     setCardVisible("gaSessionsTrendChartCard", showGaTrendChart);
+    setCardVisible("chatSignalsCard", showChatSignals);
 
     if (showChatLanguageChart) {
       createDonutChart("chatLanguageDonutChart", chatLanguageItems);
@@ -948,6 +987,13 @@
     }
     if (showGaTrendChart) {
       createLineChart("gaSessionsTrendChart", gaTrendItems, "#24b4a3");
+    }
+    if (showChatSignals) {
+      setText("chatResolvedLikely", String(resolvedLikely));
+      setText("chatClarificationNeeded", String(clarificationNeeded));
+      setText("chatIntentConfidence", avgIntentConfidence.toFixed(2));
+      renderCountMapList($("chatGoalList"), chatGoals, humanizeLabel);
+      renderCountMapList($("chatReplyTypeList"), chatReplyTypes, humanizeLabel);
     }
 
     const priorityFilter = $("filterPriority");
@@ -1004,6 +1050,7 @@
     setText("dashboardLastRefresh", "Unable to refresh data");
     setCardVisible("chatOverviewCard", false);
     setCardVisible("quantifiedInsightsCard", false);
+    setCardVisible("chatSignalsCard", false);
     setCardVisible("ga4AnalyticsCard", false);
     syncSectionVisibility("dashboardKpiSection");
   });

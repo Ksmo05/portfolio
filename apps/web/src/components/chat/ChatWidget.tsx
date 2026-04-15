@@ -45,7 +45,7 @@ const copy: Record<Locale, ChatCopy> = {
     welcome:
       "Hi, I can help you explore Carlos' profile, experience, projects and ways to get in touch.",
     helper: "Start with a suggested question or write your own message.",
-    headerHelper: "Ask about experience, projects, profile fit, or open a direct contact conversation.",
+    headerHelper: "Ask about experience, projects, profile strengths for a role, or open a direct contact conversation.",
     guidedPromptsLabel: "Guided prompts",
     assistantLabel: "Assistant",
     userLabel: "You",
@@ -69,8 +69,8 @@ const copy: Record<Locale, ChatCopy> = {
       },
       {
         id: "fit",
-        label: "Profile fit",
-        prompt: "What type of role or team would be a good fit for Carlos based on his background?",
+        label: "Role strengths",
+        prompt: "What type of role or team could Carlos contribute to most, based on his background?",
       },
       {
         id: "contact",
@@ -85,7 +85,7 @@ const copy: Record<Locale, ChatCopy> = {
     welcome:
       "Hola, puedo ayudarte a descubrir el perfil de Carlos, su experiencia, sus proyectos y las formas de contacto.",
     helper: "Empieza con una sugerencia o escribe tu propio mensaje.",
-    headerHelper: "Pregunta por experiencia, proyectos, encaje de perfil o abre contacto directo.",
+    headerHelper: "Pregunta por experiencia, proyectos, donde puede aportar en un rol o abre contacto directo.",
     guidedPromptsLabel: "Sugerencias guiadas",
     assistantLabel: "Asistente",
     userLabel: "Tu",
@@ -109,8 +109,8 @@ const copy: Record<Locale, ChatCopy> = {
       },
       {
         id: "fit",
-        label: "Encaje",
-        prompt: "Que tipo de rol o equipo encajaria bien con Carlos segun su trayectoria?",
+        label: "Aporte por rol",
+        prompt: "Que tipo de rol o equipo podria aprovechar mejor el perfil de Carlos segun su trayectoria?",
       },
       {
         id: "contact",
