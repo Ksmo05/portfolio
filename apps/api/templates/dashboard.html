@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="{{ url_for('static', path='widget.css') }}?v=20260415-4" />
+    <link rel="stylesheet" href="{{ url_for('static', path='widget.css') }}?v=20260415-6" />
     <script src="https://www.gstatic.com/charts/loader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
   </head>
@@ -37,65 +37,6 @@
           <a class="ghost-button button-link" href="/api/dashboard/export.xlsx">Export report</a>
           <button class="ghost-button" type="button" id="exportPdfButton">Export PDF</button>
         </div>
-      </section>
-
-      <section id="dashboardKpiSection" class="dashboard-kpi-grid">
-        <article id="kpiChatTotalCard" class="surface-card metric-card metric-card-executive">
-          <div class="metric-card-head">
-            <span class="section-kicker">Chat KPI</span>
-            <span class="status-chip soft-status">Live feed</span>
-          </div>
-          <h3 id="chatTotalInteractions">0</h3>
-          <p>Total interactions persisted from portfolio chat</p>
-        </article>
-        <article id="kpiChatEsCard" class="surface-card metric-card metric-card-executive">
-          <div class="metric-card-head">
-            <span class="section-kicker">Language</span>
-            <span class="status-chip soft-status">Chat</span>
-          </div>
-          <h3 id="chatSpanishInteractions">0</h3>
-          <p>Spanish chat interactions (`language = es`)</p>
-        </article>
-        <article id="kpiChatEnCard" class="surface-card metric-card metric-card-executive">
-          <div class="metric-card-head">
-            <span class="section-kicker">Language</span>
-            <span class="status-chip soft-status">Chat</span>
-          </div>
-          <h3 id="chatEnglishInteractions">0</h3>
-          <p>English chat interactions (`language = en`)</p>
-        </article>
-        <article id="kpiChatHighPriorityCard" class="surface-card metric-card metric-card-executive">
-          <div class="metric-card-head">
-            <span class="section-kicker">Chat KPI</span>
-            <span class="status-chip soft-status">Priority</span>
-          </div>
-          <h3 id="chatHighPriorityInteractions">0</h3>
-          <p>High-priority chat interactions</p>
-        </article>
-        <article id="kpiChatAvgLeadCard" class="surface-card metric-card metric-card-executive">
-          <div class="metric-card-head">
-            <span class="section-kicker">Chat KPI</span>
-            <span class="status-chip soft-status">Lead score</span>
-          </div>
-          <h3 id="chatAvgLeadScore">0.0</h3>
-          <p>Average lead score from chat interactions</p>
-        </article>
-        <article id="kpiGaSessionsCard" class="surface-card metric-card metric-card-executive">
-          <div class="metric-card-head">
-            <span class="section-kicker">GA4</span>
-            <span class="status-chip soft-status">Sessions</span>
-          </div>
-          <h3 id="gaSessions30d">0</h3>
-          <p>Sessions in the last 30 days</p>
-        </article>
-        <article id="kpiGaUsersCard" class="surface-card metric-card metric-card-executive">
-          <div class="metric-card-head">
-            <span class="section-kicker">GA4</span>
-            <span class="status-chip soft-status">Users</span>
-          </div>
-          <h3 id="gaUsers30d">0</h3>
-          <p>Users in the last 30 days</p>
-        </article>
       </section>
 
       <section class="dashboard-grid dashboard-grid-executive">
@@ -125,45 +66,57 @@
         <article id="quantifiedInsightsCard" class="surface-card span-12 module-card">
           <div class="section-head">
             <div>
-              <span class="section-kicker">Quantified insights</span>
-              <h2>Chat and GA4 visual insights</h2>
+              <span class="section-kicker">Chat insights</span>
+              <h2>Portfolio chat analytics</h2>
             </div>
           </div>
-          <p class="section-helper">Only measurable signals with real persisted data are shown here. Empty blocks have been removed so the dashboard stays focused and visual.</p>
+          <p class="section-helper">Chat metrics focused on language split, consulted portfolio sections, and WhatsApp handoff count.</p>
           <div class="analytics-chart-grid compact-top">
-            <article id="chatMixChartCard" class="chart-surface">
-              <div class="chart-surface-head">
-                <span class="section-kicker">Chat</span>
-                <h3>Interaction mix</h3>
-                <p>Comparison of total chat volume, Spanish, English, and high-priority interactions.</p>
-              </div>
-              <div class="chart-canvas-wrap chart-canvas-tall">
-                <canvas id="chatMixBarChart"></canvas>
-              </div>
-            </article>
-
             <article id="chatLanguageChartCard" class="chart-surface">
               <div class="chart-surface-head">
                 <span class="section-kicker">Chat</span>
-                <h3>Language split</h3>
-                <p>Distribution of chat interactions by language.</p>
+                <h3>English vs Spanish queries</h3>
+                <p>Circular distribution of portfolio chat queries in English vs Spanish.</p>
               </div>
               <div class="chart-canvas-wrap">
                 <canvas id="chatLanguageDonutChart"></canvas>
               </div>
             </article>
 
-            <article id="chatGoalChartCard" class="chart-surface">
+            <article id="chatSectionsChartCard" class="chart-surface">
               <div class="chart-surface-head">
                 <span class="section-kicker">Chat</span>
-                <h3>Conversation goals</h3>
-                <p>What users most frequently try to get from the chat based on persisted interaction goals.</p>
+                <h3>Consulted sections</h3>
+                <p>Bar chart: View projects, About, Role strengths, Contact, and Other.</p>
               </div>
-              <div class="chart-canvas-wrap">
-                <canvas id="chatGoalDonutChart"></canvas>
+              <div class="chart-canvas-wrap chart-canvas-tall">
+                <canvas id="chatSectionsBarChart"></canvas>
               </div>
             </article>
 
+            <article id="chatWhatsappCard" class="chart-surface">
+              <div class="chart-surface-head">
+                <span class="section-kicker">Chat</span>
+                <h3>WhatsApp handoffs</h3>
+                <p>Number of times the chat sent a response including the WhatsApp link.</p>
+              </div>
+              <div class="metric-spotlight">
+                <strong id="chatWhatsappCount">0</strong>
+                <span>messages with WhatsApp link</span>
+              </div>
+            </article>
+          </div>
+        </article>
+
+        <article id="gaTrendsCard" class="surface-card span-12 module-card">
+          <div class="section-head">
+            <div>
+              <span class="section-kicker">GA4 trends</span>
+              <h2>Traffic visual insights</h2>
+            </div>
+          </div>
+          <p class="section-helper">GA4 channel and sessions trend for the last 30 days.</p>
+          <div class="analytics-chart-grid compact-top">
             <article id="gaTrafficSourcesChartCard" class="chart-surface">
               <div class="chart-surface-head">
                 <span class="section-kicker">GA4</span>
@@ -174,7 +127,6 @@
                 <canvas id="gaTrafficSourcesBarChart"></canvas>
               </div>
             </article>
-
             <article id="gaSessionsTrendChartCard" class="chart-surface">
               <div class="chart-surface-head">
                 <span class="section-kicker">GA4</span>
@@ -185,33 +137,11 @@
                 <canvas id="gaSessionsTrendChart"></canvas>
               </div>
             </article>
-
-            <article id="chatSignalsCard" class="chart-surface">
-              <div class="chart-surface-head">
-                <span class="section-kicker">Chat quality</span>
-                <h3>Conversation quality</h3>
-                <p id="chatSignalsSummary">Natural conversation quality signals from persisted chat interactions.</p>
-              </div>
-              <div class="chart-canvas-wrap chart-canvas-tall">
-                <canvas id="chatSignalsBarChart"></canvas>
-              </div>
-            </article>
-
-            <article id="chatReplyTypeChartCard" class="chart-surface">
-              <div class="chart-surface-head">
-                <span class="section-kicker">Chat quality</span>
-                <h3>Reply paths</h3>
-                <p>Distribution of how the assistant answered: grounded, heuristic, fallback, or handoff.</p>
-              </div>
-              <div class="chart-canvas-wrap">
-                <canvas id="chatReplyTypeDonutChart"></canvas>
-              </div>
-            </article>
           </div>
         </article>
       </section>
     </main>
 
-    <script src="{{ url_for('static', path='dashboard.js') }}?v=20260415-4" defer></script>
+    <script src="{{ url_for('static', path='dashboard.js') }}?v=20260415-6" defer></script>
   </body>
 </html>

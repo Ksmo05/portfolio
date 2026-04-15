@@ -3698,6 +3698,19 @@ def dashboard_message_metrics(connection: sqlite3.Connection) -> dict[str, Any]:
 
 def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
     where_sql, where_params, scope_mode = resolve_dashboard_scope(connection, "m")
+
+    def section_bucket(goal_value: Any) -> str:
+        goal = str(goal_value or "").strip().lower()
+        if goal == "projects":
+            return "view_projects"
+        if goal in {"profile", "experience", "education"}:
+            return "about"
+        if goal in {"role-fit", "capabilities", "opportunity", "fit"}:
+            return "role_strengths"
+        if goal in {"contact", "whatsapp"}:
+            return "contact"
+        return "other"
+
     rows = [
         dict(row)
         for row in connection.execute(
@@ -3707,11 +3720,14 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
                 created_at,
                 COALESCE(language, 'unknown') AS language,
                 COALESCE(NULLIF(TRIM(conversation_goal), ''), 'general') AS conversation_goal,
+                COALESCE(NULLIF(TRIM(chat_intent), ''), 'general') AS chat_intent,
                 COALESCE(NULLIF(TRIM(reply_type), ''), 'heuristic') AS reply_type,
                 COALESCE(intent_confidence, 0.5) AS intent_confidence,
                 COALESCE(clarification_needed, 0) AS clarification_needed,
                 COALESCE(resolved_likely, 0) AS resolved_likely,
-                COALESCE(response_latency_ms, 0) AS response_latency_ms
+                COALESCE(response_latency_ms, 0) AS response_latency_ms,
+                COALESCE(whatsapp_handoff, 0) AS whatsapp_handoff,
+                COALESCE(reply_text, '') AS reply_text
             FROM messages m
             WHERE {where_sql}
             ORDER BY created_at ASC, id ASC
@@ -3725,10 +3741,18 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
     daily_totals: dict[str, int] = {}
     by_goal: dict[str, int] = {}
     by_reply_type: dict[str, int] = {}
+    by_section = {
+        "view_projects": 0,
+        "about": 0,
+        "role_strengths": 0,
+        "contact": 0,
+        "other": 0,
+    }
     clarification_count = 0
     resolved_count = 0
     confidence_values: list[float] = []
     response_times: list[float] = []
+    whatsapp_link_sent_count = 0
 
     for row in rows:
         language = (row.get("language") or "unknown").strip().lower() or "unknown"
@@ -3738,6 +3762,8 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
 
         goal = str(row.get("conversation_goal") or "general").strip().lower() or "general"
         by_goal[goal] = by_goal.get(goal, 0) + 1
+        section_key = section_bucket(goal)
+        by_section[section_key] = by_section.get(section_key, 0) + 1
 
         reply_type = str(row.get("reply_type") or "heuristic").strip().lower() or "heuristic"
         by_reply_type[reply_type] = by_reply_type.get(reply_type, 0) + 1
@@ -3746,6 +3772,8 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
             clarification_count += 1
         if int(row.get("resolved_likely") or 0) == 1:
             resolved_count += 1
+        if int(row.get("whatsapp_handoff") or 0) == 1 or "wa.me/" in str(row.get("reply_text") or "").lower():
+            whatsapp_link_sent_count += 1
 
         try:
             confidence_values.append(float(row.get("intent_confidence") or 0.5))
@@ -3776,6 +3804,8 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
         "by_reply_type": by_reply_type,
         "spanish_interactions": by_language.get("es", 0),
         "english_interactions": by_language.get("en", 0),
+        "section_counts": by_section,
+        "whatsapp_link_sent_count": whatsapp_link_sent_count,
         "clarification_needed_count": clarification_count,
         "resolved_likely_count": resolved_count,
         "unresolved_likely_count": max(total_interactions - resolved_count, 0),
@@ -3786,11 +3816,11 @@ def dashboard_chat_analytics(connection: sqlite3.Connection) -> dict[str, Any]:
         "interaction_definition": "One interaction equals one persisted chat message row with source portfolio-chat-widget.",
     }
     logger.info(
-        "Dashboard chat analytics read | total_interactions=%s | by_language=%s | goals=%s | reply_types=%s | trend_days=%s",
+        "Dashboard chat analytics read | total_interactions=%s | by_language=%s | section_counts=%s | whatsapp_link_sent_count=%s | trend_days=%s",
         total_interactions,
         by_language,
-        by_goal,
-        by_reply_type,
+        by_section,
+        whatsapp_link_sent_count,
         len(daily_interactions),
     )
     return analytics
@@ -4294,7 +4324,6 @@ async def dashboard_metrics() -> JSONResponse:
 @app.get("/api/dashboard/export.xlsx")
 async def dashboard_export_excel() -> StreamingResponse:
     with closing(get_connection()) as connection:
-        messages = all_messages_for_export(connection)
         chat_analytics = dashboard_chat_analytics(connection)
     ga4_analytics = fetch_ga4_analytics()
 
@@ -4309,27 +4338,15 @@ async def dashboard_export_excel() -> StreamingResponse:
     for cell in overview_sheet[3]:
         cell.font = Font(bold=True)
 
-    high_priority_count = sum(
-        1 for item in messages
-        if str(item.get("priority") or "").strip().lower() == "high"
-    )
-    lead_scores = [
-        float(item["lead_score"])
-        for item in messages
-        if isinstance(item.get("lead_score"), (int, float)) and float(item["lead_score"]) > 0
-    ]
-    average_lead_score = round(sum(lead_scores) / len(lead_scores), 2) if lead_scores else 0.0
     totals = ga4_analytics.get("totals", {}) if isinstance(ga4_analytics.get("totals"), dict) else {}
+    section_counts = chat_analytics.get("section_counts", {}) or {}
+    whatsapp_link_sent_count = int(chat_analytics.get("whatsapp_link_sent_count", 0) or 0)
 
     overview_rows = [
         ("Chat KPI", "Total chat interactions", int(chat_analytics.get("total_interactions", 0) or 0)),
         ("Chat KPI", "Spanish interactions", int(chat_analytics.get("spanish_interactions", 0) or 0)),
         ("Chat KPI", "English interactions", int(chat_analytics.get("english_interactions", 0) or 0)),
-        ("Chat KPI", "High-priority interactions", high_priority_count),
-        ("Chat KPI", "Average lead score", average_lead_score),
-        ("Chat quality", "Likely resolved", int(chat_analytics.get("resolved_likely_count", 0) or 0)),
-        ("Chat quality", "Clarification needed", int(chat_analytics.get("clarification_needed_count", 0) or 0)),
-        ("Chat quality", "Average intent confidence", float(chat_analytics.get("avg_intent_confidence", 0.0) or 0.0)),
+        ("Chat KPI", "WhatsApp link sent count", whatsapp_link_sent_count),
         ("GA4", "Users (last 30 days)", int(totals.get("users", 0) or 0)),
         ("GA4", "Sessions (last 30 days)", int(totals.get("sessions", 0) or 0)),
         ("GA4", "Views (last 30 days)", int(totals.get("page_views", 0) or 0)),
@@ -4356,8 +4373,7 @@ async def dashboard_export_excel() -> StreamingResponse:
         ("Total chat interactions", int(chat_analytics.get("total_interactions", 0) or 0)),
         ("Spanish interactions", int(chat_analytics.get("spanish_interactions", 0) or 0)),
         ("English interactions", int(chat_analytics.get("english_interactions", 0) or 0)),
-        ("High-priority interactions", high_priority_count),
-        ("Average lead score", average_lead_score),
+        ("WhatsApp link sent count", whatsapp_link_sent_count),
     ]
     chat_row = 5
     for label, value in chat_mix_rows:
@@ -4383,45 +4399,32 @@ async def dashboard_export_excel() -> StreamingResponse:
             chat_row += 1
 
     chat_row += 1
-    chat_sheet.cell(row=chat_row, column=1, value="Conversation goals").font = Font(bold=True)
+    chat_sheet.cell(row=chat_row, column=1, value="Consulted sections").font = Font(bold=True)
     chat_row += 1
-    chat_sheet.cell(row=chat_row, column=1, value="Goal").font = Font(bold=True)
+    chat_sheet.cell(row=chat_row, column=1, value="Section").font = Font(bold=True)
     chat_sheet.cell(row=chat_row, column=2, value="Count").font = Font(bold=True)
     chat_row += 1
-    for goal, total in (chat_analytics.get("by_conversation_goal", {}) or {}).items():
-        if int(total or 0) > 0:
-            chat_sheet.cell(row=chat_row, column=1, value=goal)
-            chat_sheet.cell(row=chat_row, column=2, value=int(total or 0))
+    section_rows = [
+        ("View projects", int(section_counts.get("view_projects", 0) or 0)),
+        ("About", int(section_counts.get("about", 0) or 0)),
+        ("Role strengths", int(section_counts.get("role_strengths", 0) or 0)),
+        ("Contact", int(section_counts.get("contact", 0) or 0)),
+        ("Other", int(section_counts.get("other", 0) or 0)),
+    ]
+    for label, total in section_rows:
+        if total > 0:
+            chat_sheet.cell(row=chat_row, column=1, value=label)
+            chat_sheet.cell(row=chat_row, column=2, value=total)
             chat_row += 1
 
     chat_row += 1
-    chat_sheet.cell(row=chat_row, column=1, value="Reply paths").font = Font(bold=True)
+    chat_sheet.cell(row=chat_row, column=1, value="WhatsApp handoff").font = Font(bold=True)
     chat_row += 1
-    chat_sheet.cell(row=chat_row, column=1, value="Reply type").font = Font(bold=True)
-    chat_sheet.cell(row=chat_row, column=2, value="Count").font = Font(bold=True)
-    chat_row += 1
-    for reply_type, total in (chat_analytics.get("by_reply_type", {}) or {}).items():
-        if int(total or 0) > 0:
-            chat_sheet.cell(row=chat_row, column=1, value=reply_type)
-            chat_sheet.cell(row=chat_row, column=2, value=int(total or 0))
-            chat_row += 1
-
-    chat_row += 1
-    chat_sheet.cell(row=chat_row, column=1, value="Conversation quality").font = Font(bold=True)
-    chat_row += 1
-    chat_sheet.cell(row=chat_row, column=1, value="Signal").font = Font(bold=True)
+    chat_sheet.cell(row=chat_row, column=1, value="Metric").font = Font(bold=True)
     chat_sheet.cell(row=chat_row, column=2, value="Value").font = Font(bold=True)
     chat_row += 1
-    quality_rows = [
-        ("Likely resolved", int(chat_analytics.get("resolved_likely_count", 0) or 0)),
-        ("Clarification needed", int(chat_analytics.get("clarification_needed_count", 0) or 0)),
-        ("Unresolved likely", int(chat_analytics.get("unresolved_likely_count", 0) or 0)),
-        ("Average intent confidence", float(chat_analytics.get("avg_intent_confidence", 0.0) or 0.0)),
-    ]
-    for label, value in quality_rows:
-        chat_sheet.cell(row=chat_row, column=1, value=label)
-        chat_sheet.cell(row=chat_row, column=2, value=value)
-        chat_row += 1
+    chat_sheet.cell(row=chat_row, column=1, value="Messages with WhatsApp link")
+    chat_sheet.cell(row=chat_row, column=2, value=whatsapp_link_sent_count)
 
     ga4_sheet = workbook.create_sheet("GA4 Visuals")
     ga4_sheet["A1"] = "GA4 Visuals Dataset"

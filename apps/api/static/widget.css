@@ -1412,6 +1412,30 @@ body.dashboard-page {
   color: var(--dashboard-muted);
 }
 
+.dashboard-page .metric-spotlight {
+  display: grid;
+  place-items: center;
+  min-height: 190px;
+  border: 1px solid rgba(43, 112, 255, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(243, 248, 255, 0.9));
+  text-align: center;
+  gap: 10px;
+}
+
+.dashboard-page .metric-spotlight strong {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(2.2rem, 5vw, 3rem);
+  color: var(--dashboard-heading);
+  line-height: 1;
+}
+
+.dashboard-page .metric-spotlight span {
+  color: var(--dashboard-muted);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .dashboard-page .dashboard-toolbar {
   grid-template-columns: 0.9fr 0.9fr 0.9fr 1.3fr;
   gap: 12px;

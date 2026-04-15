@@ -763,12 +763,14 @@
 
   function fallbackChatAnalytics(rawItems) {
     const byLanguage = { es: 0, en: 0, unknown: 0 };
-    const dailyTotals = {};
-    const byConversationGoal = {};
-    const byReplyType = {};
-    let clarificationNeededCount = 0;
-    let resolvedLikelyCount = 0;
-    const confidenceValues = [];
+    const sectionCounts = {
+      view_projects: 0,
+      about: 0,
+      role_strengths: 0,
+      contact: 0,
+      other: 0,
+    };
+    let whatsappLinkSentCount = 0;
 
     (rawItems || []).forEach(function (item) {
       const language = String(item && item.language ? item.language : "unknown").toLowerCase();
@@ -778,52 +780,30 @@
       byLanguage[language] += 1;
 
       const goal = String(item && item.conversation_goal ? item.conversation_goal : "general").toLowerCase();
-      byConversationGoal[goal] = (byConversationGoal[goal] || 0) + 1;
-
-      const replyType = String(item && item.reply_type ? item.reply_type : "heuristic").toLowerCase();
-      byReplyType[replyType] = (byReplyType[replyType] || 0) + 1;
-
-      if (Boolean(item && item.clarification_needed)) {
-        clarificationNeededCount += 1;
+      if (goal === "projects") {
+        sectionCounts.view_projects += 1;
+      } else if (goal === "profile" || goal === "experience" || goal === "education") {
+        sectionCounts.about += 1;
+      } else if (goal === "role-fit" || goal === "capabilities" || goal === "opportunity" || goal === "fit") {
+        sectionCounts.role_strengths += 1;
+      } else if (goal === "contact" || goal === "whatsapp") {
+        sectionCounts.contact += 1;
+      } else {
+        sectionCounts.other += 1;
       }
-      if (Boolean(item && item.resolved_likely)) {
-        resolvedLikelyCount += 1;
-      }
-
-      const confidence = Number(item && item.intent_confidence ? item.intent_confidence : 0);
-      if (Number.isFinite(confidence) && confidence > 0) {
-        confidenceValues.push(confidence);
-      }
-
-      const day = String(item && item.created_at ? item.created_at : "").slice(0, 10);
-      if (day) {
-        dailyTotals[day] = (dailyTotals[day] || 0) + 1;
+      const reply = String(item && item.reply_text ? item.reply_text : "").toLowerCase();
+      if (Boolean(item && item.whatsapp_handoff) || reply.includes("wa.me/")) {
+        whatsappLinkSentCount += 1;
       }
     });
-
-    const dailyInteractions = Object.entries(dailyTotals)
-      .map(function ([day, total]) {
-        return { day: day, total: total };
-      })
-      .sort(function (a, b) {
-        return String(a.day).localeCompare(String(b.day));
-      })
-      .slice(-14);
 
     return {
       total_interactions: (rawItems || []).length,
       by_language: byLanguage,
-      by_conversation_goal: byConversationGoal,
-      by_reply_type: byReplyType,
       spanish_interactions: byLanguage.es || 0,
       english_interactions: byLanguage.en || 0,
-      clarification_needed_count: clarificationNeededCount,
-      resolved_likely_count: resolvedLikelyCount,
-      unresolved_likely_count: Math.max(((rawItems || []).length - resolvedLikelyCount), 0),
-      avg_intent_confidence: confidenceValues.length
-        ? Number((confidenceValues.reduce(function (acc, value) { return acc + value; }, 0) / confidenceValues.length).toFixed(2))
-        : 0,
-      daily_interactions: dailyInteractions,
+      section_counts: sectionCounts,
+      whatsapp_link_sent_count: whatsappLinkSentCount,
     };
   }
 
@@ -898,42 +878,19 @@
     const totalChatInteractions = Number(chatAnalytics.total_interactions || rawItems.length || 0);
     const chatSpanish = Number(chatAnalytics.spanish_interactions || fallbackByLanguage.es || 0);
     const chatEnglish = Number(chatAnalytics.english_interactions || fallbackByLanguage.en || 0);
-    const chatHighPriority = rawItems.filter(function (item) {
-      return String(item && item.priority ? item.priority : "").toLowerCase() === "high";
-    }).length;
-    const leadScores = rawItems
-      .map(function (item) {
-        return Number(item && item.lead_score ? item.lead_score : 0);
-      })
-      .filter(function (value) {
-        return Number.isFinite(value) && value > 0;
-      });
-    const chatAvgLead = leadScores.length
-      ? leadScores.reduce(function (acc, value) {
-          return acc + value;
-        }, 0) / leadScores.length
-      : 0;
+    const sectionCounts = chatAnalytics.section_counts || {
+      view_projects: 0,
+      about: 0,
+      role_strengths: 0,
+      contact: 0,
+      other: totalChatInteractions,
+    };
+    const whatsappLinkSentCount = Number(chatAnalytics.whatsapp_link_sent_count || 0);
+
+    setText("chatWhatsappCount", String(whatsappLinkSentCount));
 
     const gaSessions30d = Number(analytics && analytics.totals ? analytics.totals.sessions || 0 : 0);
     const gaUsers30d = Number(analytics && analytics.totals ? analytics.totals.users || 0 : 0);
-
-    setText("chatTotalInteractions", String(totalChatInteractions));
-    setText("chatSpanishInteractions", String(chatSpanish));
-    setText("chatEnglishInteractions", String(chatEnglish));
-    setText("chatHighPriorityInteractions", String(chatHighPriority));
-    setText("chatAvgLeadScore", chatAvgLead.toFixed(1));
-    setText("gaSessions30d", String(gaSessions30d));
-    setText("gaUsers30d", String(gaUsers30d));
-
-    setCardVisible("kpiChatTotalCard", totalChatInteractions > 0);
-    setCardVisible("kpiChatEsCard", chatSpanish > 0);
-    setCardVisible("kpiChatEnCard", chatEnglish > 0);
-    setCardVisible("kpiChatHighPriorityCard", chatHighPriority > 0);
-    setCardVisible("kpiChatAvgLeadCard", chatAvgLead > 0);
-    setCardVisible("kpiGaSessionsCard", gaSessions30d > 0);
-    setCardVisible("kpiGaUsersCard", gaUsers30d > 0);
-    syncSectionVisibility("dashboardKpiSection");
-
     const gaHasMetrics = gaSessions30d > 0 || gaUsers30d > 0;
     const gaHasCountries = !!(
       analytics &&
@@ -944,25 +901,17 @@
     setCardVisible("ga4AnalyticsCard", gaHasMetrics || gaHasCountries);
 
     destroyCharts();
-    const fallbackDailyMap = rawItems.reduce(function (acc, item) {
-      const day = String(item && item.created_at ? item.created_at : "").slice(0, 10);
-      if (!day) return acc;
-      acc[day] = (acc[day] || 0) + 1;
-      return acc;
-    }, {});
-    const fallbackDailyItems = Object.entries(fallbackDailyMap)
-      .map(function ([day, total]) {
-        return { day: day, total: total };
-      })
-      .sort(function (a, b) {
-        return String(a.day).localeCompare(String(b.day));
-      });
-
     const chatByLanguage = chatAnalytics.by_language || {};
     const chatLanguageItems = [
       { label: "es", value: Number(chatByLanguage.es || chatSpanish || 0) },
       { label: "en", value: Number(chatByLanguage.en || chatEnglish || 0) },
-      { label: "other", value: Number(chatByLanguage.unknown || 0) },
+    ];
+    const chatSectionItems = [
+      { label: "view_projects", value: Number(sectionCounts.view_projects || 0) },
+      { label: "about", value: Number(sectionCounts.about || 0) },
+      { label: "role_strengths", value: Number(sectionCounts.role_strengths || 0) },
+      { label: "contact", value: Number(sectionCounts.contact || 0) },
+      { label: "other", value: Number(sectionCounts.other || 0) },
     ];
     const gaTrafficItems = Array.isArray(analytics && analytics.traffic_sources)
       ? analytics.traffic_sources.map(function (item) {
@@ -981,79 +930,37 @@
         })
       : [];
 
-    const chatMixItems = [
-      { label: "total", value: totalChatInteractions },
-      { label: "spanish", value: chatSpanish },
-      { label: "english", value: chatEnglish },
-      { label: "high priority", value: chatHighPriority },
-    ];
     const showChatLanguageChart = hasPositiveValues(chatLanguageItems);
-    const showChatMixChart = hasPositiveValues(chatMixItems);
+    const showChatSectionsChart = hasPositiveValues(chatSectionItems);
     const showGaTrafficChart = hasPositiveValues(gaTrafficItems);
     const showGaTrendChart = hasPositiveValues(gaTrendItems);
-    const chatGoals = chatAnalytics.by_conversation_goal || {};
-    const chatReplyTypes = chatAnalytics.by_reply_type || {};
-    const chatGoalItems = Object.entries(chatGoals).map(function ([label, value]) {
-      return { label: label, value: Number(value || 0) };
-    });
-    const chatReplyTypeItems = Object.entries(chatReplyTypes).map(function ([label, value]) {
-      return { label: label, value: Number(value || 0) };
-    });
-    const clarificationNeeded = Number(chatAnalytics.clarification_needed_count || 0);
-    const resolvedLikely = Number(chatAnalytics.resolved_likely_count || 0);
-    const unresolvedLikely = Number(chatAnalytics.unresolved_likely_count || Math.max(totalChatInteractions - resolvedLikely, 0));
-    const avgIntentConfidence = Number(chatAnalytics.avg_intent_confidence || 0);
-    const chatSignalItems = [
-      { label: "resolved", value: resolvedLikely },
-      { label: "clarification", value: clarificationNeeded },
-      { label: "unresolved", value: unresolvedLikely },
-    ];
-    const showChatGoalsChart = hasPositiveValues(chatGoalItems);
-    const showChatReplyTypeChart = hasPositiveValues(chatReplyTypeItems);
-    const showChatSignals = hasPositiveValues(chatSignalItems) || avgIntentConfidence > 0;
+    const showWhatsappCounter = whatsappLinkSentCount > 0 || totalChatInteractions > 0;
     const showQuantifiedInsights =
-      showChatMixChart ||
       showChatLanguageChart ||
-      showChatGoalsChart ||
-      showChatReplyTypeChart ||
+      showChatSectionsChart ||
+      showWhatsappCounter ||
       showGaTrafficChart ||
-      showGaTrendChart ||
-      showChatSignals;
+      showGaTrendChart;
 
     setCardVisible("quantifiedInsightsCard", showQuantifiedInsights);
-    setCardVisible("chatMixChartCard", showChatMixChart);
     setCardVisible("chatLanguageChartCard", showChatLanguageChart);
-    setCardVisible("chatGoalChartCard", showChatGoalsChart);
+    setCardVisible("chatSectionsChartCard", showChatSectionsChart);
+    setCardVisible("chatWhatsappCard", showWhatsappCounter);
+    setCardVisible("gaTrendsCard", showGaTrafficChart || showGaTrendChart);
     setCardVisible("gaTrafficSourcesChartCard", showGaTrafficChart);
     setCardVisible("gaSessionsTrendChartCard", showGaTrendChart);
-    setCardVisible("chatSignalsCard", showChatSignals);
-    setCardVisible("chatReplyTypeChartCard", showChatReplyTypeChart);
-
-    if (showChatMixChart) {
-      createBarChart("chatMixBarChart", chatMixItems, "#5da8ff");
-    }
 
     if (showChatLanguageChart) {
       createDonutChart("chatLanguageDonutChart", chatLanguageItems);
     }
-    if (showChatGoalsChart) {
-      createDonutChart("chatGoalDonutChart", chatGoalItems);
+    if (showChatSectionsChart) {
+      createBarChart("chatSectionsBarChart", chatSectionItems, "#5da8ff");
     }
     if (showGaTrafficChart) {
       createBarChart("gaTrafficSourcesBarChart", gaTrafficItems, "#2b70ff");
     }
     if (showGaTrendChart) {
       createLineChart("gaSessionsTrendChart", gaTrendItems, "#24b4a3");
-    }
-    if (showChatSignals) {
-      createBarChart("chatSignalsBarChart", chatSignalItems, "#18b5a4");
-      setHtml(
-        "chatSignalsSummary",
-        `Resolved: <strong>${resolvedLikely}</strong> · Clarification needed: <strong>${clarificationNeeded}</strong> · Avg confidence: <strong>${avgIntentConfidence.toFixed(2)}</strong>`
-      );
-    }
-    if (showChatReplyTypeChart) {
-      createDonutChart("chatReplyTypeDonutChart", chatReplyTypeItems);
     }
 
     const refreshNode = $("dashboardLastRefresh");
@@ -1073,8 +980,7 @@
   loadDashboard().catch(function () {
     setText("dashboardLastRefresh", "Unable to refresh data");
     setCardVisible("quantifiedInsightsCard", false);
-    setCardVisible("chatSignalsCard", false);
+    setCardVisible("gaTrendsCard", false);
     setCardVisible("ga4AnalyticsCard", false);
-    syncSectionVisibility("dashboardKpiSection");
   });
 })();
