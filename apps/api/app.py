@@ -4300,51 +4300,15 @@ async def dashboard_export_excel() -> StreamingResponse:
     ga4_analytics = fetch_ga4_analytics()
 
     workbook = Workbook()
-    summary_sheet = workbook.active
-    summary_sheet.title = "Summary"
-    summary_sheet["A1"] = "Portfolio Inbox Dashboard Summary"
-    summary_sheet["A1"].font = Font(bold=True, size=14)
-    summary_sheet["A3"] = "Total messages"
-    summary_sheet["B3"] = metrics["total_messages"]
-
-    summary_sections = [
-        ("By Priority", metrics["summary"]["by_priority"]),
-        ("By Language", metrics["summary"]["by_language"]),
-        ("By Category", metrics["summary"]["by_category"]),
-        ("By Source", metrics["summary"]["by_source"]),
-    ]
-    current_row = 5
-    for title, values in summary_sections:
-        summary_sheet.cell(row=current_row, column=1, value=title).font = Font(bold=True)
-        current_row += 1
-        summary_sheet.cell(row=current_row, column=1, value="Label").font = Font(bold=True)
-        summary_sheet.cell(row=current_row, column=2, value="Count").font = Font(bold=True)
-        current_row += 1
-        for label, total in values.items():
-            summary_sheet.cell(row=current_row, column=1, value=label)
-            summary_sheet.cell(row=current_row, column=2, value=total)
-            current_row += 1
-        current_row += 1
-
-    summary_sheet.cell(row=current_row, column=1, value="Top Themes").font = Font(bold=True)
-    current_row += 1
-    summary_sheet.cell(row=current_row, column=1, value="Theme").font = Font(bold=True)
-    summary_sheet.cell(row=current_row, column=2, value="Count").font = Font(bold=True)
-    current_row += 1
-    for item in metrics["top_themes"]:
-        summary_sheet.cell(row=current_row, column=1, value=item["label"])
-        summary_sheet.cell(row=current_row, column=2, value=item["value"])
-        current_row += 1
-
-    chat_sheet = workbook.create_sheet("Chat Metrics")
-    chat_sheet["A1"] = "Chat Metrics (source = portfolio-chat-widget)"
-    chat_sheet["A1"].font = Font(bold=True, size=13)
-    chat_sheet["A3"] = "Total chat interactions"
-    chat_sheet["B3"] = int(chat_analytics.get("total_interactions", 0) or 0)
-    chat_sheet["A4"] = "Spanish interactions"
-    chat_sheet["B4"] = int(chat_analytics.get("spanish_interactions", 0) or 0)
-    chat_sheet["A5"] = "English interactions"
-    chat_sheet["B5"] = int(chat_analytics.get("english_interactions", 0) or 0)
+    overview_sheet = workbook.active
+    overview_sheet.title = "Overview"
+    overview_sheet["A1"] = "Portfolio Dashboard Export"
+    overview_sheet["A1"].font = Font(bold=True, size=14)
+    overview_sheet["A3"] = "Section"
+    overview_sheet["B3"] = "Metric"
+    overview_sheet["C3"] = "Value"
+    for cell in overview_sheet[3]:
+        cell.font = Font(bold=True)
 
     high_priority_count = sum(
         1 for item in messages
@@ -4356,50 +4320,118 @@ async def dashboard_export_excel() -> StreamingResponse:
         if isinstance(item.get("lead_score"), (int, float)) and float(item["lead_score"]) > 0
     ]
     average_lead_score = round(sum(lead_scores) / len(lead_scores), 2) if lead_scores else 0.0
+    totals = ga4_analytics.get("totals", {}) if isinstance(ga4_analytics.get("totals"), dict) else {}
 
-    chat_sheet["A6"] = "High-priority interactions"
-    chat_sheet["B6"] = high_priority_count
-    chat_sheet["A7"] = "Average lead score"
-    chat_sheet["B7"] = average_lead_score
-    chat_sheet["A8"] = "Average intent confidence"
-    chat_sheet["B8"] = float(chat_analytics.get("avg_intent_confidence", 0.0) or 0.0)
-    chat_sheet["A9"] = "Clarification needed"
-    chat_sheet["B9"] = int(chat_analytics.get("clarification_needed_count", 0) or 0)
-    chat_sheet["A10"] = "Likely resolved"
-    chat_sheet["B10"] = int(chat_analytics.get("resolved_likely_count", 0) or 0)
+    overview_rows = [
+        ("Chat KPI", "Total chat interactions", int(chat_analytics.get("total_interactions", 0) or 0)),
+        ("Chat KPI", "Spanish interactions", int(chat_analytics.get("spanish_interactions", 0) or 0)),
+        ("Chat KPI", "English interactions", int(chat_analytics.get("english_interactions", 0) or 0)),
+        ("Chat KPI", "High-priority interactions", high_priority_count),
+        ("Chat KPI", "Average lead score", average_lead_score),
+        ("Chat quality", "Likely resolved", int(chat_analytics.get("resolved_likely_count", 0) or 0)),
+        ("Chat quality", "Clarification needed", int(chat_analytics.get("clarification_needed_count", 0) or 0)),
+        ("Chat quality", "Average intent confidence", float(chat_analytics.get("avg_intent_confidence", 0.0) or 0.0)),
+        ("GA4", "Users (last 30 days)", int(totals.get("users", 0) or 0)),
+        ("GA4", "Sessions (last 30 days)", int(totals.get("sessions", 0) or 0)),
+        ("GA4", "Views (last 30 days)", int(totals.get("page_views", 0) or 0)),
+        ("GA4", "Engaged sessions (last 30 days)", int(totals.get("engaged_sessions", 0) or 0)),
+    ]
+    overview_row = 4
+    for section, metric, value in overview_rows:
+        overview_sheet.cell(row=overview_row, column=1, value=section)
+        overview_sheet.cell(row=overview_row, column=2, value=metric)
+        overview_sheet.cell(row=overview_row, column=3, value=value)
+        overview_row += 1
 
-    chat_sheet["A12"] = "Conversation goals"
-    chat_sheet["A12"].font = Font(bold=True)
-    chat_sheet["A13"] = "Goal"
-    chat_sheet["B13"] = "Count"
-    chat_sheet["A13"].font = Font(bold=True)
-    chat_sheet["B13"].font = Font(bold=True)
-    goal_row = 14
-    for goal, total in (chat_analytics.get("by_conversation_goal", {}) or {}).items():
-        chat_sheet.cell(row=goal_row, column=1, value=goal)
-        chat_sheet.cell(row=goal_row, column=2, value=int(total or 0))
-        goal_row += 1
+    chat_sheet = workbook.create_sheet("Chat Visuals")
+    chat_sheet["A1"] = "Chat Visuals Dataset"
+    chat_sheet["A1"].font = Font(bold=True, size=13)
+    chat_sheet["A3"] = "Interaction mix"
+    chat_sheet["A3"].font = Font(bold=True)
+    chat_sheet["A4"] = "Metric"
+    chat_sheet["B4"] = "Value"
+    chat_sheet["A4"].font = Font(bold=True)
+    chat_sheet["B4"].font = Font(bold=True)
 
-    chat_row = max(goal_row + 2, 18)
-    chat_sheet.cell(row=chat_row, column=1, value="Daily chat interactions").font = Font(bold=True)
-    chat_row += 1
-    chat_sheet.cell(row=chat_row, column=1, value="Day").font = Font(bold=True)
-    chat_sheet.cell(row=chat_row, column=2, value="Interactions").font = Font(bold=True)
-    chat_row += 1
-    for item in chat_analytics.get("daily_interactions", []):
-        chat_sheet.cell(row=chat_row, column=1, value=item.get("day"))
-        chat_sheet.cell(row=chat_row, column=2, value=int(item.get("total", 0) or 0))
+    chat_mix_rows = [
+        ("Total chat interactions", int(chat_analytics.get("total_interactions", 0) or 0)),
+        ("Spanish interactions", int(chat_analytics.get("spanish_interactions", 0) or 0)),
+        ("English interactions", int(chat_analytics.get("english_interactions", 0) or 0)),
+        ("High-priority interactions", high_priority_count),
+        ("Average lead score", average_lead_score),
+    ]
+    chat_row = 5
+    for label, value in chat_mix_rows:
+        chat_sheet.cell(row=chat_row, column=1, value=label)
+        chat_sheet.cell(row=chat_row, column=2, value=value)
         chat_row += 1
 
-    ga4_sheet = workbook.create_sheet("GA4")
-    ga4_sheet["A1"] = "GA4 Metrics"
+    chat_row += 1
+    chat_sheet.cell(row=chat_row, column=1, value="Language split").font = Font(bold=True)
+    chat_row += 1
+    chat_sheet.cell(row=chat_row, column=1, value="Language").font = Font(bold=True)
+    chat_sheet.cell(row=chat_row, column=2, value="Count").font = Font(bold=True)
+    chat_row += 1
+    language_rows = [
+        ("es", int(chat_analytics.get("spanish_interactions", 0) or 0)),
+        ("en", int(chat_analytics.get("english_interactions", 0) or 0)),
+        ("other", int((chat_analytics.get("by_language", {}) or {}).get("unknown", 0) or 0)),
+    ]
+    for label, value in language_rows:
+        if value > 0:
+            chat_sheet.cell(row=chat_row, column=1, value=label)
+            chat_sheet.cell(row=chat_row, column=2, value=value)
+            chat_row += 1
+
+    chat_row += 1
+    chat_sheet.cell(row=chat_row, column=1, value="Conversation goals").font = Font(bold=True)
+    chat_row += 1
+    chat_sheet.cell(row=chat_row, column=1, value="Goal").font = Font(bold=True)
+    chat_sheet.cell(row=chat_row, column=2, value="Count").font = Font(bold=True)
+    chat_row += 1
+    for goal, total in (chat_analytics.get("by_conversation_goal", {}) or {}).items():
+        if int(total or 0) > 0:
+            chat_sheet.cell(row=chat_row, column=1, value=goal)
+            chat_sheet.cell(row=chat_row, column=2, value=int(total or 0))
+            chat_row += 1
+
+    chat_row += 1
+    chat_sheet.cell(row=chat_row, column=1, value="Reply paths").font = Font(bold=True)
+    chat_row += 1
+    chat_sheet.cell(row=chat_row, column=1, value="Reply type").font = Font(bold=True)
+    chat_sheet.cell(row=chat_row, column=2, value="Count").font = Font(bold=True)
+    chat_row += 1
+    for reply_type, total in (chat_analytics.get("by_reply_type", {}) or {}).items():
+        if int(total or 0) > 0:
+            chat_sheet.cell(row=chat_row, column=1, value=reply_type)
+            chat_sheet.cell(row=chat_row, column=2, value=int(total or 0))
+            chat_row += 1
+
+    chat_row += 1
+    chat_sheet.cell(row=chat_row, column=1, value="Conversation quality").font = Font(bold=True)
+    chat_row += 1
+    chat_sheet.cell(row=chat_row, column=1, value="Signal").font = Font(bold=True)
+    chat_sheet.cell(row=chat_row, column=2, value="Value").font = Font(bold=True)
+    chat_row += 1
+    quality_rows = [
+        ("Likely resolved", int(chat_analytics.get("resolved_likely_count", 0) or 0)),
+        ("Clarification needed", int(chat_analytics.get("clarification_needed_count", 0) or 0)),
+        ("Unresolved likely", int(chat_analytics.get("unresolved_likely_count", 0) or 0)),
+        ("Average intent confidence", float(chat_analytics.get("avg_intent_confidence", 0.0) or 0.0)),
+    ]
+    for label, value in quality_rows:
+        chat_sheet.cell(row=chat_row, column=1, value=label)
+        chat_sheet.cell(row=chat_row, column=2, value=value)
+        chat_row += 1
+
+    ga4_sheet = workbook.create_sheet("GA4 Visuals")
+    ga4_sheet["A1"] = "GA4 Visuals Dataset"
     ga4_sheet["A1"].font = Font(bold=True, size=13)
     ga4_sheet["A3"] = "Status"
     ga4_sheet["B3"] = ga4_analytics.get("status", "unknown")
     ga4_sheet["A4"] = "Reason"
     ga4_sheet["B4"] = ga4_analytics.get("reason", "")
 
-    totals = ga4_analytics.get("totals", {}) if isinstance(ga4_analytics.get("totals"), dict) else {}
     ga4_sheet["A6"] = "Totals (last 30 days)"
     ga4_sheet["A6"].font = Font(bold=True)
     ga4_sheet["A7"] = "Users"
@@ -4451,19 +4483,13 @@ async def dashboard_export_excel() -> StreamingResponse:
         ga4_sheet.cell(row=ga_row, column=2, value=int(item.get("sessions", 0) or 0))
         ga_row += 1
 
-    messages_sheet = workbook.create_sheet("Messages")
+    messages_sheet = workbook.create_sheet("Chat Interactions")
     headers = [
         "id",
         "created_at",
-        "name",
-        "email",
-        "company",
         "source",
         "language",
-        "category",
         "priority",
-        "theme_label",
-        "theme_slug",
         "chat_intent",
         "conversation_goal",
         "reply_type",
@@ -4481,15 +4507,9 @@ async def dashboard_export_excel() -> StreamingResponse:
             [
                 item["id"],
                 item["created_at"],
-                item["user_name"],
-                item["user_email"],
-                item["company"],
                 item["source"],
                 item["language"],
-                item["category"],
                 item["priority"],
-                item["theme_label"],
-                item["theme_slug"],
                 item.get("chat_intent", "general"),
                 item.get("conversation_goal", "general"),
                 item.get("reply_type", "heuristic"),
