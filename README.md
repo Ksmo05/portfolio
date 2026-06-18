@@ -74,6 +74,50 @@ URLs locales:
 - Vercel root directory: `apps/web`
 - Render root directory: `apps/api`
 
+### Vercel
+
+- Root directory: `apps/web`
+- Build command: `npm run build`
+- Install command: `npm install`
+- Variable obligatoria:
+
+```bash
+NEXT_PUBLIC_INBOX_API_URL=https://portfolio-api-u2xb.onrender.com
+```
+
+### Render
+
+- Root directory: `apps/api`
+- Build command: `pip install -r requirements.txt`
+- Start command:
+
+```bash
+uvicorn app:app --host 0.0.0.0 --port $PORT
+```
+
+- Health check:
+
+```bash
+/health
+```
+
+- Variables recomendadas para produccion:
+
+```bash
+APP_BASE_URL=https://carlossm.com
+ALLOWED_ORIGINS=https://carlossm.com,https://www.carlossm.com
+DATABASE_PATH=/var/data/ai_portfolio_inbox.db
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-4.1-mini
+GA4_PROPERTY_ID=...
+GOOGLE_SERVICE_ACCOUNT_JSON=...
+RESEND_API_KEY=...
+RESEND_FROM_EMAIL=...
+OWNER_EMAIL=c.sanmiguelortega@gmail.com
+```
+
+- Si usas disco persistente de Render, `DATABASE_PATH` debe apuntar al mount path real del disk, no a un archivo efimero del contenedor.
+
 ## Notas
 
 - El backend resuelve `templates/`, `static/`, `.env` y la base SQLite de forma relativa a `apps/api/app.py`.

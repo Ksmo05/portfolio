@@ -19,40 +19,44 @@ export type SiteConfig = {
 const siteConfigs: Record<Locale, SiteConfig> = {
   en: {
     name: "Carlos San Miguel",
-    title: "Carlos San Miguel | Operations, Data & Digital Projects",
+    title: "Carlos San Miguel | Procurement Operations, KPI Reporting & Digital Workflows",
     description:
-      "Portfolio focused on operations support, process coordination, reporting, data follow-up and practical digital initiatives.",
+      "Portfolio focused on procurement operations, KPI reporting, process optimization, supplier governance and practical digital initiatives.",
     url: "https://carlossm.com",
     position:
-      "Operations, data and digital support professional with experience in corporate processes, reporting and practical AI workflows.",
+      "Procurement operations consultant with experience in purchasing support, KPI reporting, process optimization and practical digital delivery.",
     location: "Madrid, Spain",
     linkedin: "https://www.linkedin.com/in/carlossanmiguelortega",
     keywords: [
-      "operations",
-      "procurement support",
+      "procurement operations",
+      "purchasing support",
       "reporting",
       "KPI dashboards",
-      "process coordination",
+      "process optimization",
+      "supplier governance",
+      "procurement compliance",
       "digital workflows",
       "practical AI",
     ],
   },
   es: {
     name: "Carlos San Miguel",
-    title: "Carlos San Miguel | Operaciones, Datos y Proyectos Digitales",
+    title: "Carlos San Miguel | Procurement, KPI Reporting y Workflows Digitales",
     description:
-      "Portfolio centrado en soporte operativo, coordinacion de procesos, reporting, seguimiento de datos e iniciativas digitales practicas.",
+      "Portfolio centrado en operaciones de compras, reporting KPI, optimizacion de procesos, supplier governance e iniciativas digitales practicas.",
     url: "https://carlossm.com",
     position:
-      "Profesional de operaciones, datos y soporte digital con experiencia en procesos corporativos, reporting y flujos practicos de IA.",
+      "Consultor de operaciones de compras con experiencia en soporte a purchasing, reporting KPI, optimizacion de procesos y entrega digital practica.",
     location: "Madrid, Espana",
     linkedin: "https://www.linkedin.com/in/carlossanmiguelortega",
     keywords: [
-      "operaciones",
-      "soporte a compras",
+      "procurement",
+      "compras",
       "reporting",
       "dashboards KPI",
-      "coordinacion de procesos",
+      "optimizacion de procesos",
+      "supplier governance",
+      "compliance de compras",
       "flujos digitales",
       "IA practica",
     ],
@@ -77,6 +81,7 @@ const coreSkillsByLocale: Record<Locale, string[]> = {
     "Reporting",
     "KPI / Dashboards",
     "SAP",
+    "Coupa",
     "Qlik Sense",
     "Excel",
     "Workflow support",
@@ -91,6 +96,7 @@ const coreSkillsByLocale: Record<Locale, string[]> = {
     "Reporting",
     "KPI / Dashboards",
     "SAP",
+    "Coupa",
     "Qlik Sense",
     "Excel",
     "Soporte a workflows",
@@ -99,45 +105,45 @@ const coreSkillsByLocale: Record<Locale, string[]> = {
   ],
 };
 
-export const toolStack = ["SAP", "Qlik Sense", "Microsoft Excel", "Microsoft Outlook", "Salesforce"];
+export const toolStack = ["SAP", "Coupa", "Qlik Sense", "Microsoft Excel", "Salesforce"];
 
 const profileHighlightsByLocale: Record<Locale, string[]> = {
   en: [
-    "Corporate support for Purchasing and Aftersales processes",
+    "Purchasing and procurement operations across Spain and Portugal",
     "Automotive, energy, public administration and banking environments",
-    "Operational coordination, documentation control and reporting follow-up",
-    "Practical use of digital tools to improve visibility and productivity",
+    "KPI monitoring, operational analytics and reporting follow-up",
+    "Supplier governance, audits, ICS controls and practical digital improvement",
   ],
   es: [
-    "Soporte corporativo para procesos de Purchasing y Aftersales",
+    "Operaciones de purchasing y procurement en Espana y Portugal",
     "Entornos de automocion, energia, administracion publica y banca",
-    "Coordinacion operativa, control documental y seguimiento de reporting",
-    "Uso practico de herramientas digitales para mejorar visibilidad y productividad",
+    "Seguimiento de KPI, analitica operativa y reporting",
+    "Supplier governance, auditorias, controles ICS y mejora digital practica",
   ],
 };
 
 const servicesByLocale: Record<Locale, string[]> = {
   en: [
-    "Operations support and business process follow-up",
-    "Procurement coordination, SAP support and incident handling",
-    "Reporting, KPI tracking and dashboard-oriented analysis",
+    "Purchasing support and procurement process follow-up",
+    "SAP and Coupa operational support, issue handling and coordination",
+    "Reporting, KPI tracking and operational analysis",
     "Documentation control and information organization",
+    "Supplier governance, audits and procurement compliance support",
     "Digital tools and practical AI for day-to-day productivity",
-    "Structured support for corporate teams and business workflows",
   ],
   es: [
-    "Soporte a operaciones y seguimiento de procesos de negocio",
-    "Coordinacion de compras, soporte SAP y gestion de incidencias",
-    "Reporting, seguimiento de KPI y analisis orientado a dashboards",
+    "Soporte a purchasing y seguimiento de procesos de procurement",
+    "Soporte operativo en SAP y Coupa, coordinacion y gestion de incidencias",
+    "Reporting, seguimiento de KPI y analitica operativa",
     "Control documental y organizacion de la informacion",
+    "Supplier governance, auditorias y soporte a compliance de compras",
     "Herramientas digitales e IA practica para la productividad diaria",
-    "Soporte estructurado para equipos corporativos y workflows de negocio",
   ],
 };
 
 const shortBioByLocale: Record<Locale, string> = {
-  en: "Operations, data and digital support professional with experience in corporate environments, reporting, process coordination and practical uses of AI to improve productivity and information flows.",
-  es: "Profesional de operaciones, datos y soporte digital con experiencia en entornos corporativos, reporting, coordinacion de procesos y usos practicos de la IA para mejorar la productividad y los flujos de informacion.",
+  en: "Procurement operations professional with experience in purchasing support, KPI reporting, supplier governance, process optimization and practical digital tools that improve productivity and decision-making.",
+  es: "Profesional de operaciones de compras con experiencia en soporte a purchasing, reporting KPI, supplier governance, optimizacion de procesos y herramientas digitales practicas que mejoran productividad y toma de decisiones.",
 };
 
 export function getLocale(value: string | undefined): Locale {

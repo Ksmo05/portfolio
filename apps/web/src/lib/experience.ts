@@ -40,28 +40,28 @@ export type SnapshotEntry = {
 const entries: ExperienceEntryLocalized[] = [
   {
     company: { en: "RPC", es: "RPC" },
-    role: { en: "Operations & Business Support Consultant", es: "Consultor de Operaciones y Soporte de Negocio" },
+    role: { en: "Purchasing & Procurement Operations Consultant", es: "Consultor de Operaciones de Purchasing y Procurement" },
     period: "2025 - Present",
     logo: "/company-logos/rpc.svg",
     logoAlt: { en: "RPC logo", es: "Logotipo RPC" },
     summary: {
-      en: "Current role supporting Purchasing and Aftersales processes in a BMW-related business environment, with responsibility for SAP support, reporting follow-up, incident handling and operational coordination.",
-      es: "Rol actual de soporte a procesos de Purchasing y Aftersales en un entorno de negocio vinculado a BMW, con responsabilidad en soporte SAP, seguimiento de reporting, gestion de incidencias y coordinacion operativa.",
+      en: "Current role managing purchasing operations across Spain and Portugal, with responsibility for KPI monitoring, supplier governance, SAP and Coupa support, compliance follow-up and process optimization in a BMW-related business environment.",
+      es: "Rol actual gestionando operaciones de purchasing en Espana y Portugal, con responsabilidad sobre seguimiento de KPI, supplier governance, soporte en SAP y Coupa, compliance y optimizacion de procesos en un entorno de negocio vinculado a BMW.",
     },
     responsibilities: {
       en: [
-        "Provide SAP support for users involved in purchasing and related operational workflows.",
-        "Track recurring reports and KPI information for business follow-up.",
-        "Handle incidents and support day-to-day process execution in coordination with internal teams.",
-        "Review data and participation tracking linked to dealership and campaign activity.",
-        "Organize internal content and support materials used in process communication and training.",
+        "Independently manage Purchasing IB operations across Spain and Portugal.",
+        "Monitor KPI, reporting and operational analytics through Qlik Sense and Excel.",
+        "Support supplier governance, audits, ICS controls and procurement compliance tasks.",
+        "Provide SAP and Coupa operational support to buyers, suppliers and business units.",
+        "Coordinate process execution, issue resolution and purchasing workflow optimization.",
       ],
       es: [
-        "Dar soporte SAP a usuarios implicados en procesos de compras y workflows operativos relacionados.",
-        "Hacer seguimiento de reporting recurrente e informacion KPI para el control de negocio.",
-        "Gestionar incidencias y apoyar la ejecucion diaria de procesos en coordinacion con equipos internos.",
-        "Revisar datos y seguimiento de participacion vinculados a actividad de concesionarios y campanas.",
-        "Organizar contenido interno y materiales de apoyo utilizados en comunicacion de procesos y formacion.",
+        "Gestionar de forma autonoma operaciones de Purchasing IB en Espana y Portugal.",
+        "Realizar seguimiento de KPI, reporting y analitica operativa con Qlik Sense y Excel.",
+        "Dar soporte a supplier governance, auditorias, controles ICS y tareas de procurement compliance.",
+        "Prestar soporte operativo en SAP y Coupa a buyers, suppliers y business units.",
+        "Coordinar ejecucion de procesos, resolucion de incidencias y optimizacion de workflows de compras.",
       ],
     },
   },
@@ -169,8 +169,8 @@ const snapshotEntries: SnapshotEntryLocalized[] = [
     logo: "/company-logos/rpc.svg",
     logoAlt: { en: "RPC logo", es: "Logotipo RPC" },
     description: {
-      en: "Procurement and Aftersales support, SAP follow-up, reporting and incident coordination.",
-      es: "Soporte a Purchasing y Aftersales, seguimiento SAP, reporting y coordinacion de incidencias.",
+      en: "Purchasing operations, KPI reporting, SAP and Coupa support, and supplier governance follow-up.",
+      es: "Operaciones de purchasing, reporting KPI, soporte SAP y Coupa, y seguimiento de supplier governance.",
     },
   },
   {

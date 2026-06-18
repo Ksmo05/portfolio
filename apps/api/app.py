@@ -80,18 +80,18 @@ CHAT_PROFILE_FACTS = {
     "en": [
         "Carlos works at the intersection of operations, data, digital workflows, and practical AI.",
         "Carlos currently works at The Retail Performance Company (RPC) since November 2025.",
-        "His profile is corporate, business-oriented, and grounded in operations, reporting, process coordination, and digital support.",
-        "At RPC, his work is focused on operations, reporting, process support, digital workflows, and practical AI in a corporate environment linked to BMW-related processes.",
-        "He has experience supporting Purchasing and Aftersales processes in a BMW-related environment, including SAP support, reporting follow-up, incident handling, and coordination.",
+        "His profile is corporate, business-oriented, and grounded in procurement operations, KPI reporting, process coordination, and digital support.",
+        "At RPC, his work is focused on purchasing operations across Spain and Portugal, KPI monitoring, supplier governance, procurement compliance, and practical digital execution in a BMW-related environment.",
+        "He works with SAP, Coupa, Qlik Sense, and Excel to support buyers, suppliers, reporting, audits, issue resolution, and workflow optimization.",
         "His background also includes back-office operations, documentation validation, public procurement support, banking operations, and technical support operations.",
         "His projects show practical uses of digital tools, dashboards, structured information, and AI for productivity.",
     ],
     "es": [
         "Carlos trabaja en la interseccion entre operaciones, datos, workflows digitales e IA practica.",
         "Carlos trabaja actualmente en The Retail Performance Company (RPC) desde noviembre de 2025.",
-        "Su perfil es corporativo, orientado a negocio y centrado en operaciones, reporting, coordinacion de procesos y soporte digital.",
-        "En RPC, su trabajo se centra en operaciones, reporting, soporte a procesos, workflows digitales e IA practica en un entorno corporativo relacionado con procesos vinculados a BMW.",
-        "Tiene experiencia dando soporte a procesos de Purchasing y Aftersales en un entorno vinculado a BMW, incluyendo soporte SAP, seguimiento de reporting, gestion de incidencias y coordinacion.",
+        "Su perfil es corporativo, orientado a negocio y centrado en procurement, reporting KPI, coordinacion de procesos y soporte digital.",
+        "En RPC, su trabajo se centra en operaciones de purchasing en Espana y Portugal, seguimiento de KPI, supplier governance, procurement compliance y ejecucion digital practica en un entorno vinculado a BMW.",
+        "Trabaja con SAP, Coupa, Qlik Sense y Excel para dar soporte a buyers, suppliers, reporting, auditorias, incidencias y optimizacion de workflows.",
         "Su trayectoria tambien incluye back office, validacion documental, soporte a contratacion publica, operaciones bancarias y soporte tecnico-operativo.",
         "Sus proyectos muestran usos practicos de herramientas digitales, dashboards, informacion estructurada e IA para productividad.",
     ],
@@ -99,11 +99,11 @@ CHAT_PROFILE_FACTS = {
 
 PORTFOLIO_ROLE_FACTS = {
     "en": {
-        "current_role": "Carlos currently works at The Retail Performance Company (RPC) since November 2025 as an Operations & Business Support Consultant. His current work is focused on Purchasing and Aftersales support, SAP-related follow-up, reporting, incident handling, and operational coordination in a BMW-related business environment.",
+        "current_role": "Carlos currently works at The Retail Performance Company (RPC) since November 2025 as a Purchasing & Procurement Operations Consultant. His current work is focused on purchasing operations across Spain and Portugal, KPI monitoring, supplier governance, procurement compliance, and SAP/Coupa operational support in a BMW-related business environment.",
         "education": [
             "Bachelor's Degree in Business Administration at Universidad Rey Juan Carlos, with an academic foundation in business management, organizational processes, finance, and operational decision-making.",
             "Higher Technician in Network Systems Administration (ASIR) at Universidad Europea, focused on systems administration, infrastructure fundamentals, and IT support environments.",
-            "University continuing studies in Cybersecurity, Artificial Intelligence and Big Data at Universidad Europea, reinforcing analytical and digital capabilities applied to operations contexts.",
+            "Additional certifications in Generative AI and AI integration for business strategy, reinforcing analytical and digital capabilities applied to operations contexts.",
         ],
         "previous_experience": [
             "Endesa (2025) - Back Office Operations, focused on documentation, validation, and coordination in solar financing workflows using Salesforce.",
@@ -113,11 +113,11 @@ PORTFOLIO_ROLE_FACTS = {
         ],
     },
     "es": {
-        "current_role": "Carlos trabaja actualmente en The Retail Performance Company (RPC) desde noviembre de 2025 como Consultor de Operaciones y Soporte de Negocio. Su trabajo actual se centra en soporte a Purchasing y Aftersales, seguimiento relacionado con SAP, reporting, gestion de incidencias y coordinacion operativa en un entorno de negocio vinculado a BMW.",
+        "current_role": "Carlos trabaja actualmente en The Retail Performance Company (RPC) desde noviembre de 2025 como Consultor de Operaciones de Purchasing y Procurement. Su trabajo actual se centra en operaciones de purchasing en Espana y Portugal, seguimiento de KPI, supplier governance, procurement compliance y soporte operativo en SAP/Coupa dentro de un entorno vinculado a BMW.",
         "education": [
             "Grado en Administracion y Direccion de Empresas en la Universidad Rey Juan Carlos, con base academica en gestion empresarial, procesos organizativos, finanzas y toma de decisiones operativas.",
             "Tecnico Superior en Administracion de Sistemas en Red (ASIR) en la Universidad Europea, con formacion en administracion de sistemas, fundamentos de infraestructura y entornos de soporte TI.",
-            "Estudios universitarios complementarios en Ciberseguridad, Inteligencia Artificial y Big Data en la Universidad Europea, orientados a reforzar capacidades analiticas y digitales aplicadas a entornos operativos.",
+            "Certificaciones complementarias en IA generativa e integracion de IA en estrategia empresarial, orientadas a reforzar capacidades analiticas y digitales aplicadas a entornos operativos.",
         ],
         "previous_experience": [
             "Endesa (2025) - Operaciones Back Office, con foco en documentacion, validacion y coordinacion en workflows de financiacion solar usando Salesforce.",
@@ -131,8 +131,8 @@ PORTFOLIO_ROLE_FACTS = {
 EXPERIENCE_DETAIL_FACTS = {
     "rpc": {
         "terms": {"rpc", "retail performance company"},
-        "en": "At The Retail Performance Company (RPC), Carlos works as an Operations & Business Support Consultant. The role combines Purchasing and Aftersales support, SAP-related follow-up, reporting, incident handling, coordination, and data visibility in a BMW-related business environment.",
-        "es": "En The Retail Performance Company (RPC), Carlos trabaja como Consultor de Operaciones y Soporte de Negocio. El rol combina soporte a Purchasing y Aftersales, seguimiento relacionado con SAP, reporting, gestion de incidencias, coordinacion y visibilidad de datos en un entorno de negocio vinculado a BMW.",
+        "en": "At The Retail Performance Company (RPC), Carlos works as a Purchasing & Procurement Operations Consultant. The role combines purchasing operations across Spain and Portugal, KPI monitoring, supplier governance, SAP and Coupa support, procurement compliance, and workflow optimization in a BMW-related business environment.",
+        "es": "En The Retail Performance Company (RPC), Carlos trabaja como Consultor de Operaciones de Purchasing y Procurement. El rol combina operaciones de purchasing en Espana y Portugal, seguimiento de KPI, supplier governance, soporte en SAP y Coupa, compliance de compras y optimizacion de workflows en un entorno vinculado a BMW.",
         "thread_title": "RPC experience",
     },
     "endesa": {
@@ -163,20 +163,22 @@ EXPERIENCE_DETAIL_FACTS = {
 
 TOOLING_FACTS = {
     "en": {
-        "current_tools": "In his current role at The Retail Performance Company (RPC), Carlos mainly works with SAP, Excel, and Qlik Sense.",
+        "current_tools": "In his current role at The Retail Performance Company (RPC), Carlos mainly works with SAP, Coupa, Excel, and Qlik Sense.",
         "previous_tools": "In previous experience, the clearest tool explicitly reflected in the portfolio is Salesforce, especially in Endesa.",
         "sap": "Yes. Carlos works with SAP in his current role at The Retail Performance Company (RPC).",
         "excel": "Yes. Carlos uses Excel in his current role at The Retail Performance Company (RPC).",
         "qlik-sense": "Yes. Carlos uses Qlik Sense in his current role at The Retail Performance Company (RPC).",
+        "coupa": "Yes. Carlos also works with Coupa in his current procurement operations role at The Retail Performance Company (RPC).",
         "salesforce": "Yes. Carlos used Salesforce especially in his experience at Endesa.",
         "endesa_tools": "At Endesa, the most relevant tool reflected in the portfolio is Salesforce.",
     },
     "es": {
-        "current_tools": "En su trabajo actual en The Retail Performance Company (RPC), Carlos utiliza principalmente SAP, Excel y Qlik Sense.",
+        "current_tools": "En su trabajo actual en The Retail Performance Company (RPC), Carlos utiliza principalmente SAP, Coupa, Excel y Qlik Sense.",
         "previous_tools": "En experiencia previa, la herramienta mas clara que aparece reflejada en el portfolio es Salesforce, especialmente en Endesa.",
         "sap": "Si. Carlos trabaja con SAP en su rol actual en The Retail Performance Company (RPC).",
         "excel": "Si. Carlos utiliza Excel en su rol actual en The Retail Performance Company (RPC).",
         "qlik-sense": "Si. Carlos utiliza Qlik Sense en su rol actual en The Retail Performance Company (RPC).",
+        "coupa": "Si. Carlos tambien trabaja con Coupa en su rol actual de operaciones de procurement en The Retail Performance Company (RPC).",
         "salesforce": "Si. Carlos ha usado Salesforce especialmente en su experiencia en Endesa.",
         "endesa_tools": "En Endesa, la herramienta mas relevante que aparece reflejada en el portfolio es Salesforce.",
     },
@@ -1600,6 +1602,7 @@ def maybe_build_profile_grounded_analysis(submission: InboxSubmission) -> Messag
                 "previous_tools": "Previous tools question",
                 "sap": "SAP question",
                 "excel": "Excel question",
+                "coupa": "Coupa question",
                 "qlik-sense": "Qlik Sense question",
                 "salesforce": "Salesforce question",
                 "endesa_tools": "Endesa tools question",
@@ -1978,6 +1981,8 @@ def detect_tooling_key(normalized_text: str) -> str | None:
         return "current_tools"
     if "salesforce" in normalized_text:
         return "salesforce"
+    if "coupa" in normalized_text:
+        return "coupa"
     if "qlik sense" in normalized_text:
         return "qlik-sense"
     sap_context_terms = {
@@ -2538,7 +2543,7 @@ def build_static_chat_reply(
             "education": build_education_reply("en") + "\n\n" + tail,
             "previous-experience": build_previous_experience_reply("en") + "\n\n" + tail,
             "profile": "Carlos' profile combines operations, data visibility, digital workflows, and practical AI use. He currently works at The Retail Performance Company (RPC), where his focus is on process coordination, reporting, SAP-related support, and helping teams work with more structure and clarity.\n\n" + tail,
-            "experience": "Carlos currently works at The Retail Performance Company (RPC) since November 2025. His recent experience is centered on operations, Purchasing and Aftersales support, SAP-related workflows, reporting follow-up, incident handling, and coordination in a BMW-related corporate environment. His broader background also includes back-office operations, documentation validation, public procurement support, banking operations, and technical support operations.\n\n" + tail,
+            "experience": "Carlos currently works at The Retail Performance Company (RPC) since November 2025. His recent experience is centered on purchasing operations across Spain and Portugal, KPI monitoring, supplier governance, procurement compliance, SAP/Coupa support, and workflow optimization in a BMW-related corporate environment. His broader background also includes back-office operations, documentation validation, public procurement support, banking operations, and technical support operations.\n\n" + tail,
             "reporting": "Carlos has experience with reporting focused on KPI tracking, process visibility, dashboard support, and business decision support in corporate environments.\n\n" + tail,
             "profile-balance": "Carlos' profile combines both business and data. He works with reporting, KPIs, dashboards, and operational workflows, while also bringing a practical digital foundation that connects the operational, analytical, and business sides.\n\n" + tail,
             "automotive": "Yes, his recent experience is linked to the automotive environment through The Retail Performance Company (RPC), in a corporate context associated with BMW.\n\n" + tail,
@@ -2547,7 +2552,7 @@ def build_static_chat_reply(
             "fit": "Carlos' profile combines business, operations, and data. He works with reporting, KPIs, dashboards, process support, and digital coordination, with a practical foundation in tools and workflows rather than a purely technical-specialist profile.\n\n" + tail,
             "practical-ai": "His use of AI is practical and business-oriented. The focus is on writing support, information organization, summarization, and workflow efficiency in everyday workflows.\n\n" + tail,
             "contact": build_contact_reply("en", normalized_text, tail),
-            "general": "Carlos' portfolio presents a professional profile centered on operations, reporting, process support, digital workflows, and practical AI. The strongest themes are corporate business support, data visibility, coordination, and useful digital initiatives.\n\n" + (build_guided_options(language, intent) if guided_mode else tail),
+            "general": "Carlos' portfolio presents a professional profile centered on procurement operations, KPI reporting, process optimization, digital workflows, and practical AI. The strongest themes are purchasing support, data visibility, supplier governance, coordination, and useful digital initiatives.\n\n" + (build_guided_options(language, intent) if guided_mode else tail),
         },
         "es": {
             "whatsapp": build_whatsapp_cta("es", whatsapp_reason or "explicit"),
@@ -2556,7 +2561,7 @@ def build_static_chat_reply(
             "education": build_education_reply("es") + "\n\n" + tail,
             "previous-experience": build_previous_experience_reply("es") + "\n\n" + tail,
             "profile": "El perfil de Carlos combina operaciones, visibilidad de datos, workflows digitales e IA practica. Actualmente trabaja en The Retail Performance Company (RPC), donde sus puntos mas fuertes estan en coordinacion de procesos, reporting, soporte relacionado con SAP y apoyo a equipos con mas estructura y claridad.\n\n" + tail,
-            "experience": "Carlos trabaja actualmente en The Retail Performance Company (RPC) desde noviembre de 2025. Su experiencia reciente se centra en operaciones, soporte a Purchasing y Aftersales, workflows relacionados con SAP, seguimiento de reporting, gestion de incidencias y coordinacion en un entorno corporativo vinculado a BMW. Su trayectoria tambien incluye back office, validacion documental, contratacion publica, operaciones bancarias y soporte tecnico-operativo.\n\n" + tail,
+            "experience": "Carlos trabaja actualmente en The Retail Performance Company (RPC) desde noviembre de 2025. Su experiencia reciente se centra en operaciones de purchasing en Espana y Portugal, seguimiento de KPI, supplier governance, procurement compliance, soporte en SAP/Coupa y optimizacion de workflows en un entorno corporativo vinculado a BMW. Su trayectoria tambien incluye back office, validacion documental, contratacion publica, operaciones bancarias y soporte tecnico-operativo.\n\n" + tail,
             "reporting": "Carlos tiene experiencia con reporting orientado a seguimiento de KPIs, visibilidad de procesos, dashboards y apoyo a la toma de decisiones en entornos corporativos.\n\n" + tail,
             "profile-balance": "Su perfil combina negocio y datos. Trabaja con reporting, KPIs, dashboards y procesos operativos, pero tambien conecta la parte analitica con la operativa y la de negocio.\n\n" + tail,
             "automotive": "Si, su experiencia reciente esta vinculada al entorno de automocion a traves de The Retail Performance Company (RPC), en un contexto corporativo asociado a BMW.\n\n" + tail,
@@ -2565,7 +2570,7 @@ def build_static_chat_reply(
             "fit": "Su perfil combina negocio, operaciones y datos. Trabaja con reporting, KPIs, dashboards, soporte a procesos y coordinacion digital, con una base practica en herramientas y workflows mas que un enfoque puramente tecnico-especialista.\n\n" + tail,
             "practical-ai": "Su uso de IA es practico y orientado a negocio. El foco esta en apoyo a redaccion, organizacion de informacion, resumenes y eficiencia de workflows del dia a dia.\n\n" + tail,
             "contact": build_contact_reply("es", normalized_text, tail),
-            "general": "El portfolio de Carlos presenta un perfil profesional centrado en operaciones, reporting, soporte a procesos, workflows digitales e IA practica. Los temas mas fuertes son soporte corporativo a negocio, visibilidad de datos, coordinacion e iniciativas digitales utiles.\n\n" + (build_guided_options(language, intent) if guided_mode else tail),
+            "general": "El portfolio de Carlos presenta un perfil profesional centrado en operaciones de procurement, reporting KPI, optimizacion de procesos, workflows digitales e IA practica. Los temas mas fuertes son soporte a purchasing, visibilidad de datos, supplier governance, coordinacion e iniciativas digitales utiles.\n\n" + (build_guided_options(language, intent) if guided_mode else tail),
         },
     }
     return replies.get(language, replies["en"]).get(topic)
